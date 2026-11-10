@@ -58,7 +58,7 @@ export default function Login() {
         <button className="btn" disabled={busy}>{mode === 'login' ? 'Anmelden' : mode === 'neu' ? 'Konto anlegen' : 'Link schicken'}</button>
         {mode === 'login' && <button type="button" className="btn ghost" onClick={() => { setMode('reset'); setErr(''); }}>Passwort vergessen</button>}
         {mode === 'reset' && <button type="button" className="btn ghost" onClick={() => setMode('login')}>Zurück</button>}
-        <div className="small">Nur für Catrin und Dirk. Die Kinder nutzen später die Familien-Station auf dem iPad.</div>
+        <div className="small">Für Catrin und Dirk. Auf dem iPad mit den Zugangsdaten der Familien-Station anmelden – dann erscheint die Station.</div>
       </form>
     </div>
   );

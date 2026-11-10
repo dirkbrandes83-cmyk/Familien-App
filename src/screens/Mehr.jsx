@@ -31,6 +31,10 @@ export default function Mehr({ ctx }) {
         </button>
       </section>
       <section className="card">
+        <div className="card-title">Familien-Station (iPad)</div>
+        <div className="sub">Auf dem iPad diese Seite öffnen und mit <b>station.brandes@example.org</b> und dem Station-Passwort anmelden. Die Station darf eintragen und abhaken, aber nichts löschen und keine Termine ändern. Abmelden: lange auf die Uhr drücken.</div>
+      </section>
+      <section className="card">
         <div className="card-title">Auf den Home-Bildschirm</div>
         <div className="sub">In Safari unten auf „Teilen“ tippen, dann „Zum Home-Bildschirm“. Danach öffnet sich die App wie eine normale App.</div>
       </section>
@@ -38,7 +42,7 @@ export default function Mehr({ ctx }) {
         <div className="sub">Angemeldet als {ctx.me.name}</div>
         <button className="btn ghost" onClick={() => supabase.auth.signOut()}>Abmelden</button>
       </section>
-      <div className="small">Kommt als Nächstes: Familien-Station fürs iPad, dann Essen, Wäsche, Ämtchen, Putzen, Betreuung und das Abo von Kalender.digital.</div>
+      <div className="small">Kommt als Nächstes: Essen, Wäsche, Ämtchen, Putzen, Betreuung und das Abo von Kalender.digital.</div>
     </>
   );
 }

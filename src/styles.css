@@ -126,3 +126,53 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .login .card { width: 100%; max-width: 400px; gap: 12px; }
 .err { color: var(--red); font-size: 14px; }
 .ok { color: var(--teal-d); font-size: 14px; }
+
+/* ---------------- Familien-Station (iPad) ---------------- */
+.st { min-height: 100dvh; padding: calc(env(safe-area-inset-top) + 16px) 24px calc(env(safe-area-inset-bottom) + 24px); display: flex; flex-direction: column; gap: 18px; font-size: 18px; user-select: none; -webkit-user-select: none; }
+.st-head { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.st-clock { display: flex; flex-direction: column; }
+.st-time { font-family: 'Bricolage Grotesque', sans-serif; font-size: 56px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.st-date { font-size: 17px; color: var(--muted); font-weight: 600; }
+.st-faces { display: flex; gap: 10px; flex: 1 1 auto; flex-wrap: wrap; }
+.st-face { min-height: 64px; padding: 0 18px 0 10px; border-radius: 32px; background: var(--card); border: 3px solid var(--line); font-weight: 700; font-size: 20px; display: flex; align-items: center; gap: 10px; }
+.st-ini { width: 44px; height: 44px; border-radius: 22px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+.st-add { min-height: 64px; font-size: 20px; padding: 0 26px; border-radius: 20px; }
+.st-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; align-items: start; }
+.st-grid.two { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+@media (max-width: 1000px) { .st-grid { grid-template-columns: 1fr 1fr; } .st-grid > :first-child { grid-column: 1 / -1; } .st-grid.two { grid-template-columns: 1fr; } .st-grid.two > :first-child { grid-column: auto; } }
+@media (max-width: 640px) { .st-grid { grid-template-columns: 1fr; } }
+.st-card { background: var(--card); border: 1px solid var(--line); border-radius: 24px; padding: 20px 22px; display: flex; flex-direction: column; gap: 10px; }
+.st-card h2 { margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 26px; }
+.st-card h3 { margin: 8px 0 0; font-size: 14px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; border-top: 1px solid var(--line2); padding-top: 12px; }
+.st-cardhead { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.st-empty { color: var(--muted); }
+.st-ev { display: flex; gap: 14px; align-items: flex-start; padding: 4px 0; }
+.st-evtime { width: 64px; flex: 0 0 64px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.st-evmain { display: flex; flex-direction: column; gap: 4px; }
+.st-evtitle { font-weight: 600; }
+.st-kid { display: flex; flex-direction: column; gap: 4px; border-top: 1px solid var(--line2); padding-top: 10px; }
+.st-kid:first-of-type { border-top: none; padding-top: 0; }
+.st-kidname { font-weight: 800; font-size: 20px; }
+.st-note { background: #FEF3C7; color: #92400E; border-radius: 12px; padding: 8px 12px; font-weight: 600; font-size: 16px; }
+.st-note.big { font-size: 20px; padding: 12px 16px; }
+.st-notes { display: flex; flex-direction: column; gap: 8px; }
+.st-check { display: flex; align-items: center; gap: 14px; min-height: 56px; background: none; border: none; text-align: left; padding: 0; font-size: 18px; }
+.st-check .check { width: 32px; height: 32px; flex-basis: 32px; border-radius: 10px; }
+.st-check.big { min-height: 72px; font-size: 24px; font-weight: 600; border-top: 1px solid var(--line2); }
+.st-check.big .check { width: 44px; height: 44px; flex-basis: 44px; border-radius: 12px; }
+.st-check .done { text-decoration: line-through; color: var(--muted2); }
+.st-done { font-size: 24px; font-weight: 800; color: var(--teal-d); text-align: center; padding: 12px; }
+.st-shop { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; font-weight: 600; }
+.st-big { min-height: 64px; font-size: 20px; border-radius: 18px; }
+.st-seg button { min-height: 52px; font-size: 18px; }
+.st-sheet { max-width: 760px; font-size: 18px; }
+.st-chip { min-height: 56px; font-size: 18px; padding: 0 20px; border-radius: 28px; background: var(--card); }
+.st-icon { width: 56px; height: 56px; border-radius: 28px; }
+.st-input { min-height: 60px; font-size: 20px; }
+.st-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.st-tile { min-height: 120px; border-radius: 22px; border: 1px solid var(--line); background: var(--card); display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 6px; padding: 18px 20px; text-align: left; }
+.st-tilelabel { font-family: 'Bricolage Grotesque', sans-serif; font-size: 24px; font-weight: 700; }
+.st .toast { bottom: calc(24px + env(safe-area-inset-bottom)); font-size: 18px; }
+.st-faces { flex: 0 1 auto; }
+.st-add { margin-left: auto; }
+@media (max-width: 900px) { .st-ini { display: none; } .st-face { padding: 0 20px; } .st-time { font-size: 48px; } }

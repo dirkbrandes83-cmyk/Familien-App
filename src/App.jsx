@@ -9,6 +9,7 @@ import Einkauf from './screens/Einkauf.jsx';
 import Erinnerungen from './screens/Erinnerungen.jsx';
 import Mehr from './screens/Mehr.jsx';
 import EventSheet from './screens/EventSheet.jsx';
+import Station from './screens/Station.jsx';
 
 const TABS = [
   ['heute', 'Heute', 'home'],
@@ -40,8 +41,14 @@ function Family({ session }) {
   const members = useTable('members');
   const email = session.user.email?.toLowerCase();
   const me = members.rows.find((m) => m.email?.toLowerCase() === email);
+  const [station, setStation] = useState(null);
+  useEffect(() => {
+    supabase.rpc('is_station').then(({ data }) => setStation(data === true));
+  }, []);
 
-  if (!members.loaded) return null;
+  if (!members.loaded || station === null) return null;
+  const sorted = [...members.rows].sort((a, b) => a.sort - b.sort);
+  if (station) return <Station members={sorted} />;
   if (!me) {
     return (
       <div className="login"><div className="card">
@@ -51,7 +58,6 @@ function Family({ session }) {
       </div></div>
     );
   }
-  const sorted = [...members.rows].sort((a, b) => a.sort - b.sort);
   return <Shell me={me} members={sorted} />;
 }
 
