@@ -5,7 +5,7 @@ import { muellStatus } from '../lib/home.js';
 import { Icon, Check, Toast, PersonChips } from '../ui.jsx';
 import { addDays, expand, longLabel, today, hm, WDL, weekday } from '../lib/dates.js';
 import { sectionOf } from '../lib/shop.js';
-import { packList } from './common.jsx';
+import { packList, BringPick } from './common.jsx';
 
 // Familien-Station: gemeinsames iPad. Eigenes Konto mit wenigen Rechten
 // (lesen, eintragen, abhaken – nichts löschen, keine Termine ändern).
@@ -110,6 +110,7 @@ function EvList({ list, ctx, empty = 'Nichts geplant.' }) {
       <span className="st-evmain">
         <span className="st-evtitle">{o.ev.title}</span>
         <PersonChips who={o.ev.who} members={ctx.members} />
+        <BringPick ev={o.ev} big />
       </span>
     </div>
   ));

@@ -42,6 +42,8 @@ function EditEvent({ ctx, ev, preset = {}, onClose }) {
     rep: ev?.rep ?? 'keine',
     rep_until: ev?.rep_until ?? '',
     note: ev?.note ?? '',
+    bring_by: ev?.bring_by ?? '',
+    pick_by: ev?.pick_by ?? '',
   }));
   const [busy, setBusy] = useState(false);
   const [askDelete, setAskDelete] = useState(false);
@@ -70,6 +72,8 @@ function EditEvent({ ctx, ev, preset = {}, onClose }) {
       rep: f.kind === 'geburtstag' ? 'jährlich' : f.rep,
       rep_until: f.rep !== 'keine' && f.rep_until ? f.rep_until : null,
       note: f.note.trim(),
+      bring_by: kidEvent ? f.bring_by || null : null,
+      pick_by: kidEvent ? f.pick_by || null : null,
     };
     let ok;
     if (editing) ok = await run(supabase.from('events').update(row).eq('id', ev.id), ctx.fail);
@@ -99,6 +103,10 @@ function EditEvent({ ctx, ev, preset = {}, onClose }) {
 
   const whoOpts = [{ id: 'all', label: 'Alle', color: '#0F766E', bg: '#CCFBF1' }, ...ctx.members.map((m) => ({ id: m.id, label: m.name, color: m.color, bg: m.bg }))];
   const fixedAllDay = f.kind !== 'termin';
+  const kidEvent = f.kind === 'termin' && f.who.some((w) => ctx.member(w)?.kid);
+  // Wer kann bringen/abholen? Eltern zuerst, dann die Betreuungspersonen
+  const drivers = [...new Set(['Dirk', 'Catrin', ...[...ctx.data.caregivers.rows].sort((a, b) => a.sort - b.sort).map((g) => g.name)])];
+  const driverColor = (n) => ctx.members.find((m) => m.name === n);
 
   return (
     <Sheet title={editing ? 'Termin' : 'Neuer Termin'} onClose={onClose}
@@ -121,6 +129,16 @@ function EditEvent({ ctx, ev, preset = {}, onClose }) {
       <div className="field"><span>Wer?</span>
         <ChipPick multi options={whoOpts} value={f.who} onPick={pickWho} />
       </div>
+      {kidEvent && (
+        <>
+          <div className="field"><span>Bringt hin</span>
+            <ChipPick options={drivers.map((n) => ({ id: n, label: n, color: driverColor(n)?.color, bg: driverColor(n)?.bg }))} value={f.bring_by} onPick={(n) => set({ bring_by: f.bring_by === n ? '' : n })} />
+          </div>
+          <div className="field"><span>Holt ab</span>
+            <ChipPick options={drivers.map((n) => ({ id: n, label: n, color: driverColor(n)?.color, bg: driverColor(n)?.bg }))} value={f.pick_by} onPick={(n) => set({ pick_by: f.pick_by === n ? '' : n })} />
+          </div>
+        </>
+      )}
       <div className="two">
         <label className="field"><span>{f.all_day && f.kind === 'termin' ? 'Von' : 'Tag'}</span>
           <input className="input" type="date" value={f.start_date} required onChange={(e) => set({ start_date: e.target.value })} />

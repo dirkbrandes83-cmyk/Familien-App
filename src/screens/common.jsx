@@ -31,6 +31,7 @@ export function EventRow({ ev, date, ctx, showDate }) {
       <span className="row-main">
         <span className="row-title">{ev.title}</span>
         <PersonChips who={ev.who} members={ctx.members} />
+        <BringPick ev={ev} />
         {sub && <span className="small">{sub}</span>}
       </span>
       <Icon name="chev" size={18} className="chev" />
@@ -53,4 +54,17 @@ export function packList(ctx, kid, date) {
 export function packDay(ctx) {
   // Bis zum Mittag zählt heute, danach wird für morgen gepackt
   return new Date().getHours() < 12 ? ctx.day : addDays(ctx.day, 1);
+}
+
+// „bringt Dirk · holt Catrin“ – offen wird orange angezeigt, wenn nur eins fehlt
+export function BringPick({ ev, big }) {
+  if (!ev.bring_by && !ev.pick_by) return null;
+  const st = { fontSize: big ? 15 : 12, fontWeight: 600 };
+  return (
+    <span style={{ ...st, color: '#44403C' }}>
+      🚗 {ev.bring_by ? `bringt ${ev.bring_by}` : <span style={{ color: '#B45309' }}>bringen offen</span>}
+      {' · '}
+      {ev.pick_by ? `holt ${ev.pick_by}` : <span style={{ color: '#B45309' }}>abholen offen</span>}
+    </span>
+  );
 }
