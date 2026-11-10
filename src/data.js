@@ -7,7 +7,9 @@ export const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.m
 
 // Eine ganze Tabelle laden und live halten (Supabase Realtime).
 // Die Familie hat wenige Daten, deshalb wird immer alles geladen.
-export function useTable(table, enabled = true) {
+// keyOf: eindeutiger Schlüssel einer Zeile (Standard: id)
+export function useTable(table, keyOf = null) {
+  const enabled = true;
   const [rows, setRows] = useState([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -19,7 +21,7 @@ export function useTable(table, enabled = true) {
   useEffect(() => {
     if (!enabled) return undefined;
     reload();
-    const key = (r) => r.id ?? `${r.kid}|${r.on_date}|${r.item_key}`;
+    const key = keyOf || ((r) => r.id ?? `${r.kid}|${r.on_date}|${r.item_key}`);
     const ch = supabase
       .channel(`t-${table}`)
       .on('postgres_changes', { event: '*', schema: 'public', table }, (p) => {
@@ -34,6 +36,7 @@ export function useTable(table, enabled = true) {
     const onVis = () => { if (document.visibilityState === 'visible') reload(); };
     document.addEventListener('visibilitychange', onVis);
     return () => { supabase.removeChannel(ch); document.removeEventListener('visibilitychange', onVis); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [table, enabled, reload]);
 
   // Sofort lokal anzeigen, dann speichern (bei Fehler neu laden)
@@ -49,3 +52,24 @@ export async function run(promise, onError) {
   }
   return data ?? true;
 }
+
+// Tabellen für Phase 3 (Zuhause, Betreuung, Abos) – auch von der Station genutzt
+export function useHomeTables() {
+  return {
+    meals: useTable('meals', (r) => r.on_date),
+    recipes: useTable('recipes'),
+    wishes: useTable('meal_wishes'),
+    laundry: useTable('laundry_log'),
+    chores: useTable('chores'),
+    choreChecks: useTable('chore_checks', (r) => `${r.chore_id}|${r.on_date}`),
+    areas: useTable('cleaning_areas'),
+    areaChecks: useTable('cleaning_checks', (r) => `${r.area_id}|${r.week_start}`),
+    notes: useTable('cleaning_notes'),
+    settings: useTable('settings', (r) => r.key),
+    caregivers: useTable('caregivers'),
+    care: useTable('care_needs'),
+    asks: useTable('care_asks', (r) => `${r.need_id}|${r.caregiver_id}`),
+    subs: useTable('calendar_subscriptions'),
+  };
+}
+

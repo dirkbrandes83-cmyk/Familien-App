@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { occurrences, weekday, addDays, mondayOf } from './dates.js';
 import { parseIcs } from './ics.js';
 import { sectionOf, splitNames } from './shop.js';
+import { binsForWeek, muellStatus, agoLabel, weekdaysLabel } from './home.js';
 
 test('Wochentage', () => {
   assert.equal(weekday('2026-11-09'), 0); // Montag
@@ -55,10 +56,37 @@ test('ICS lesen', () => {
   assert.equal(u.end_date, '2027-01-01');
 });
 
+test('UTC-Zeiten werden Bremer Zeit, unabhängig von der Zeitzone des Geräts', () => {
+  const { events } = parseIcs('BEGIN:VCALENDAR\nBEGIN:VEVENT\nUID:s1\nSUMMARY:Sommer\nDTSTART:20260710T170000Z\nEND:VEVENT\nBEGIN:VEVENT\nUID:s2\nSUMMARY:Spät\nDTSTART:20261110T233000Z\nEND:VEVENT\nEND:VCALENDAR');
+  assert.equal(events[0].from_time, '19:00');
+  assert.equal(events[1].start_date, '2026-11-11');
+  assert.equal(events[1].from_time, '00:30');
+});
+
 test('Einkauf', () => {
   assert.equal(sectionOf('Vollmilch'), 'Kühlregal');
   assert.equal(sectionOf('Reis'), 'Vorrat');
   assert.equal(sectionOf('Eis'), 'Tiefkühl');
   assert.equal(sectionOf('Bananen'), 'Obst & Gemüse');
   assert.deepEqual(splitNames('milch, 2 Brot und bananen'), ['Milch', '2 Brot', 'Bananen']);
+});
+
+test('Müll', () => {
+  const m = { ref_monday: '2026-11-09', pickup_weekday: 2, out_weekday: 1, week_a: ['papier', 'gelb'], week_b: ['bio', 'rest'] };
+  assert.deepEqual(binsForWeek(m, '2026-11-11'), ['papier', 'gelb']); // KW 46 = A
+  assert.deepEqual(binsForWeek(m, '2026-11-18'), ['bio', 'rest']);   // KW 47 = B
+  assert.deepEqual(binsForWeek(m, '2026-11-04'), ['bio', 'rest']);   // KW 45 = B
+  assert.equal(muellStatus(m, '2026-11-10').text, 'Heute Abend raus');
+  assert.equal(muellStatus(m, '2026-11-11').text, 'Heute ist Abholung');
+  const th = muellStatus(m, '2026-11-12');
+  assert.equal(th.text, 'Dienstag abends raus');
+  assert.deepEqual(th.bins, ['bio', 'rest']);
+  assert.equal(muellStatus(m, '2026-11-16').text, 'Morgen Abend raus');
+});
+
+test('Haushalt-Texte', () => {
+  assert.equal(agoLabel('2026-11-08', '2026-11-10'), 'vor 2 Tagen');
+  assert.equal(agoLabel(null, '2026-11-10'), 'noch nie');
+  assert.equal(weekdaysLabel([5, 6]), 'am Wochenende');
+  assert.equal(weekdaysLabel([0, 2, 4]), 'Mo, Mi, Fr');
 });

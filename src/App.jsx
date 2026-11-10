@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { supabase, useTable } from './data.js';
+import { supabase, useTable, useHomeTables } from './data.js';
 import { Icon, Toast } from './ui.jsx';
 import { longLabel, today } from './lib/dates.js';
 import Login, { NewPassword } from './screens/Login.jsx';
@@ -10,12 +10,14 @@ import Erinnerungen from './screens/Erinnerungen.jsx';
 import Mehr from './screens/Mehr.jsx';
 import EventSheet from './screens/EventSheet.jsx';
 import Station from './screens/Station.jsx';
+import Zuhause from './screens/Zuhause.jsx';
 
 const TABS = [
   ['heute', 'Heute', 'home'],
   ['kalender', 'Kalender', 'cal'],
   ['einkauf', 'Einkauf', 'cart'],
   ['erinn', 'Erinnerungen', 'bell'],
+  ['zuhause', 'Zuhause', 'house'],
 ];
 
 export default function App() {
@@ -64,6 +66,8 @@ function Family({ session }) {
 function Shell({ me, members }) {
   const [tab, setTab] = useState(() => sessionStorage.getItem('tab') || 'heute');
   const [erSeg, setErSeg] = useState('mitnehmen');
+  const [zhSeg, setZhSeg] = useState('essen');
+  const [calSeg, setCalSeg] = useState('termine');
   const [mehr, setMehr] = useState(false);
   const [toast, setToast] = useState(null);
   const [eventEdit, setEventEdit] = useState(null); // { ev } | { preset }
@@ -87,6 +91,7 @@ function Shell({ me, members }) {
     checks: useTable('pack_checks'),
     inbox: useTable('todo_inbox'),
     buy: useTable('buy_items'),
+    ...useHomeTables(),
   };
 
   const say = useCallback((text, undo) => setToast({ text, undo, k: Math.random() }), []);
@@ -98,13 +103,14 @@ function Shell({ me, members }) {
     member: (id) => members.find((m) => m.id === id),
     kids: members.filter((m) => m.kid),
     openEvent: (ev, preset) => setEventEdit({ ev, preset }),
-    go: (t, seg) => { setMehr(false); setTab(t); if (seg) setErSeg(seg); },
+    go: (t, seg) => { setMehr(false); setTab(t); if (seg && t === 'erinn') setErSeg(seg); if (seg && t === 'zuhause') setZhSeg(seg); if (seg && t === 'kalender') setCalSeg(seg); },
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [me, members, day, say, fail, ...Object.values(data).map((d) => d.rows)]);
 
   const openShop = data.shop.rows.filter((r) => !r.done).length;
   const openInbox = data.inbox.rows.filter((r) => !r.done_at).length;
-  const titles = { heute: `Hallo ${me.name}`, kalender: 'Kalender', einkauf: 'Einkaufsliste', erinn: 'Erinnerungen' };
+  const toReview = data.events.rows.filter((e) => e.review).length;
+  const titles = { heute: `Hallo ${me.name}`, kalender: 'Kalender', einkauf: 'Einkaufsliste', erinn: 'Erinnerungen', zuhause: 'Zuhause' };
 
   return (
     <div className="app">
@@ -124,7 +130,8 @@ function Shell({ me, members }) {
       <main className="main">
         {mehr ? <Mehr ctx={ctx} onClose={() => setMehr(false)} />
           : tab === 'heute' ? <Heute ctx={ctx} />
-          : tab === 'kalender' ? <Kalender ctx={ctx} />
+          : tab === 'kalender' ? <Kalender ctx={ctx} seg={calSeg} setSeg={setCalSeg} />
+          : tab === 'zuhause' ? <Zuhause ctx={ctx} seg={zhSeg} setSeg={setZhSeg} />
           : tab === 'einkauf' ? <Einkauf ctx={ctx} />
           : <Erinnerungen ctx={ctx} seg={erSeg} setSeg={setErSeg} />}
       </main>
@@ -132,7 +139,7 @@ function Shell({ me, members }) {
       <nav className="tabs" aria-label="Bereiche">
         <div className="tabs-inner">
           {TABS.map(([id, label, icon]) => {
-            const n = id === 'einkauf' ? openShop : id === 'erinn' && me.id === 'dirk' ? openInbox : 0;
+            const n = id === 'einkauf' ? openShop : id === 'erinn' && me.id === 'dirk' ? openInbox : id === 'kalender' ? toReview : 0;
             return (
               <button key={id} className={`tab${tab === id && !mehr ? ' on' : ''}`} aria-current={tab === id && !mehr ? 'page' : undefined}
                 onClick={() => { setMehr(false); setTab(id); }}>

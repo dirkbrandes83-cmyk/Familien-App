@@ -7,8 +7,9 @@ import { shortLabel, hm } from '../lib/dates.js';
 export default function Mehr({ ctx }) {
   const [page, setPage] = useState(null);
   if (page === 'klender') return <KlenderUmzug ctx={ctx} onBack={() => setPage(null)} />;
+  if (page === 'abos') return <Abos ctx={ctx} onBack={() => setPage(null)} />;
   const backup = async () => {
-    const tables = ['events', 'shopping_items', 'frequent_items', 'pack_rules', 'pack_items', 'todo_inbox', 'buy_items'];
+    const tables = ['events', 'shopping_items', 'frequent_items', 'pack_rules', 'pack_items', 'todo_inbox', 'buy_items', 'meals', 'recipes', 'chores', 'cleaning_areas', 'cleaning_notes', 'laundry_log', 'caregivers', 'care_needs', 'care_asks', 'calendar_subscriptions', 'settings'];
     const out = { exportiert: new Date().toISOString() };
     for (const t of tables) out[t] = (await supabase.from(t).select('*')).data;
     const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
@@ -23,6 +24,10 @@ export default function Mehr({ ctx }) {
       <section className="card tight">
         <button className="row" style={{ minHeight: 60 }} onClick={() => setPage('klender')}>
           <span className="row-main"><span style={{ fontWeight: 700 }}>Von Klender umziehen</span><span className="sub">Export-Link oder .ics-Datei</span></span>
+          <Icon name="chev" size={18} />
+        </button>
+        <button className="row" style={{ minHeight: 60 }} onClick={() => setPage('abos')}>
+          <span className="row-main"><span style={{ fontWeight: 700 }}>Kalender-Abos</span><span className="sub">{ctx.data.subs.rows.length ? ctx.data.subs.rows.map((x) => x.name).join(', ') : 'z. B. Kalender.digital (Schule)'}</span></span>
           <Icon name="chev" size={18} />
         </button>
         <button className="row" style={{ minHeight: 60 }} onClick={backup}>
@@ -42,7 +47,7 @@ export default function Mehr({ ctx }) {
         <div className="sub">Angemeldet als {ctx.me.name}</div>
         <button className="btn ghost" onClick={() => supabase.auth.signOut()}>Abmelden</button>
       </section>
-      <div className="small">Kommt als Nächstes: Essen, Wäsche, Ämtchen, Putzen, Betreuung und das Abo von Kalender.digital.</div>
+      <div className="small">Später möglich: Mitteilungen aufs Handy, Elternbrief-Scan, Wochenende und Wunschzettel.</div>
     </>
   );
 }
@@ -195,6 +200,68 @@ function KlenderUmzug({ ctx, onBack }) {
           <button className="btn ghost" onClick={() => ctx.go('kalender')}>Zum Kalender</button>
         </section>
       )}
+    </>
+  );
+}
+
+function Abos({ ctx, onBack }) {
+  const [f, setF] = useState({ name: 'Kalender.digital (Schule)', url: '', who: ['dirk'] });
+  const [busy, setBusy] = useState(null);
+  const subs = ctx.data.subs.rows;
+  const opts = [{ id: 'all', label: 'Alle', color: '#0F766E', bg: '#CCFBF1' }, ...ctx.members.map((m) => ({ id: m.id, label: m.name, color: m.color, bg: m.bg }))];
+  const sync = async (id) => {
+    setBusy(id);
+    const { data, error } = await supabase.functions.invoke('abo-sync', { body: { sub_id: id } });
+    setBusy(null);
+    if (error) { ctx.fail('Abgleich fehlgeschlagen'); return; }
+    const r = Object.values(data?.ergebnis || {})[0];
+    if (r?.fehler) ctx.fail(r.fehler);
+    else if (r) ctx.say(`Abgeglichen: ${r.neu} neu, ${r.geaendert} geändert, ${r.entfernt} entfernt`);
+  };
+  const add = async (e) => {
+    e.preventDefault();
+    if (!f.name.trim() || !/^(https?|webcal):\/\//i.test(f.url.trim())) { ctx.fail('Bitte einen Link mit https:// oder webcal:// einfügen'); return; }
+    const res = await run(supabase.from('calendar_subscriptions').insert({ name: f.name.trim(), url: f.url.trim(), who: f.who }).select('id').single(), ctx.fail);
+    if (res) { setF({ name: '', url: '', who: ['all'] }); await sync(res.id); }
+  };
+  const pickWho = (id) => {
+    if (id === 'all') return setF({ ...f, who: ['all'] });
+    const cur = f.who.filter((w) => w !== 'all');
+    const next = cur.includes(id) ? cur.filter((w) => w !== id) : [...cur, id];
+    setF({ ...f, who: next.length ? next : ['all'] });
+  };
+  const fmt = (t) => (t ? new Date(t).toLocaleString('de-DE', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'noch nie');
+  return (
+    <>
+      <button className="btn ghost small" style={{ alignSelf: 'flex-start' }} onClick={onBack}><Icon name="left" size={16} />Zurück</button>
+      <section className="card">
+        <div className="card-title">Kalender-Abos</div>
+        <div className="sub">Termine aus Abos sind nur lesbar und werden stündlich aktualisiert. Neue Termine erscheinen im Kalender unter „Neue Termine prüfen“ – mit der Frage nach Kinderbetreuung.</div>
+      </section>
+      {subs.map((x) => (
+        <section key={x.id} className="card">
+          <div className="card-head">
+            <span className="row-main"><span style={{ fontWeight: 700 }}>{x.name}</span><span className="small">{x.who.includes('all') ? 'Alle' : x.who.map((w) => ctx.member(w)?.name).join(', ')} · zuletzt {fmt(x.last_sync)}</span></span>
+            {!x.active && <span className="tag">pausiert</span>}
+          </div>
+          {x.last_error && <div className="err">Fehler: {x.last_error}</div>}
+          <div className="chips">
+            <button className="btn small" disabled={busy === x.id || !x.active} onClick={() => sync(x.id)}>{busy === x.id ? 'Gleiche ab …' : 'Jetzt abgleichen'}</button>
+            <button className="btn ghost small" onClick={() => run(supabase.from('calendar_subscriptions').update({ active: !x.active }).eq('id', x.id), ctx.fail)}>{x.active ? 'Pausieren' : 'Fortsetzen'}</button>
+            <button className="btn ghost small" style={{ color: '#B91C1C' }} onClick={async () => { if (window.confirm(`Abo „${x.name}“ und seine Termine entfernen?`)) await run(supabase.from('calendar_subscriptions').delete().eq('id', x.id), ctx.fail); }}>Entfernen</button>
+          </div>
+        </section>
+      ))}
+      <form className="card" onSubmit={add}>
+        <div className="card-title">Neues Abo</div>
+        <label className="field"><span>Name</span><input className="input" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} maxLength={80} /></label>
+        <label className="field"><span>Abo-Link (.ics oder webcal://)</span>
+          <input className="input" type="url" inputMode="url" autoCapitalize="off" spellCheck={false} value={f.url} onChange={(e) => setF({ ...f, url: e.target.value })} placeholder="https://… oder webcal://…" />
+        </label>
+        <div className="field"><span>Wem gehören die Termine?</span><ChipPick multi options={opts} value={f.who} onPick={pickWho} /></div>
+        <button className="btn" disabled={!f.url.trim() || !f.name.trim()}>Abo hinzufügen und abgleichen</button>
+        <div className="small">Bei Kalender.digital findest du den Abo-Link in den Kalender-Einstellungen unter „Abonnieren“ bzw. „iCal-Link“.</div>
+      </form>
     </>
   );
 }

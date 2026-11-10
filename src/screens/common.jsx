@@ -5,6 +5,7 @@ export const SRC = {
   fam: 'Familie',
   klender: 'aus Klender',
   inbox: 'aus „Termine vereinbaren“',
+  abo: 'Abo',
 };
 export const KINDS = { termin: 'Termin', frist: 'Frist', geburtstag: 'Geburtstag' };
 
@@ -21,7 +22,7 @@ export function EventRow({ ev, date, ctx, showDate }) {
     !ev.all_day && ev.to_time ? `bis ${hm(ev.to_time)}` : null,
     ev.kind !== 'termin' ? KINDS[ev.kind] : null,
     ev.rep !== 'keine' ? ev.rep : null,
-    SRC[ev.src] && ev.src !== 'fam' ? SRC[ev.src] : null,
+    ev.src === 'abo' ? (ctx.data.subs?.rows.find((x) => x.id === ev.sub_id)?.name ?? 'Abo') : SRC[ev.src] && ev.src !== 'fam' ? SRC[ev.src] : null,
   ].filter(Boolean).join(' · ');
   return (
     <button className="row" onClick={() => ctx.openEvent(ev, { date })}>

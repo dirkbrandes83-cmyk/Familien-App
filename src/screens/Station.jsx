@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { supabase, useTable, run } from '../data.js';
+import { supabase, useTable, useHomeTables, run } from '../data.js';
+import { mealOf, muellOf, Bin, choresToday, toggleChore } from './Zuhause.jsx';
+import { muellStatus } from '../lib/home.js';
 import { Icon, Check, Toast, PersonChips } from '../ui.jsx';
 import { addDays, expand, longLabel, today, hm, WDL, weekday } from '../lib/dates.js';
 import { sectionOf } from '../lib/shop.js';
@@ -29,6 +31,7 @@ export default function Station({ members }) {
     checks: useTable('pack_checks'),
     inbox: useTable('todo_inbox'),
     buy: useTable('buy_items'),
+    ...useHomeTables(),
   };
   const say = useCallback((text) => setToast({ text, k: Math.random() }), []);
   const fail = useCallback((m) => setToast({ text: `Nicht gespeichert: ${m}` }), []);
@@ -163,7 +166,51 @@ function Alle({ ctx, openIstAlle }) {
         {shop.length > 14 && <div className="st-empty">… und {shop.length - 14} weitere</div>}
         <button className="btn st-big" onClick={openIstAlle}>Ist alle!</button>
       </section>
+      <BonusRow ctx={ctx} />
     </main>
+  );
+}
+
+function BonusRow({ ctx }) {
+  const tomorrow = addDays(ctx.day, 1);
+  const m = muellOf(ctx);
+  const st = m ? muellStatus(m, ctx.day) : null;
+  const chores = choresToday(ctx, ctx.day);
+  return (
+    <>
+      <section className="st-card st-small">
+        <h2>Essen heute</h2>
+        <div className="st-meal">{mealOf(ctx, ctx.day).title}</div>
+        <div className="st-empty">Morgen: {mealOf(ctx, tomorrow).title}</div>
+        {st && (
+          <>
+            <h3>Müll</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontWeight: 700, color: st.today ? '#B45309' : undefined, flex: '1 1 auto' }}>{st.text}</span>
+              {st.bins.map((b) => <Bin key={b} id={b} size={30} />)}
+            </div>
+          </>
+        )}
+      </section>
+      <section className="st-card st-wide">
+        <h2>Wer macht heute was</h2>
+        <div className="st-who">
+          {ctx.members.map((p) => {
+            const list = chores.filter((c) => c.who === p.id);
+            return (
+              <div key={p.id} className="st-kid">
+                <span className="st-kidname" style={{ color: p.color }}>{p.name}</span>
+                {list.length === 0 ? <span className="st-empty">heute frei</span> : list.map((c) => (
+                  <button key={c.id} className="st-check" onClick={() => toggleChore(ctx, c, ctx.day, c.done)} aria-pressed={c.done}>
+                    <Check on={c.done} /><span className={c.done ? 'done' : ''}>{c.title}</span>
+                  </button>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      </section>
+    </>
   );
 }
 
@@ -216,6 +263,17 @@ function Kind({ ctx, kid }) {
         <EvList list={occ.filter((o) => o.date === ctx.day)} ctx={ctx} />
         <h3>Morgen</h3>
         <EvList list={occ.filter((o) => o.date !== ctx.day)} ctx={ctx} />
+        <h3>Meine Ämtchen heute</h3>
+        {(() => {
+          const mine = choresToday(ctx, ctx.day).filter((c) => c.who === kid.id);
+          return mine.length === 0 ? <div className="st-empty">Heute frei.</div> : mine.map((c) => (
+            <button key={c.id} className="st-check" onClick={() => toggleChore(ctx, c, ctx.day, c.done)} aria-pressed={c.done}>
+              <Check on={c.done} /><span className={c.done ? 'done' : ''}>{c.title}</span>
+            </button>
+          ));
+        })()}
+        <h3>Essen heute</h3>
+        <div className="st-meal">{mealOf(ctx, ctx.day).title}</div>
       </section>
     </main>
   );
@@ -293,8 +351,16 @@ function Eintragen({ ctx, init, onClose }) {
     ['mit', 'Muss morgen mit', 'Für die Einpackliste'],
     ['kleidung', 'Kleidung brauche ich', 'Was und welche Größe'],
     ['anst', 'Termin muss gemacht werden', 'Dirk plant es ein'],
+    ['wunsch', 'Essenswunsch', 'Catrin plant es ein'],
   ];
-  const titles = { shop: 'Ist alle!', mit: 'Muss morgen mit', kleidung: 'Kleidung brauche ich', anst: 'Termin muss gemacht werden' };
+  const titles = { shop: 'Ist alle!', mit: 'Muss morgen mit', kleidung: 'Kleidung brauche ich', anst: 'Termin muss gemacht werden', wunsch: 'Essenswunsch' };
+  const saveWunsch = async (title) => {
+    if (!title.trim()) return;
+    setBusy(true);
+    const ok = await run(supabase.from('meal_wishes').insert({ who: by, title: title.trim() }), ctx.fail);
+    setBusy(false);
+    if (ok) done('Wunsch ist bei Catrin angekommen');
+  };
   const sizeList = kf.art === 'Schuhe' ? SHOE_SIZES : ctx.member(kf.forWho)?.kid ? KID_SIZES : ADULT_SIZES;
   const chip = (on, p) => (on ? { background: p?.color || '#1C1917', borderColor: p?.color || '#1C1917', color: '#fff' } : { borderColor: p?.bg || '#D6CFC4', color: p?.color || '#1C1917' });
 
@@ -377,6 +443,21 @@ function Eintragen({ ctx, init, onClose }) {
               </div>
             )}
             <button className="btn st-big" disabled={busy || !kf.forWho || !kf.art} onClick={saveKleidung}>Eintragen</button>
+          </>
+        )}
+
+        {step === 'wunsch' && (
+          <>
+            <div className="chips">
+              {[...ctx.data.recipes.rows].sort((a, b) => a.name.localeCompare(b.name, 'de')).filter((r) => r.name !== 'Pizza').map((r) => (
+                <button key={r.id} className="chip st-chip" disabled={busy || !by} onClick={() => saveWunsch(r.name)}>{r.name}</button>
+              ))}
+            </div>
+            <label className="field"><span>Oder selbst schreiben</span>
+              <input className="input st-input" value={text} onChange={(e) => setText(e.target.value)} placeholder="z. B. Milchreis" maxLength={120} />
+            </label>
+            {!by && <div className="st-empty">Bitte oben antippen, wer du bist.</div>}
+            <button className="btn st-big" disabled={busy || !by || !text.trim()} onClick={() => saveWunsch(text)}>Wunsch abschicken</button>
           </>
         )}
 

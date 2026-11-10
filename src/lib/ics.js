@@ -4,6 +4,7 @@
 // die beim Import einer Person der Familie zugeordnet werden.
 import { iso, addDays, weekday, diffDays } from './dates.js';
 
+
 function unfold(text) {
   return text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/\n[ \t]/g, '');
 }
@@ -32,12 +33,16 @@ export function parseDate(value, params = {}) {
   const [, y, mo, d, h, mi, , z] = m;
   if (!h || params.VALUE === 'DATE') return { date: `${y}-${mo}-${d}`, time: null };
   if (z) {
-    // UTC → Ortszeit des Geräts (in Bremen: Europe/Berlin)
+    // UTC → Bremer Ortszeit (auch auf dem Server, der in UTC läuft)
     const t = new Date(Date.UTC(+y, +mo - 1, +d, +h, +mi));
-    return { date: iso(t), time: `${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}` };
+    const p = Object.fromEntries(BERLIN.formatToParts(t).map((x) => [x.type, x.value]));
+    const hh = p.hour === '24' ? '00' : p.hour;
+    return { date: `${p.year}-${p.month}-${p.day}`, time: `${hh}:${p.minute}` };
   }
   return { date: `${y}-${mo}-${d}`, time: `${h}:${mi}` };
 }
+
+const BERLIN = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
 
 const BYDAY = { MO: 0, TU: 1, WE: 2, TH: 3, FR: 4, SA: 5, SU: 6 };
 

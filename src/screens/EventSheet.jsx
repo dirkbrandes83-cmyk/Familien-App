@@ -3,10 +3,32 @@ import { supabase, run } from '../data.js';
 import { Sheet, ChipPick, Seg } from '../ui.jsx';
 import { hm, longLabel } from '../lib/dates.js';
 import { KINDS } from './common.jsx';
+import { careFromEvent } from './Betreuung.jsx';
 
 const REPS = ['keine', 'täglich', 'wöchentlich', 'alle 2 Wochen', 'monatlich', 'jährlich'];
 
 export default function EventSheet({ ctx, ev, preset = {}, onClose }) {
+  if (ev?.src === 'abo') return <AboEvent ctx={ctx} ev={ev} date={preset.date} onClose={onClose} />;
+  return <EditEvent ctx={ctx} ev={ev} preset={preset} onClose={onClose} />;
+}
+
+function AboEvent({ ctx, ev, date, onClose }) {
+  const sub = ctx.data.subs.rows.find((x) => x.id === ev.sub_id);
+  const hasCare = ctx.data.care.rows.some((c) => c.event_id === ev.id);
+  return (
+    <Sheet title={ev.title} onClose={onClose}
+      actions={!hasCare && <button className="btn ghost" onClick={async () => { if (await careFromEvent(ctx, { ...ev, start_date: date || ev.start_date })) { ctx.say('Betreuung angelegt – unter „Betreuung“ anfragen'); onClose(); } }}>Kinderbetreuung dafür eintragen</button>}>
+      <div className="card">
+        <div style={{ fontWeight: 700 }}>{longLabel(date || ev.start_date)}</div>
+        <div className="sub">{ev.all_day ? 'ganztägig' : `${hm(ev.from_time)}${ev.to_time ? ` – ${hm(ev.to_time)}` : ''}`}{ev.rep !== 'keine' ? ` · ${ev.rep}` : ''}</div>
+        {ev.note && <div className="sub" style={{ whiteSpace: 'pre-wrap' }}>{ev.note}</div>}
+      </div>
+      <div className="small">Aus dem Abo „{sub?.name ?? 'Kalender'}“ – nur lesbar. Ändern geht im ursprünglichen Kalender.{hasCare ? ' Betreuung ist schon eingetragen.' : ''}</div>
+    </Sheet>
+  );
+}
+
+function EditEvent({ ctx, ev, preset = {}, onClose }) {
   const editing = !!ev;
   const [f, setF] = useState(() => ({
     title: ev?.title ?? preset.title ?? '',
@@ -137,6 +159,10 @@ export default function EventSheet({ ctx, ev, preset = {}, onClose }) {
       </label>
       {editing && ev.rep !== 'keine' && <div className="small">Änderungen gelten für die ganze Serie.</div>}
       {editing && ev.src === 'klender' && <div className="small">Aus Klender übernommen.</div>}
+      {editing && !ctx.data.care.rows.some((c) => c.event_id === ev.id) && (
+        <button type="button" className="btn ghost small" style={{ alignSelf: 'flex-start' }}
+          onClick={async () => { if (await careFromEvent(ctx, { ...ev, start_date: occDate || ev.start_date })) { ctx.say('Betreuung angelegt – unter „Betreuung“ anfragen'); onClose(); } }}>Kinderbetreuung dafür eintragen</button>
+      )}
     </Sheet>
   );
 }

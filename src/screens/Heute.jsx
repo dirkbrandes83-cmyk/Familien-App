@@ -1,6 +1,9 @@
 import { Icon } from '../ui.jsx';
 import { addDays, expand, shortLabel } from '../lib/dates.js';
 import { EventRow, packList, packDay } from './common.jsx';
+import { mealOf, muellOf, Bin, choresToday, toggleChore } from './Zuhause.jsx';
+import { muellStatus, WASH, agoLabel } from '../lib/home.js';
+import { Check } from '../ui.jsx';
 
 export default function Heute({ ctx }) {
   const { day, data } = ctx;
@@ -71,6 +74,47 @@ export default function Heute({ ctx }) {
         {shop.length > 0 && <span className="badge">{shop.length}</span>}
         <Icon name="chev" size={18} className="chev" />
       </button>
+
+      <ZuhauseHeute ctx={ctx} />
     </>
+  );
+}
+
+function ZuhauseHeute({ ctx }) {
+  const meal = mealOf(ctx, ctx.day);
+  const m = muellOf(ctx);
+  const st = m ? muellStatus(m, ctx.day) : null;
+  const last = {};
+  for (const r of ctx.data.laundry.rows) if (!last[r.cat] || r.washed_on > last[r.cat]) last[r.cat] = r.washed_on;
+  const oldest = [...WASH].sort((a, b) => String(last[a] || '').localeCompare(String(last[b] || '')))[0];
+  const mine = choresToday(ctx, ctx.day).filter((c) => c.who === ctx.me.id);
+  const wishes = ctx.data.wishes.rows.filter((w) => !w.done_at).length;
+  const line = { display: 'flex', alignItems: 'center', gap: 8, minHeight: 44, background: 'none', border: 'none', borderTop: '1px solid #F0EBE3', padding: 0, textAlign: 'left', fontSize: 14, width: '100%' };
+  const lab = { width: 64, fontWeight: 700, color: '#57534E', flex: '0 0 64px' };
+  return (
+    <section className="card" style={{ padding: '12px 14px', gap: 0, fontSize: 14 }}>
+      <div className="label" style={{ paddingBottom: 4 }}>Zuhause heute</div>
+      <button style={{ ...line, borderTop: 'none' }} onClick={() => ctx.go('zuhause', 'essen')}>
+        <span style={lab}>Essen</span><span style={{ flex: '1 1 auto' }}>{meal.title}</span>
+        {wishes > 0 && <span style={{ fontSize: 12, fontWeight: 700, color: '#B45309' }}>{wishes} {wishes === 1 ? 'Wunsch' : 'Wünsche'}</span>}
+      </button>
+      {st && (
+        <button style={line} onClick={() => ctx.go('zuhause', 'haushalt')}>
+          <span style={lab}>Müll</span><span style={{ flex: '1 1 auto', fontWeight: st.today ? 700 : 400, color: st.today ? '#B45309' : undefined }}>{st.text}</span>
+          {st.bins.map((b) => <Bin key={b} id={b} size={16} />)}
+        </button>
+      )}
+      <button style={line} onClick={() => ctx.go('zuhause', 'haushalt')}>
+        <span style={lab}>Wäsche</span><span style={{ flex: '1 1 auto' }}>am längsten her: {oldest} ({agoLabel(last[oldest], ctx.day)})</span>
+      </button>
+      <div style={{ borderTop: '1px solid #F0EBE3', paddingTop: 6 }}>
+        <span style={{ fontWeight: 700, color: '#57534E' }}>Meine Ämtchen</span>
+        {mine.length === 0 ? <div className="small" style={{ padding: '4px 0' }}>Heute frei.</div> : mine.map((c) => (
+          <button key={c.id} className="row" onClick={() => toggleChore(ctx, c, ctx.day, c.done)} aria-pressed={c.done}>
+            <Check on={c.done} /><span className={`row-title${c.done ? ' done' : ''}`}>{c.title}</span>
+          </button>
+        ))}
+      </div>
+    </section>
   );
 }

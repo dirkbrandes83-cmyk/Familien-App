@@ -176,3 +176,9 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .st-faces { flex: 0 1 auto; }
 .st-add { margin-left: auto; }
 @media (max-width: 900px) { .st-ini { display: none; } .st-face { padding: 0 20px; } .st-time { font-size: 48px; } }
+.st-meal { font-family: 'Bricolage Grotesque', sans-serif; font-size: 26px; font-weight: 700; }
+.st-wide { grid-column: span 2; }
+.st-who { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; }
+.st-who .st-kid { border-top: none; padding-top: 0; }
+@media (max-width: 1000px) { .st-wide { grid-column: 1 / -1; } }
+.st-tiles .st-tile:last-child:nth-child(odd) { grid-column: 1 / -1; min-height: 90px; }

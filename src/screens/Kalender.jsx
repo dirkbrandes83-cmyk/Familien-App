@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { Icon, Seg } from '../ui.jsx';
 import { addDays, expand, mondayOf, longLabel, parse, iso, MONTHS, WD, weekday } from '../lib/dates.js';
 import { EventRow } from './common.jsx';
+import Betreuung, { ReviewBox, careStatus } from './Betreuung.jsx';
 
-export default function Kalender({ ctx }) {
+export default function Kalender({ ctx, seg = 'termine', setSeg = () => {} }) {
   const [view, setView] = useState('woche');
   const [who, setWho] = useState('all');
   const [weekStart, setWeekStart] = useState(mondayOf(ctx.day));
@@ -13,8 +14,16 @@ export default function Kalender({ ctx }) {
   const events = who === 'all' ? ctx.data.events.rows : ctx.data.events.rows.filter((e) => e.who.includes('all') || e.who.includes(who));
   const people = [{ id: 'all', name: 'Alle', color: '#1C1917', bg: '#E7E1D8' }, ...ctx.members];
 
+  const openCare = ctx.data.care.rows.filter((c) => c.on_date >= ctx.day && careStatus(ctx.data.asks.rows.filter((a) => a.need_id === c.id)) !== 'gesichert').length;
+  const top = (
+    <Seg label="Bereich" value={seg} onPick={setSeg} options={[['termine', 'Termine'], ['betreuung', `Betreuung${openCare ? ` ${openCare} offen` : ''}`]]} />
+  );
+  if (seg === 'betreuung') return <>{top}<Betreuung ctx={ctx} /></>;
+
   return (
     <>
+      {top}
+      <ReviewBox ctx={ctx} />
       <div style={{ display: 'flex', gap: 8 }}>
         <div style={{ flex: '1 1 auto' }}>
           <Seg label="Ansicht" value={view} onPick={setView} options={[['woche', 'Woche'], ['monat', 'Monat']]} />
@@ -32,7 +41,7 @@ export default function Kalender({ ctx }) {
       {view === 'woche' ? <Woche ctx={ctx} events={events} start={weekStart} setStart={setWeekStart} />
         : <Monat ctx={ctx} events={events} month={month} setMonth={setMonth} sel={sel} setSel={setSel} />}
 
-      <div className="small">Neue Familientermine legt ihr hier an. Termine aus Klender holt ihr über „Mehr“ › „Von Klender umziehen“.</div>
+      <div className="small">Neue Familientermine legt ihr hier an. Kalender.digital und andere Abos richtet ihr unter „Mehr“ ein – sie sind nur lesbar.</div>
     </>
   );
 }
