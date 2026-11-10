@@ -11,8 +11,8 @@ export default function Erinnerungen({ ctx, seg, setSeg }) {
     <>
       <Seg label="Bereich" value={seg} onPick={setSeg} options={[
         ['mitnehmen', 'Mitnehmen'],
-        ['vereinbaren', `Vereinbaren${inboxN ? ` · ${inboxN}` : ''}`],
-        ['besorgen', `Besorgen${buyN ? ` · ${buyN}` : ''}`],
+        ['vereinbaren', `Vereinbaren${inboxN ? ` ${inboxN}` : ''}`],
+        ['besorgen', `Besorgen${buyN ? ` ${buyN}` : ''}`],
       ]} />
       {seg === 'mitnehmen' ? <Mitnehmen ctx={ctx} /> : seg === 'vereinbaren' ? <Vereinbaren ctx={ctx} /> : <Besorgen ctx={ctx} />}
     </>

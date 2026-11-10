@@ -78,7 +78,7 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .tag { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 10px; background: var(--chip); color: var(--ink2); white-space: nowrap; }
 
 .seg { display: flex; gap: 4px; background: var(--seg); border-radius: 14px; padding: 4px; }
-.seg button { flex: 1 1 0; min-height: 40px; border-radius: 10px; border: none; font-weight: 600; font-size: 14px; background: transparent; color: var(--muted); }
+.seg button { flex: 1 1 0; min-width: 0; padding: 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 40px; border-radius: 10px; border: none; font-weight: 600; font-size: 14px; background: transparent; color: var(--muted); }
 .seg button.on { background: var(--card); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,0.12); }
 
 .check { width: 26px; height: 26px; flex: 0 0 26px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; background: var(--card); border: 2px solid #A8A29E; color: #fff; }

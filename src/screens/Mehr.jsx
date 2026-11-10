@@ -78,8 +78,9 @@ function KlenderUmzug({ ctx, onBack }) {
 
   const whoOf = (e) => {
     const ids = [...new Set(e.groups.map((g) => map[g]).filter(Boolean))];
-    if (!ids.length || ids.includes('all')) return ['all'];
-    return ids;
+    // Eine konkrete Person schlägt den allgemeinen Kalendernamen ("Familie" → Alle)
+    const specific = ids.filter((id) => id !== 'all');
+    return specific.length ? specific : ['all'];
   };
 
   const doImport = async () => {
@@ -94,7 +95,7 @@ function KlenderUmzug({ ctx, onBack }) {
     }
     setBusy(false);
     setResult(n);
-    if (n) ctx.say(`${n} Termine übernommen`);
+    if (n) ctx.say(`${n} ${n === 1 ? 'Termin' : 'Termine'} übernommen`);
   };
 
   const opts = [{ id: 'all', label: 'Alle', color: '#0F766E', bg: '#CCFBF1' }, ...ctx.members.map((m) => ({ id: m.id, label: m.name, color: m.color, bg: m.bg }))];
@@ -119,7 +120,7 @@ function KlenderUmzug({ ctx, onBack }) {
       {parsed && result === null && (
         <>
           <section className="card">
-            <div className="card-title">{list.length} Termine gefunden</div>
+            <div className="card-title">{list.length} {list.length === 1 ? 'Termin' : 'Termine'} gefunden</div>
             <div className="sub">{fresh.length} neu · {dupes.length} schon vorhanden (werden übersprungen)</div>
             <button className="row" onClick={() => setOnlyFuture(!onlyFuture)} aria-pressed={onlyFuture}>
               <Check on={onlyFuture} />
@@ -134,7 +135,7 @@ function KlenderUmzug({ ctx, onBack }) {
               <div className="small">So hießen die Kalender oder Personen in Klender.</div>
               {groups.map((g) => (
                 <div key={g} className="field" style={{ borderTop: '1px solid #F0EBE3', paddingTop: 8 }}>
-                  <span>„{g}“ · {list.filter((e) => e.groups.includes(g)).length} Termine</span>
+                  <span>„{g}“ · {(() => { const n = list.filter((e) => e.groups.includes(g)).length; return `${n} ${n === 1 ? 'Termin' : 'Termine'}`; })()}</span>
                   <ChipPick options={opts} value={map[g]} onPick={(id) => setMap({ ...map, [g]: id })} />
                 </div>
               ))}
@@ -155,14 +156,14 @@ function KlenderUmzug({ ctx, onBack }) {
             {fresh.length > 12 && <div className="small" style={{ padding: '6px 0 10px' }}>… und {fresh.length - 12} weitere</div>}
           </section>
 
-          <button className="btn" onClick={doImport} disabled={busy || fresh.length === 0}>{busy ? 'Übernehme …' : `${fresh.length} Termine übernehmen`}</button>
+          <button className="btn" onClick={doImport} disabled={busy || fresh.length === 0}>{busy ? 'Übernehme …' : `${fresh.length} ${fresh.length === 1 ? 'Termin' : 'Termine'} übernehmen`}</button>
         </>
       )}
 
       {result !== null && (
         <section className="card">
           <div className="card-title">Fertig</div>
-          <div className="sub">{result} Termine sind jetzt im Kalender. Führt Klender noch zwei Wochen zum Vergleich weiter – neue Termine aber nur noch hier eintragen.</div>
+          <div className="sub">{result} {result === 1 ? 'Termin ist' : 'Termine sind'} jetzt im Kalender. Führt Klender noch zwei Wochen zum Vergleich weiter – neue Termine aber nur noch hier eintragen.</div>
           <button className="btn ghost" onClick={() => ctx.go('kalender')}>Zum Kalender</button>
         </section>
       )}
