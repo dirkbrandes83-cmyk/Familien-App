@@ -71,19 +71,23 @@ export default function Scan({ ctx, onClose }) {
 
   const save = async () => {
     const on = items.filter((x) => x.on && x.text.trim() && valid(x.date));
-    const events = on.filter((x) => x.kind !== 'mit').map((x) => ({
-      title: x.kind === 'frist' ? `Frist: ${x.text.trim()}` : x.text.trim(),
-      kind: x.kind === 'frist' ? 'frist' : 'termin',
-      who: x.kind === 'frist' ? ['dirk', 'catrin'] : whoOf(x.who),
+    const events = on.filter((x) => x.kind === 'termin').map((x) => ({
+      title: x.text.trim(),
+      kind: 'termin',
+      who: whoOf(x.who),
       start_date: x.date,
-      all_day: x.kind === 'frist' || !x.from,
-      from_time: x.kind === 'frist' ? null : x.from,
-      to_time: x.kind === 'frist' ? null : x.to,
+      all_day: !x.from,
+      from_time: x.from,
+      to_time: x.to,
       note: res.zusammenfassung ? `Aus Elternbrief: ${res.zusammenfassung}`.slice(0, 1000) : 'Aus Elternbrief',
       src: 'scan', created_by: ctx.me.id,
     }));
     const packs = on.filter((x) => x.kind === 'mit').flatMap((x) => kidsOf(x.who).map((kid) => ({ kid, on_date: x.date, art: 'mit', text: x.text.trim(), by_who: ctx.me.id })));
+    // Fristen werden Aufgaben unter „Erledigen“ (mit Frist und Abend-Mitteilung)
+    const typOf = (t) => (/unterschreib|ausfüll|zettel|formular|anmeld|rückmeld|abgeb/i.test(t) ? 'ausfuellen' : /überweis|bezahl|geld|€|euro|kasse/i.test(t) ? 'ueberweisen' : /anruf|melden bei/i.test(t) ? 'anrufen' : 'sonstiges');
+    const todos = on.filter((x) => x.kind === 'frist').map((x) => ({ typ: typOf(x.text), title: x.text.trim(), due: x.date, for_who: res.fuer === 'jonte' || res.fuer === 'emil' ? res.fuer : null, by_who: ctx.me.id }));
     let ok = true;
+    if (todos.length) ok = !!(await run(supabase.from('todo_inbox').insert(todos), ctx.fail)) && ok;
     if (events.length) ok = !!(await run(supabase.from('events').insert(events), ctx.fail)) && ok;
     if (packs.length) ok = !!(await run(supabase.from('pack_items').insert(packs), ctx.fail)) && ok;
     if (ok) { ctx.say(`${on.length} ${on.length === 1 ? 'Eintrag' : 'Einträge'} übernommen`); onClose(); }
@@ -135,7 +139,7 @@ export default function Scan({ ctx, onClose }) {
               )}
             </section>
           ))}
-          <div className="small">Termine landen im Kalender, Mitbringen auf der Einpackliste, Fristen als Frist für euch beide.</div>
+          <div className="small">Termine landen im Kalender, Mitbringen auf der Einpackliste, Fristen unter „Erinnerungen › Erledigen“.</div>
         </>
       )}
     </Sheet>
