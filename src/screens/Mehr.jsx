@@ -1,0 +1,171 @@
+import { useState } from 'react';
+import { supabase, run } from '../data.js';
+import { Icon, ChipPick, Check } from '../ui.jsx';
+import { parseIcs, isCurrent } from '../lib/ics.js';
+import { shortLabel, hm } from '../lib/dates.js';
+
+export default function Mehr({ ctx }) {
+  const [page, setPage] = useState(null);
+  if (page === 'klender') return <KlenderUmzug ctx={ctx} onBack={() => setPage(null)} />;
+  const backup = async () => {
+    const tables = ['events', 'shopping_items', 'frequent_items', 'pack_rules', 'pack_items', 'todo_inbox', 'buy_items'];
+    const out = { exportiert: new Date().toISOString() };
+    for (const t of tables) out[t] = (await supabase.from(t).select('*')).data;
+    const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `familien-app-sicherung-${ctx.day}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+  return (
+    <>
+      <section className="card tight">
+        <button className="row" style={{ minHeight: 60 }} onClick={() => setPage('klender')}>
+          <span className="row-main"><span style={{ fontWeight: 700 }}>Von Klender umziehen</span><span className="sub">Klender-Export (.ics) hochladen</span></span>
+          <Icon name="chev" size={18} />
+        </button>
+        <button className="row" style={{ minHeight: 60 }} onClick={backup}>
+          <span className="row-main"><span style={{ fontWeight: 700 }}>Sicherung herunterladen</span><span className="sub">Alle Termine und Listen als Datei</span></span>
+          <Icon name="upload" size={18} style={{ transform: 'rotate(180deg)' }} />
+        </button>
+      </section>
+      <section className="card">
+        <div className="card-title">Auf den Home-Bildschirm</div>
+        <div className="sub">In Safari unten auf „Teilen“ tippen, dann „Zum Home-Bildschirm“. Danach öffnet sich die App wie eine normale App.</div>
+      </section>
+      <section className="card">
+        <div className="sub">Angemeldet als {ctx.me.name}</div>
+        <button className="btn ghost" onClick={() => supabase.auth.signOut()}>Abmelden</button>
+      </section>
+      <div className="small">Kommt als Nächstes: Familien-Station fürs iPad, dann Essen, Wäsche, Ämtchen, Putzen, Betreuung und das Abo von Kalender.digital.</div>
+    </>
+  );
+}
+
+function KlenderUmzug({ ctx, onBack }) {
+  const [parsed, setParsed] = useState(null);
+  const [map, setMap] = useState({});
+  const [onlyFuture, setOnlyFuture] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState(null);
+  const [err, setErr] = useState('');
+
+  const load = async (file) => {
+    setErr(''); setResult(null);
+    if (!file) return;
+    const text = await file.text();
+    if (!/BEGIN:VCALENDAR/i.test(text)) { setErr('Das ist keine Kalender-Datei (.ics).'); return; }
+    const p = parseIcs(text);
+    setParsed(p);
+    // Gruppen automatisch zuordnen, wenn der Name passt
+    const groups = [...new Set(p.events.flatMap((e) => e.groups))];
+    const m = {};
+    for (const g of groups) {
+      const hit = ctx.members.find((x) => g.toLowerCase().includes(x.name.toLowerCase()));
+      m[g] = hit ? hit.id : 'all';
+    }
+    setMap(m);
+  };
+
+  const existing = new Set(ctx.data.events.rows.map((e) => e.ext_uid).filter(Boolean));
+  const sig = (e) => `${e.title.toLowerCase()}|${e.start_date}|${hm(e.from_time)}`;
+  const existingSig = new Set(ctx.data.events.rows.map(sig));
+  const list = parsed ? parsed.events.filter((e) => !onlyFuture || isCurrent(e, ctx.day)) : [];
+  const dupes = list.filter((e) => (e.ext_uid && existing.has(e.ext_uid)) || existingSig.has(sig(e)));
+  const fresh = list.filter((e) => !dupes.includes(e));
+  const groups = Object.keys(map);
+
+  const whoOf = (e) => {
+    const ids = [...new Set(e.groups.map((g) => map[g]).filter(Boolean))];
+    if (!ids.length || ids.includes('all')) return ['all'];
+    return ids;
+  };
+
+  const doImport = async () => {
+    setBusy(true);
+    const rows = fresh.map(({ groups: _g, ...e }) => ({ ...e, who: whoOf({ groups: _g }), created_by: ctx.me.id }));
+    let n = 0;
+    for (let i = 0; i < rows.length; i += 200) {
+      const chunk = rows.slice(i, i + 200);
+      const ok = await run(supabase.from('events').upsert(chunk, { onConflict: 'ext_uid', ignoreDuplicates: true }), (m) => setErr(m));
+      if (!ok) break;
+      n += chunk.length;
+    }
+    setBusy(false);
+    setResult(n);
+    if (n) ctx.say(`${n} Termine übernommen`);
+  };
+
+  const opts = [{ id: 'all', label: 'Alle', color: '#0F766E', bg: '#CCFBF1' }, ...ctx.members.map((m) => ({ id: m.id, label: m.name, color: m.color, bg: m.bg }))];
+
+  return (
+    <>
+      <button className="btn ghost small" style={{ alignSelf: 'flex-start' }} onClick={onBack}><Icon name="left" size={16} />Zurück</button>
+      <section className="card">
+        <div className="card-title">Von Klender umziehen</div>
+        <ol style={{ margin: 0, paddingLeft: 20, lineHeight: 1.5 }} className="sub">
+          <li>In Klender den Export als .ics-Datei erzeugen und speichern (z. B. in „Dateien“).</li>
+          <li>Hier die Datei auswählen.</li>
+          <li>Prüfen, wem die Klender-Kalender gehören, und übernehmen.</li>
+        </ol>
+        <label className="btn" style={{ position: 'relative' }}>
+          <Icon name="upload" size={18} />Datei auswählen
+          <input type="file" accept=".ics,text/calendar" onChange={(e) => load(e.target.files[0])} style={{ position: 'absolute', inset: 0, opacity: 0 }} />
+        </label>
+        {err && <div className="err" role="alert">{err}</div>}
+      </section>
+
+      {parsed && result === null && (
+        <>
+          <section className="card">
+            <div className="card-title">{list.length} Termine gefunden</div>
+            <div className="sub">{fresh.length} neu · {dupes.length} schon vorhanden (werden übersprungen)</div>
+            <button className="row" onClick={() => setOnlyFuture(!onlyFuture)} aria-pressed={onlyFuture}>
+              <Check on={onlyFuture} />
+              <span className="row-main"><span>Nur aktuelle Termine</span><span className="small">Vergangene einmalige Termine weglassen; Geburtstage und Serien bleiben</span></span>
+            </button>
+            {parsed.warnings.length > 0 && <div className="small">{parsed.warnings.slice(0, 5).map((w) => <div key={w}>{w}</div>)}{parsed.warnings.length > 5 && <div>… und {parsed.warnings.length - 5} weitere</div>}</div>}
+          </section>
+
+          {groups.length > 0 && (
+            <section className="card">
+              <div className="card-title">Wem gehört was?</div>
+              <div className="small">So hießen die Kalender oder Personen in Klender.</div>
+              {groups.map((g) => (
+                <div key={g} className="field" style={{ borderTop: '1px solid #F0EBE3', paddingTop: 8 }}>
+                  <span>„{g}“ · {list.filter((e) => e.groups.includes(g)).length} Termine</span>
+                  <ChipPick options={opts} value={map[g]} onPick={(id) => setMap({ ...map, [g]: id })} />
+                </div>
+              ))}
+            </section>
+          )}
+
+          <section className="card tight">
+            <div className="label" style={{ padding: '10px 0 4px' }}>Vorschau</div>
+            {fresh.slice(0, 12).map((e, i) => (
+              <div key={i} className="row">
+                <span className="time" style={{ fontSize: 12 }}>{shortLabel(e.start_date)}</span>
+                <span className="row-main">
+                  <span className="row-title">{e.title}</span>
+                  <span className="small">{e.all_day ? 'ganztags' : hm(e.from_time)}{e.rep !== 'keine' ? ` · ${e.rep}` : ''} · {whoOf(e).map((id) => (id === 'all' ? 'Alle' : ctx.member(id)?.name)).join(', ')}</span>
+                </span>
+              </div>
+            ))}
+            {fresh.length > 12 && <div className="small" style={{ padding: '6px 0 10px' }}>… und {fresh.length - 12} weitere</div>}
+          </section>
+
+          <button className="btn" onClick={doImport} disabled={busy || fresh.length === 0}>{busy ? 'Übernehme …' : `${fresh.length} Termine übernehmen`}</button>
+        </>
+      )}
+
+      {result !== null && (
+        <section className="card">
+          <div className="card-title">Fertig</div>
+          <div className="sub">{result} Termine sind jetzt im Kalender. Führt Klender noch zwei Wochen zum Vergleich weiter – neue Termine aber nur noch hier eintragen.</div>
+          <button className="btn ghost" onClick={() => ctx.go('kalender')}>Zum Kalender</button>
+        </section>
+      )}
+    </>
+  );
+}
