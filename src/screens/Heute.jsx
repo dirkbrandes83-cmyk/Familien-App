@@ -53,7 +53,10 @@ export default function Heute({ ctx }) {
       </section>
 
       <section className="card tight" aria-label="Erinnerungen">
-        <div className="card-title" style={{ padding: '10px 0 4px' }}>Erinnerungen</div>
+        <div className="card-head" style={{ padding: '6px 0 0' }}>
+          <div className="card-title">Erinnerungen</div>
+          <button className="btn ghost small" onClick={ctx.openScan}>Elternbrief scannen</button>
+        </div>
         {rem.map((r) => (
           <button key={r.seg} className="row" style={{ minHeight: 60 }} onClick={() => ctx.go('erinn', r.seg)}>
             <span className="row-main">

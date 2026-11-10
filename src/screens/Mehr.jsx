@@ -3,11 +3,13 @@ import { supabase, run } from '../data.js';
 import { Icon, ChipPick, Check } from '../ui.jsx';
 import { parseIcs, isCurrent } from '../lib/ics.js';
 import { shortLabel, hm } from '../lib/dates.js';
+import Mitteilungen from './Mitteilungen.jsx';
 
 export default function Mehr({ ctx }) {
   const [page, setPage] = useState(null);
   if (page === 'klender') return <KlenderUmzug ctx={ctx} onBack={() => setPage(null)} />;
   if (page === 'abos') return <Abos ctx={ctx} onBack={() => setPage(null)} />;
+  if (page === 'push') return <Mitteilungen ctx={ctx} onBack={() => setPage(null)} />;
   const backup = async () => {
     const tables = ['events', 'shopping_items', 'frequent_items', 'pack_rules', 'pack_items', 'todo_inbox', 'buy_items', 'meals', 'recipes', 'chores', 'cleaning_areas', 'cleaning_notes', 'laundry_log', 'caregivers', 'care_needs', 'care_asks', 'calendar_subscriptions', 'settings'];
     const out = { exportiert: new Date().toISOString() };
@@ -22,6 +24,10 @@ export default function Mehr({ ctx }) {
   return (
     <>
       <section className="card tight">
+        <button className="row" style={{ minHeight: 60 }} onClick={() => setPage('push')}>
+          <span className="row-main"><span style={{ fontWeight: 700 }}>Mitteilungen</span><span className="sub">Morgens, abends und bei neuen Einträgen</span></span>
+          <Icon name="chev" size={18} />
+        </button>
         <button className="row" style={{ minHeight: 60 }} onClick={() => setPage('klender')}>
           <span className="row-main"><span style={{ fontWeight: 700 }}>Von Klender umziehen</span><span className="sub">Export-Link oder .ics-Datei</span></span>
           <Icon name="chev" size={18} />
@@ -47,7 +53,7 @@ export default function Mehr({ ctx }) {
         <div className="sub">Angemeldet als {ctx.me.name}</div>
         <button className="btn ghost" onClick={() => supabase.auth.signOut()}>Abmelden</button>
       </section>
-      <div className="small">Später möglich: Mitteilungen aufs Handy, Elternbrief-Scan, Wochenende und Wunschzettel.</div>
+      <div className="small">Später möglich: Wochenende, Wunschzettel und Sonntags-Check-in.</div>
     </>
   );
 }

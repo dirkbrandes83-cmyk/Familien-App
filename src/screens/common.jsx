@@ -6,6 +6,7 @@ export const SRC = {
   klender: 'aus Klender',
   inbox: 'aus „Termine vereinbaren“',
   abo: 'Abo',
+  scan: 'aus Elternbrief',
 };
 export const KINDS = { termin: 'Termin', frist: 'Frist', geburtstag: 'Geburtstag' };
 

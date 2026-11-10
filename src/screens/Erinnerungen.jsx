@@ -14,6 +14,7 @@ export default function Erinnerungen({ ctx, seg, setSeg }) {
         ['vereinbaren', `Vereinbaren${inboxN ? ` ${inboxN}` : ''}`],
         ['besorgen', `Besorgen${buyN ? ` ${buyN}` : ''}`],
       ]} />
+      <button className="btn dashed" onClick={ctx.openScan}>Elternbrief scannen</button>
       {seg === 'mitnehmen' ? <Mitnehmen ctx={ctx} /> : seg === 'vereinbaren' ? <Vereinbaren ctx={ctx} /> : <Besorgen ctx={ctx} />}
     </>
   );

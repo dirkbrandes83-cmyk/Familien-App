@@ -11,6 +11,7 @@ import Mehr from './screens/Mehr.jsx';
 import EventSheet from './screens/EventSheet.jsx';
 import Station from './screens/Station.jsx';
 import Zuhause from './screens/Zuhause.jsx';
+import Scan from './screens/Scan.jsx';
 
 const TABS = [
   ['heute', 'Heute', 'home'],
@@ -71,6 +72,7 @@ function Shell({ me, members }) {
   const [mehr, setMehr] = useState(false);
   const [toast, setToast] = useState(null);
   const [eventEdit, setEventEdit] = useState(null); // { ev } | { preset }
+  const [scan, setScan] = useState(false);
   const [day, setDay] = useState(today());
 
   // Datum aktuell halten (App bleibt auf dem Handy lange offen)
@@ -103,6 +105,7 @@ function Shell({ me, members }) {
     member: (id) => members.find((m) => m.id === id),
     kids: members.filter((m) => m.kid),
     openEvent: (ev, preset) => setEventEdit({ ev, preset }),
+    openScan: () => setScan(true),
     go: (t, seg) => { setMehr(false); setTab(t); if (seg && t === 'erinn') setErSeg(seg); if (seg && t === 'zuhause') setZhSeg(seg); if (seg && t === 'kalender') setCalSeg(seg); },
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [me, members, day, say, fail, ...Object.values(data).map((d) => d.rows)]);
@@ -153,6 +156,7 @@ function Shell({ me, members }) {
       </nav>
 
       {eventEdit && <EventSheet ctx={ctx} ev={eventEdit.ev} preset={eventEdit.preset} onClose={() => setEventEdit(null)} />}
+      {scan && <Scan ctx={ctx} onClose={() => setScan(false)} />}
       <Toast toast={toast} onClose={() => setToast(null)} />
     </div>
   );
