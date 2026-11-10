@@ -47,7 +47,8 @@ export default function Scan({ ctx, onClose }) {
     setErr(''); setStep('busy');
     try {
       const payload = await fileToPayload(file);
-      const { data, error } = await supabase.functions.invoke('brief-scan', { body: payload });
+      const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('Das Auslesen dauert zu lange. Bitte später noch einmal versuchen.')), 100000));
+      const { data, error } = await Promise.race([supabase.functions.invoke('brief-scan', { body: payload }), timeout]);
       if (error) {
         let msg = 'Der Scan hat nicht geklappt.';
         try { msg = (await error.context.json()).error || msg; } catch { /* Standardtext */ }

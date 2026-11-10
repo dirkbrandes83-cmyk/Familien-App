@@ -37,15 +37,31 @@ Regeln:
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
+    // Kurze Verbindungsprobe (vorübergehend, ohne Brief): erreicht der Server die KI?
+    const body = await req.json().catch(() => ({}));
+    if (body?.ping === "diagnose-2026-11-10") {
+      const key = Deno.env.get("ANTHROPIC_API_KEY");
+      if (!key) return json({ schluessel: false });
+      const t0 = Date.now();
+      try {
+        const r = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: { "x-api-key": key.trim(), "anthropic-version": "2023-06-01", "content-type": "application/json" },
+          body: JSON.stringify({ model: MODEL, max_tokens: 5, messages: [{ role: "user", content: "Antworte nur mit OK" }] }),
+          signal: AbortSignal.timeout(30000),
+        });
+        const t = await r.text();
+        return json({ schluessel: true, leerzeichen: key !== key.trim(), status: r.status, ms: Date.now() - t0, antwort: t.slice(0, 200) });
+      } catch (e) { return json({ schluessel: true, fehler: String(e), ms: Date.now() - t0 }); }
+    }
     const auth = req.headers.get("Authorization") ?? "";
     const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: auth } } });
     const { data: me } = await sb.rpc("my_member");
     if (!me) return json({ error: "Nur für Catrin und Dirk." }, 403);
 
-    const key = Deno.env.get("ANTHROPIC_API_KEY");
-    if (!key) return json({ error: "Der Scan ist noch nicht eingerichtet (API-Schlüssel fehlt)." }, 503);
+    const key = Deno.env.get("ANTHROPIC_API_KEY")?.trim();
+    if (!key) return json({ error: "Der Scan ist noch nicht eingerichtet: In Supabase fehlt das Secret ANTHROPIC_API_KEY." }, 503);
 
-    const body = await req.json().catch(() => ({}));
     const type = String(body.media_type ?? "");
     const data = String(body.data ?? "");
     if (!TYPES.includes(type)) return json({ error: "Bitte ein Foto (JPG/PNG) oder ein PDF wählen." }, 400);
