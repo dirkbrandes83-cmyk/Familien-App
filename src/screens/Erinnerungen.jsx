@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { supabase, run } from '../data.js';
 import { Icon, Check, Swipe, Sheet, Seg, ChipPick } from '../ui.jsx';
-import { addDays, longLabel, WD } from '../lib/dates.js';
+import { addDays, longLabel, shortLabel, WD } from '../lib/dates.js';
 import { packList, packDay } from './common.jsx';
 
 export default function Erinnerungen({ ctx, seg, setSeg }) {
@@ -234,7 +234,7 @@ const ADULT_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 
 function Besorgen({ ctx }) {
   const [sheet, setSheet] = useState(null);
-  const open = ctx.data.buy.rows.filter((r) => !r.done).sort((a, b) => a.created_at.localeCompare(b.created_at));
+  const open = ctx.data.buy.rows.filter((r) => !r.done).sort((a, b) => String(a.due || '9999').localeCompare(String(b.due || '9999')) || a.created_at.localeCompare(b.created_at));
   const done = async (r) => {
     ctx.data.buy.local((rows) => rows.map((x) => (x.id === r.id ? { ...x, done: true } : x)));
     const ok = await run(supabase.from('buy_items').update({ done: true, done_at: new Date().toISOString() }).eq('id', r.id), ctx.fail);
@@ -248,7 +248,8 @@ function Besorgen({ ctx }) {
   return (
     <>
       <div className="chips">
-        <button className="btn" onClick={() => setSheet({})}><Icon name="plus" size={18} />Kleidung eintragen</button>
+        <button className="btn" onClick={() => setSheet({ typ: 'sonstiges' })}><Icon name="plus" size={18} />Etwas besorgen</button>
+        <button className="btn ghost" onClick={() => setSheet({})}>Kleidung</button>
         {ctx.me.id === 'catrin' && <button className="btn ghost" style={{ color: '#7E22CE', borderColor: '#7E22CE', borderWidth: 2 }} onClick={() => setSheet({ for_who: 'catrin', art: 'Arbeitskleidung' })}>Brauche Arbeitskleidung</button>}
         <button className="btn ghost" onClick={() => setSheet({ art: 'Sportbekleidung' })}>Sportbekleidung</button>
       </div>
@@ -263,7 +264,7 @@ function Besorgen({ ctx }) {
                 <Check on={false} />
                 <span className="row-main">
                   <span className="row-title">{r.art}{r.size ? ` · Gr. ${r.size}` : ''}</span>
-                  <span className="small">{[r.note, by && by.id !== r.for_who ? `von ${by.name}` : null].filter(Boolean).join(' · ')}</span>
+                  <span className="small">{[r.due ? <b key="d" style={{ color: r.due <= addDays(ctx.day, 2) ? '#B45309' : undefined }}>bis {shortLabel(r.due)}</b> : null, r.note, by && by.id !== r.for_who ? `von ${by.name}` : null].filter(Boolean).reduce((acc, x, i) => (i ? [...acc, ' · ', x] : [x]), [])}</span>
                 </span>
                 {w && <span className="pchip" style={{ background: w.bg, color: w.color }}>{w.name}</span>}
               </button>
@@ -272,7 +273,7 @@ function Besorgen({ ctx }) {
         })}
       </section>
       {open.length > 0 && <div className="small">Antippen = besorgt. Nach links wischen = löschen.</div>}
-      {sheet && <BuySheet ctx={ctx} preset={sheet} onClose={() => setSheet(null)} />}
+      {sheet && (sheet.typ === 'sonstiges' ? <OtherSheet ctx={ctx} onClose={() => setSheet(null)} /> : <BuySheet ctx={ctx} preset={sheet} onClose={() => setSheet(null)} />)}
     </>
   );
 }
@@ -304,6 +305,37 @@ function BuySheet({ ctx, preset, onClose }) {
       )}
       <label className="field"><span>Notiz (optional)</span>
         <input className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="z. B. Hallenschuhe, helle Sohle" maxLength={200} />
+      </label>
+    </Sheet>
+  );
+}
+
+const OTHER = ['Geburtstagsgeschenk', 'Geburtstagskarte', 'Bastelmaterial', 'Schulmaterial', 'Hefte', 'Geschenk für Lehrkraft', 'Batterien'];
+
+function OtherSheet({ ctx, onClose }) {
+  const [art, setArt] = useState('');
+  const [forWho, setForWho] = useState(null);
+  const [note, setNote] = useState('');
+  const [due, setDue] = useState('');
+  const save = async () => {
+    if (!art.trim()) return;
+    const ok = await run(supabase.from('buy_items').insert({ typ: 'sonstiges', art: art.trim(), for_who: forWho, note: note.trim(), due: due || null, by_who: ctx.me.id }), ctx.fail);
+    if (ok) { ctx.say('Eingetragen'); onClose(); }
+  };
+  return (
+    <Sheet title="Etwas besorgen" onClose={onClose} actions={<button className="btn" onClick={save} disabled={!art.trim()}>Eintragen</button>}>
+      <label className="field"><span>Was?</span>
+        <input className="input" value={art} onChange={(e) => setArt(e.target.value)} placeholder="z. B. Geschenk für Paul" maxLength={160} autoFocus />
+      </label>
+      <div className="chips">{OTHER.map((o) => <button key={o} type="button" className="chip plain" onClick={() => setArt(o)}>{o}</button>)}</div>
+      <label className="field"><span>Bis wann? (optional)</span>
+        <input className="input" type="date" value={due} min={ctx.day} onChange={(e) => setDue(e.target.value)} />
+      </label>
+      <div className="field"><span>Für wen? (optional)</span>
+        <ChipPick options={ctx.members.map((m) => ({ id: m.id, label: m.name, color: m.color, bg: m.bg }))} value={forWho} onPick={(id) => setForWho(forWho === id ? null : id)} />
+      </div>
+      <label className="field"><span>Notiz (optional)</span>
+        <input className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="z. B. Paul wünscht sich Lego, ca. 15 €" maxLength={200} />
       </label>
     </Sheet>
   );

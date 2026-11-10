@@ -350,10 +350,11 @@ function Eintragen({ ctx, init, onClose }) {
     ['shop', 'Ist alle!', 'Etwas ist aufgebraucht'],
     ['mit', 'Muss morgen mit', 'Für die Einpackliste'],
     ['kleidung', 'Kleidung brauche ich', 'Was und welche Größe'],
+    ['besorgen', 'Muss besorgt werden', 'z. B. Geschenk, Bastelsachen'],
     ['anst', 'Termin muss gemacht werden', 'Dirk plant es ein'],
     ['wunsch', 'Essenswunsch', 'Catrin plant es ein'],
   ];
-  const titles = { shop: 'Ist alle!', mit: 'Muss morgen mit', kleidung: 'Kleidung brauche ich', anst: 'Termin muss gemacht werden', wunsch: 'Essenswunsch' };
+  const titles = { besorgen: 'Muss besorgt werden', shop: 'Ist alle!', mit: 'Muss morgen mit', kleidung: 'Kleidung brauche ich', anst: 'Termin muss gemacht werden', wunsch: 'Essenswunsch' };
   const saveWunsch = async (title) => {
     if (!title.trim()) return;
     setBusy(true);
@@ -443,6 +444,25 @@ function Eintragen({ ctx, init, onClose }) {
               </div>
             )}
             <button className="btn st-big" disabled={busy || !kf.forWho || !kf.art} onClick={saveKleidung}>Eintragen</button>
+          </>
+        )}
+
+        {step === 'besorgen' && (
+          <>
+            <div className="chips">
+              {['Geburtstagsgeschenk', 'Bastelmaterial', 'Schulmaterial', 'Hefte', 'Stifte'].map((a) => (
+                <button key={a} className="chip st-chip" style={chip(text === a)} onClick={() => setText(a)}>{a}</button>
+              ))}
+            </div>
+            <label className="field"><span>Was genau?</span>
+              <input className="input st-input" value={text} onChange={(e) => setText(e.target.value)} placeholder="z. B. Geschenk für Paul (Feier am Samstag)" maxLength={160} />
+            </label>
+            <button className="btn st-big" disabled={busy || !text.trim()} onClick={async () => {
+              setBusy(true);
+              const ok = await run(supabase.from('buy_items').insert({ typ: 'sonstiges', art: text.trim(), for_who: who?.kid ? who.id : null, by_who: by }), ctx.fail);
+              setBusy(false);
+              if (ok) done('Eingetragen – Catrin und Dirk sehen es');
+            }}>Eintragen</button>
           </>
         )}
 

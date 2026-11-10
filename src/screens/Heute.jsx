@@ -32,7 +32,7 @@ export default function Heute({ ctx }) {
     },
     {
       label: 'Besorgen',
-      sub: buy.length ? buy.slice(0, 3).map((b) => `${b.art}${b.size ? ` ${b.size}` : ''} (${ctx.member(b.for_who)?.name ?? ''})`).join(', ') : 'Keine Kleidung offen.',
+      sub: buy.length ? buy.slice(0, 3).map((b) => `${b.art}${b.size ? ` ${b.size}` : ''}${ctx.member(b.for_who) ? ` (${ctx.member(b.for_who).name})` : ''}`).join(', ') : 'Nichts zu besorgen.',
       n: buy.length, seg: 'besorgen',
     },
   ];
