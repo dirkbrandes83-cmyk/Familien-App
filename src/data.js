@@ -70,6 +70,12 @@ export function useHomeTables() {
     care: useTable('care_needs'),
     asks: useTable('care_asks', (r) => `${r.need_id}|${r.caregiver_id}`),
     subs: useTable('calendar_subscriptions'),
+    shopSections: useTable('shop_sections', (r) => r.name),
   };
 }
 
+
+// Gelernte Einkaufs-Kategorien als { name: Kategorie }
+export function learnedSections(data) {
+  return Object.fromEntries((data.shopSections?.rows || []).map((r) => [r.name, r.section]));
+}

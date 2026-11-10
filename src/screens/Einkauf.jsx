@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { supabase, run } from '../data.js';
+import { supabase, run, learnedSections } from '../data.js';
 import { Icon, Check, Swipe, Sheet } from '../ui.jsx';
-import { SECTIONS, sectionOf, splitNames } from '../lib/shop.js';
+import { ORDER, sectionOf, splitNames } from '../lib/shop.js';
 
 export default function Einkauf({ ctx }) {
   const { data, me } = ctx;
@@ -9,6 +9,7 @@ export default function Einkauf({ ctx }) {
   const [showDone, setShowDone] = useState(false);
   const [editFreq, setEditFreq] = useState(false);
   const [hint, setHint] = useState(() => !localStorage.getItem('swipeHint'));
+  const [move, setMove] = useState(null); // Artikel, dessen Kategorie geändert wird
 
   const open = data.shop.rows.filter((r) => !r.done);
   const done = data.shop.rows.filter((r) => r.done).sort((a, b) => String(b.done_at).localeCompare(String(a.done_at)));
@@ -23,7 +24,7 @@ export default function Einkauf({ ctx }) {
     const reopen = done.filter((d) => fresh.some((n) => n.toLowerCase() === d.name.toLowerCase()));
     const newOnes = fresh.filter((n) => !reopen.some((d) => d.name.toLowerCase() === n.toLowerCase()));
     if (reopen.length) await run(supabase.from('shopping_items').update({ done: false, done_at: null, added_by: me.name }).in('id', reopen.map((r) => r.id)), ctx.fail);
-    if (newOnes.length) await run(supabase.from('shopping_items').insert(newOnes.map((name) => ({ name, section: sectionOf(name), added_by: how ? `${me.name} · ${how}` : me.name }))), ctx.fail);
+    if (newOnes.length) await run(supabase.from('shopping_items').insert(newOnes.map((name) => ({ name, section: sectionOf(name, learnedSections(data)), added_by: how ? `${me.name} · ${how}` : me.name }))), ctx.fail);
     ctx.say(fresh.length === 1 ? `${fresh[0]} steht auf der Liste` : `${fresh.length} Dinge auf der Liste`);
   };
 
@@ -54,8 +55,8 @@ export default function Einkauf({ ctx }) {
     setShowDone(false);
   };
 
-  const groups = SECTIONS.map((s) => ({ name: s.name, items: open.filter((r) => r.section === s.name).sort((a, b) => a.name.localeCompare(b.name, 'de')) })).filter((g) => g.items.length);
-  const extra = open.filter((r) => !SECTIONS.some((s) => s.name === r.section));
+  const groups = ORDER.map((name) => ({ name, items: open.filter((r) => r.section === name).sort((a, b) => a.name.localeCompare(b.name, 'de')) })).filter((g) => g.items.length);
+  const extra = open.filter((r) => !ORDER.includes(r.section));
   if (extra.length) groups.push({ name: 'Sonstiges', items: extra });
 
   return (
@@ -96,13 +97,16 @@ export default function Einkauf({ ctx }) {
           <div className="card tight">
             {g.items.map((it) => (
               <Swipe key={it.id} onRight={() => setDone(it, true)} onLeft={() => remove(it)}>
-                <button className="row" onClick={() => setDone(it, true)}>
-                  <Check on={false} round />
-                  <span className="row-main">
-                    <span className="row-title">{it.name}</span>
-                    {it.added_by && <span className="small">{it.added_by}</span>}
-                  </span>
-                </button>
+                <div className="row" style={{ padding: 0 }}>
+                  <button className="row" style={{ borderTop: 'none', flex: '1 1 auto' }} onClick={() => setDone(it, true)}>
+                    <Check on={false} round />
+                    <span className="row-main">
+                      <span className="row-title">{it.name}</span>
+                      {it.added_by && <span className="small">{it.added_by}</span>}
+                    </span>
+                  </button>
+                  <button className="icon-btn" style={{ border: 'none', width: 40, color: '#78716C' }} aria-label={`Kategorie von ${it.name} ändern`} onClick={() => setMove(it)}><Icon name="menu" size={18} /></button>
+                </div>
               </Swipe>
             ))}
           </div>
@@ -130,6 +134,24 @@ export default function Einkauf({ ctx }) {
       )}
 
       {editFreq && <FreqSheet ctx={ctx} freq={freq} onClose={() => setEditFreq(false)} />}
+      {move && (
+        <Sheet title={`${move.name}: Kategorie`} onClose={() => setMove(null)}>
+          <div className="small">Die App merkt sich das für das nächste Mal.</div>
+          <div className="card tight">
+            {ORDER.map((name) => ({ name })).map((sec) => (
+              <button key={sec.name} className="row" onClick={async () => {
+                data.shop.local((rows) => rows.map((r) => (r.id === move.id ? { ...r, section: sec.name } : r)));
+                await run(supabase.from('shopping_items').update({ section: sec.name }).eq('id', move.id), ctx.fail);
+                await run(supabase.from('shop_sections').upsert({ name: move.name.trim().toLowerCase(), section: sec.name }), ctx.fail);
+                setMove(null);
+              }}>
+                <Check on={move.section === sec.name} round />
+                <span className="row-title">{sec.name}</span>
+              </button>
+            ))}
+          </div>
+        </Sheet>
+      )}
     </>
   );
 }

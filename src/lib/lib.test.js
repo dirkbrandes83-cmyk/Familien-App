@@ -64,10 +64,14 @@ test('UTC-Zeiten werden Bremer Zeit, unabhängig von der Zeitzone des Geräts', 
 });
 
 test('Einkauf', () => {
-  assert.equal(sectionOf('Vollmilch'), 'Kühlregal');
-  assert.equal(sectionOf('Reis'), 'Vorrat');
-  assert.equal(sectionOf('Eis'), 'Tiefkühl');
-  assert.equal(sectionOf('Bananen'), 'Obst & Gemüse');
+  assert.equal(sectionOf('Vollmilch'), 'Kühlregale');
+  assert.equal(sectionOf('Reis'), 'Konserven etc.');
+  assert.equal(sectionOf('Eis'), 'TK');
+  assert.equal(sectionOf('Bananen'), 'Obst und Gemüse');
+  assert.equal(sectionOf('Müsli'), 'Backwaren, Müsli etc.');
+  assert.equal(sectionOf('Gummibärchen'), 'Süßes');
+  assert.equal(sectionOf('Zahnpasta'), 'Rossmann DM');
+  assert.equal(sectionOf('Hafermilch', { hafermilch: 'Konserven etc.' }), 'Konserven etc.'); // gelernt
   assert.deepEqual(splitNames('milch, 2 Brot und bananen'), ['Milch', '2 Brot', 'Bananen']);
 });
 

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { supabase, run } from '../data.js';
+import { supabase, run, learnedSections } from '../data.js';
 import { Icon, Check, Sheet, Seg, ChipPick, Swipe } from '../ui.jsx';
 import { addDays, mondayOf, longLabel, parse, WD, weekday, MONTHS, shortLabel } from '../lib/dates.js';
 import { sectionOf, splitNames } from '../lib/shop.js';
@@ -60,7 +60,7 @@ function Essen({ ctx }) {
     const open = new Set(ctx.data.shop.rows.filter((r) => !r.done).map((r) => r.name.toLowerCase()));
     const fresh = want.filter((w) => !open.has(w.toLowerCase()));
     if (!fresh.length) { ctx.say(want.length ? 'Alle Zutaten stehen schon auf der Liste' : 'Keine Gerichte mit Zutaten geplant'); return; }
-    const ok = await run(supabase.from('shopping_items').insert(fresh.map((name) => ({ name, section: sectionOf(name), added_by: `${ctx.me.name} · Essensplan` }))), ctx.fail);
+    const ok = await run(supabase.from('shopping_items').insert(fresh.map((name) => ({ name, section: sectionOf(name, learnedSections(ctx.data)), added_by: `${ctx.me.name} · Essensplan` }))), ctx.fail);
     if (ok) ctx.say(`${fresh.length} Zutaten auf der Einkaufsliste`);
   };
   const wishDone = async (w) => {

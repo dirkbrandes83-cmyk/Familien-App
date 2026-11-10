@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { supabase, useTable, useHomeTables, run } from '../data.js';
+import { supabase, useTable, useHomeTables, run, learnedSections } from '../data.js';
 import { mealOf, muellOf, Bin, choresToday, toggleChore } from './Zuhause.jsx';
 import { muellStatus } from '../lib/home.js';
 import { Icon, Check, Toast, PersonChips } from '../ui.jsx';
@@ -321,7 +321,7 @@ function Eintragen({ ctx, init, onClose }) {
       .filter((n, i, a) => a.findIndex((x) => x.toLowerCase() === n.toLowerCase()) === i && !openShop.has(n.toLowerCase()));
     if (!names.length) { done('Steht schon auf der Liste'); return; }
     setBusy(true);
-    const ok = await run(supabase.from('shopping_items').insert(names.map((name) => ({ name, section: sectionOf(name), added_by: who ? `${who.name} · Ist alle!` : 'Station · Ist alle!' }))), ctx.fail);
+    const ok = await run(supabase.from('shopping_items').insert(names.map((name) => ({ name, section: sectionOf(name, learnedSections(ctx.data)), added_by: who ? `${who.name} · Ist alle!` : 'Station · Ist alle!' }))), ctx.fail);
     setBusy(false);
     if (ok) done(names.length === 1 ? `${names[0]} steht auf der Liste` : `${names.length} Dinge auf der Liste`);
   };
