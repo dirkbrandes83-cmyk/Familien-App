@@ -22,7 +22,7 @@ export default function Mehr({ ctx }) {
     <>
       <section className="card tight">
         <button className="row" style={{ minHeight: 60 }} onClick={() => setPage('klender')}>
-          <span className="row-main"><span style={{ fontWeight: 700 }}>Von Klender umziehen</span><span className="sub">Klender-Export (.ics) hochladen</span></span>
+          <span className="row-main"><span style={{ fontWeight: 700 }}>Von Klender umziehen</span><span className="sub">Export-Link oder .ics-Datei</span></span>
           <Icon name="chev" size={18} />
         </button>
         <button className="row" style={{ minHeight: 60 }} onClick={backup}>
@@ -51,10 +51,31 @@ function KlenderUmzug({ ctx, onBack }) {
   const [result, setResult] = useState(null);
   const [err, setErr] = useState('');
 
+  const [link, setLink] = useState(() => localStorage.getItem('klenderLink') || '');
+  const [fetching, setFetching] = useState(false);
+
   const load = async (file) => {
     setErr(''); setResult(null);
     if (!file) return;
-    const text = await file.text();
+    applyText(await file.text());
+  };
+  const loadLink = async (e) => {
+    e.preventDefault();
+    setErr(''); setResult(null);
+    if (!link.trim()) return;
+    setFetching(true);
+    const { data, error } = await supabase.functions.invoke('ics-holen', { body: { url: link.trim() } });
+    setFetching(false);
+    if (error) {
+      let msg = 'Konnte den Link nicht laden.';
+      try { msg = (await error.context.json()).error || msg; } catch { /* Standardtext */ }
+      setErr(msg);
+      return;
+    }
+    localStorage.setItem('klenderLink', link.trim());
+    applyText(data.text);
+  };
+  const applyText = (text) => {
     if (!/BEGIN:VCALENDAR/i.test(text)) { setErr('Das ist keine Kalender-Datei (.ics).'); return; }
     const p = parseIcs(text);
     setParsed(p);
@@ -105,16 +126,19 @@ function KlenderUmzug({ ctx, onBack }) {
       <button className="btn ghost small" style={{ alignSelf: 'flex-start' }} onClick={onBack}><Icon name="left" size={16} />Zurück</button>
       <section className="card">
         <div className="card-title">Von Klender umziehen</div>
-        <ol style={{ margin: 0, paddingLeft: 20, lineHeight: 1.5 }} className="sub">
-          <li>In Klender den Export als .ics-Datei erzeugen und speichern (z. B. in „Dateien“).</li>
-          <li>Hier die Datei auswählen.</li>
-          <li>Prüfen, wem die Klender-Kalender gehören, und übernehmen.</li>
-        </ol>
-        <label className="btn" style={{ position: 'relative' }}>
-          <Icon name="upload" size={18} />Datei auswählen
+        <div className="sub">In Klender den Export-Link (.ics oder webcal://) kopieren und hier einfügen. Danach prüfen, wem die Klender-Kalender gehören, und übernehmen.</div>
+        <form className="field" onSubmit={loadLink}>
+          <label htmlFor="klenderLink" className="sr">Klender-Link</label>
+          <input id="klenderLink" className="input" type="url" inputMode="url" autoComplete="off" autoCapitalize="off" spellCheck={false}
+            value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://… oder webcal://…" />
+          <button className="btn" disabled={fetching || !link.trim()}>{fetching ? 'Lade …' : 'Termine vom Link holen'}</button>
+        </form>
+        {err && <div className="err" role="alert">{err}</div>}
+        <div className="small">Ihr könnt den Link in den zwei Wochen Parallelbetrieb jederzeit erneut holen: Schon übernommene Termine werden übersprungen, nur Neues kommt dazu.</div>
+        <label className="btn ghost small" style={{ position: 'relative', alignSelf: 'flex-start' }}>
+          <Icon name="upload" size={16} />Oder Datei auswählen
           <input type="file" accept=".ics,text/calendar" onChange={(e) => load(e.target.files[0])} style={{ position: 'absolute', inset: 0, opacity: 0 }} />
         </label>
-        {err && <div className="err" role="alert">{err}</div>}
       </section>
 
       {parsed && result === null && (
