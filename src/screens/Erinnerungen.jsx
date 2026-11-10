@@ -11,7 +11,7 @@ export default function Erinnerungen({ ctx, seg, setSeg }) {
     <>
       <Seg label="Bereich" value={seg} onPick={setSeg} options={[
         ['mitnehmen', 'Mitnehmen'],
-        ['vereinbaren', `Vereinbaren${inboxN ? ` ${inboxN}` : ''}`],
+        ['vereinbaren', `Erledigen${inboxN ? ` ${inboxN}` : ''}`],
         ['besorgen', `Besorgen${buyN ? ` ${buyN}` : ''}`],
       ]} />
       <button className="btn dashed" onClick={ctx.openScan}>Elternbrief scannen</button>
@@ -166,16 +166,35 @@ function RuleSheet({ ctx, onClose }) {
   );
 }
 
-/* ---------------- Termine vereinbaren ---------------- */
+/* ---------------- Erledigen (Termin vereinbaren, anrufen, ausfüllen …) ---------------- */
+export const TYP = {
+  termin: 'Termin vereinbaren',
+  anrufen: 'Anrufen',
+  ausfuellen: 'Ausfüllen / unterschreiben',
+  kuendigen: 'Kündigen',
+  ueberweisen: 'Überweisen / bezahlen',
+  sonstiges: 'Sonstiges',
+};
+const TYP_KURZ = { termin: 'Termin', anrufen: 'Anrufen', ausfuellen: 'Ausfüllen', kuendigen: 'Kündigen', ueberweisen: 'Bezahlen', sonstiges: 'Erledigen' };
+const PLACEHOLDER = {
+  termin: 'z. B. Zahnarzt Emil', anrufen: 'z. B. Versicherung wegen Fahrrad', ausfuellen: 'z. B. Anmeldung Ganztag',
+  kuendigen: 'z. B. Zeitschriften-Abo', ueberweisen: 'z. B. Klassenkasse 10 €', sonstiges: 'z. B. Fahrrad zur Werkstatt',
+};
+
 function Vereinbaren({ ctx }) {
-  const [text, setText] = useState('');
-  const [forWho, setForWho] = useState(null);
-  const open = ctx.data.inbox.rows.filter((r) => !r.done_at).sort((a, b) => a.created_at.localeCompare(b.created_at));
+  const [f, setF] = useState({ typ: 'termin', title: '', forWho: null, owner: null, due: '' });
+  const [filter, setFilter] = useState('alle');
+  const all = ctx.data.inbox.rows.filter((r) => !r.done_at)
+    .sort((a, b) => String(a.due || '9999').localeCompare(String(b.due || '9999')) || a.created_at.localeCompare(b.created_at));
+  const open = filter === 'mir' ? all.filter((r) => (r.owner ?? (r.typ === 'termin' || !r.typ ? 'dirk' : null)) === ctx.me.id) : all;
   const add = async (e) => {
     e.preventDefault();
-    if (!text.trim()) return;
-    const ok = await run(supabase.from('todo_inbox').insert({ title: text.trim(), for_who: forWho, by_who: ctx.me.id }), ctx.fail);
-    if (ok) { setText(''); setForWho(null); ctx.say(ctx.isDirk ? 'Eingetragen' : 'Eingetragen – Dirk plant es ein'); }
+    if (!f.title.trim()) return;
+    const ok = await run(supabase.from('todo_inbox').insert({ typ: f.typ, title: f.title.trim(), for_who: f.forWho, owner: f.owner, due: f.due || null, by_who: ctx.me.id }), ctx.fail);
+    if (ok) {
+      setF({ ...f, title: '', forWho: null, due: '' });
+      ctx.say(f.owner && f.owner !== ctx.me.id ? `Eingetragen – ${ctx.member(f.owner)?.name} kümmert sich` : f.typ === 'termin' && !ctx.isDirk && !f.owner ? 'Eingetragen – Dirk plant es ein' : 'Eingetragen');
+    }
   };
   const finish = async (r) => {
     const ok = await run(supabase.from('todo_inbox').update({ done_at: new Date().toISOString() }).eq('id', r.id), ctx.fail);
@@ -185,42 +204,63 @@ function Vereinbaren({ ctx }) {
     const ok = await run(supabase.from('todo_inbox').delete().eq('id', r.id), ctx.fail);
     if (ok) ctx.say('Gelöscht', () => run(supabase.from('todo_inbox').insert(r), ctx.fail));
   };
-  const plan = (r) => ctx.openEvent(null, { title: r.title, who: r.for_who ? [r.for_who] : ['all'], inboxId: r.id, start_date: ctx.day });
+  const plan = (r) => ctx.openEvent(null, { title: r.title, who: r.for_who ? [r.for_who] : ['all'], inboxId: r.id, start_date: r.due || ctx.day });
   const whoOpts = ctx.members.map((m) => ({ id: m.id, label: m.name, color: m.color, bg: m.bg }));
+  const adults = ctx.members.filter((m) => !m.kid).map((m) => ({ id: m.id, label: m.name, color: m.color, bg: m.bg }));
 
   return (
     <>
       <section className="card">
         <div className="card-head">
-          <div><div className="card-title">Termine vereinbaren</div><div className="small">Ohne Datum – Dirk macht daraus einen Termin oder eine Frist.</div></div>
-          <span className="badge">{open.length}</span>
+          <div><div className="card-title">Zu erledigen</div><div className="small">Wischen: rechts = erledigt, links = löschen</div></div>
+          <span className="badge">{all.length}</span>
         </div>
-        {open.length === 0 && <div className="empty">Alles eingeplant.</div>}
+        <Seg label="Filter" value={filter} onPick={setFilter} options={[['alle', 'Alle'], ['mir', 'Für mich']]} />
+        {open.length === 0 && <div className="empty">Nichts offen.</div>}
         <div>
           {open.map((r) => {
             const who = ctx.member(r.for_who);
+            const owner = ctx.member(r.owner);
             const by = ctx.member(r.by_who);
+            const typ = r.typ || 'termin';
+            const soon = r.due && r.due <= addDays(ctx.day, 2);
             return (
               <Swipe key={r.id} onRight={() => finish(r)} onLeft={() => del(r)}>
                 <div className="row">
                   <span className="row-main">
                     <span className="row-title" style={{ fontWeight: 600 }}>{r.title}</span>
-                    <span className="small">{who ? <b style={{ color: who.color }}>{who.name}</b> : 'Familie'}{by ? ` · eingetragen von ${by.name}` : ''}</span>
+                    <span className="small" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <span className="tag">{TYP_KURZ[typ]}</span>
+                      {r.due && <b style={{ color: soon ? '#B45309' : undefined }}>bis {shortLabel(r.due)}</b>}
+                      {who && <b style={{ color: who.color }}>{who.name}</b>}
+                      {owner ? <span>· {owner.id === ctx.me.id ? 'du kümmerst dich' : `${owner.name} kümmert sich`}</span> : typ === 'termin' ? <span>· Dirk plant ein</span> : null}
+                      {by && by.id !== ctx.me.id && <span>· von {by.name}</span>}
+                    </span>
                   </span>
-                  {ctx.isDirk && <button className="btn small" onClick={() => plan(r)}>Einplanen</button>}
+                  {typ === 'termin' && ctx.isDirk
+                    ? <button className="btn small" onClick={() => plan(r)}>Einplanen</button>
+                    : <button className="btn ghost small" onClick={() => finish(r)}>Erledigt</button>}
                 </div>
               </Swipe>
             );
           })}
         </div>
-        {!ctx.isDirk && open.length > 0 && <div className="small">Dirk plant das ein. Wischen: rechts = erledigt, links = löschen.</div>}
       </section>
       <form className="card" onSubmit={add}>
-        <label className="field"><span>Was muss vereinbart werden?</span>
-          <input className="input" value={text} onChange={(e) => setText(e.target.value)} placeholder="z. B. Zahnarzt Emil" maxLength={200} />
+        <div className="field"><span>Was ist zu tun?</span>
+          <ChipPick options={Object.entries(TYP).map(([id, label]) => ({ id, label }))} value={f.typ} onPick={(t) => setF({ ...f, typ: t })} />
+        </div>
+        <label className="field"><span>{TYP[f.typ]}: was genau?</span>
+          <input className="input" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} placeholder={PLACEHOLDER[f.typ]} maxLength={200} />
         </label>
-        <div className="field"><span>Für wen? (optional)</span><ChipPick options={whoOpts} value={forWho} onPick={(id) => setForWho(forWho === id ? null : id)} /></div>
-        <button className="btn" disabled={!text.trim()}><Icon name="plus" size={18} />Eintragen</button>
+        <label className="field"><span>Bis wann? (optional)</span>
+          <input className="input" type="date" value={f.due} min={ctx.day} onChange={(e) => setF({ ...f, due: e.target.value })} />
+        </label>
+        <div className="field"><span>Wer kümmert sich? (optional)</span>
+          <ChipPick options={adults} value={f.owner} onPick={(id) => setF({ ...f, owner: f.owner === id ? null : id })} />
+        </div>
+        <div className="field"><span>Betrifft (optional)</span><ChipPick options={whoOpts} value={f.forWho} onPick={(id) => setF({ ...f, forWho: f.forWho === id ? null : id })} /></div>
+        <button className="btn" disabled={!f.title.trim()}><Icon name="plus" size={18} />Eintragen</button>
       </form>
     </>
   );

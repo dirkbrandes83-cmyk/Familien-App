@@ -88,8 +88,13 @@ async function zeitplan(db: any, force?: string) {
     const tomorrow = addDays(day, 1);
     const tom = expand(events ?? [], tomorrow, tomorrow);
     const pack = await packText(db, kids, tomorrow);
+    const { data: dueTodos } = await db.from("todo_inbox").select("title, owner, due").is("done_at", null).lte("due", tomorrow);
+    const { data: dueBuys } = await db.from("buy_items").select("art, due").eq("done", false).lte("due", tomorrow);
     for (const a of adults) {
       const lines = tom.map((o: any) => eventLine(o, members));
+      const mine = (dueTodos ?? []).filter((t: any) => !t.owner || t.owner === a.id).map((t: any) => t.title);
+      const faellig = [...mine, ...(dueBuys ?? []).map((b: any) => `besorgen: ${b.art}`)];
+      if (faellig.length) lines.push(`Fällig: ${faellig.join(", ")}`);
       if (pack) lines.push(`Einpacken – ${pack}`);
       const m = settings?.value;
       if (m && m.out_by === a.id) {
@@ -114,9 +119,15 @@ Deno.serve(async (req) => {
 
     if (body.art === "vereinbaren" && body.id) {
       const { data: r } = await db.from("todo_inbox").select("*").eq("id", body.id).single();
-      if (!r || r.by_who === "dirk") return json({ ok: true, gesendet: 0 });
+      if (!r) return json({ ok: true, gesendet: 0 });
+      const typ = r.typ ?? "termin";
+      // Wer bekommt es? Zuständige Person; sonst bei Terminen Dirk, sonst beide Erwachsenen
+      const to: string[] = r.owner ? [r.owner] : typ === "termin" ? ["dirk"] : ["dirk", "catrin"];
       const { data: by } = await db.from("members").select("name").eq("id", r.by_who).maybeSingle();
-      const n = await send(db, "dirk", "vereinbaren", { title: "Termin vereinbaren", body: `${r.title}${by ? ` – von ${by.name}` : ""}`, url: APP, tag: `inbox-${r.id}` });
+      const TITLE: Record<string, string> = { termin: "Termin vereinbaren", anrufen: "Anrufen", ausfuellen: "Ausfüllen", kuendigen: "Kündigen", ueberweisen: "Bezahlen", sonstiges: "Zu erledigen" };
+      const due = r.due ? ` – bis ${r.due.slice(8, 10)}.${r.due.slice(5, 7)}.` : "";
+      let n = 0;
+      for (const m of to.filter((x) => x !== r.by_who)) n += await send(db, m, "vereinbaren", { title: TITLE[typ] ?? "Zu erledigen", body: `${r.title}${due}${by ? ` (von ${by.name})` : ""}`, url: APP, tag: `inbox-${r.id}` });
       return json({ ok: true, gesendet: n });
     }
     if (body.art === "wunsch" && body.id) {

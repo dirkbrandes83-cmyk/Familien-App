@@ -5,7 +5,7 @@ import { Icon, Check } from '../ui.jsx';
 const KINDS = [
   ['morgen', 'Morgens um 7:30', 'Termine heute, offene Betreuung'],
   ['abend', 'Abends um 19:30', 'Termine morgen, Einpacken, Müll (dienstags)'],
-  ['vereinbaren', 'Neues unter „Vereinbaren“', 'sofort – nur für Dirk'],
+  ['vereinbaren', 'Neues unter „Erledigen“', 'sofort – an wen es betrifft'],
   ['wunsch', 'Neuer Essenswunsch', 'sofort – nur für Catrin'],
 ];
 
@@ -71,7 +71,7 @@ export default function Mitteilungen({ ctx, onBack }) {
     else ctx.say('Probe verschickt – gleich sollte sie erscheinen');
   };
 
-  const kinds = KINDS.filter(([k]) => (k === 'vereinbaren' ? ctx.me.id === 'dirk' : k === 'wunsch' ? ctx.me.id === 'catrin' : true));
+  const kinds = KINDS.filter(([k]) => (k === 'wunsch' ? ctx.me.id === 'catrin' : true));
 
   return (
     <>

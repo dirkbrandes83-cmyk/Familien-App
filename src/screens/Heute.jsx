@@ -26,8 +26,8 @@ export default function Heute({ ctx }) {
       n: packOpen, seg: 'mitnehmen',
     },
     {
-      label: 'Termine vereinbaren',
-      sub: inbox.length ? inbox.slice(0, 3).map((i) => i.title).join(', ') + (inbox.length > 3 ? ' …' : '') : 'Nichts offen.',
+      label: 'Zu erledigen',
+      sub: inbox.length ? [...inbox].sort((a, b) => String(a.due || '9999').localeCompare(String(b.due || '9999'))).slice(0, 3).map((i) => i.title + (i.due ? ` (bis ${shortLabel(i.due)})` : '')).join(', ') + (inbox.length > 3 ? ' …' : '') : 'Nichts offen.',
       n: inbox.length, seg: 'vereinbaren',
     },
     {
