@@ -4,12 +4,14 @@ import { Icon, ChipPick, Check } from '../ui.jsx';
 import { parseIcs, isCurrent } from '../lib/ics.js';
 import { shortLabel, hm } from '../lib/dates.js';
 import Mitteilungen from './Mitteilungen.jsx';
+import Widget from './Widget.jsx';
 
 export default function Mehr({ ctx }) {
   const [page, setPage] = useState(null);
   if (page === 'klender') return <KlenderUmzug ctx={ctx} onBack={() => setPage(null)} />;
   if (page === 'abos') return <Abos ctx={ctx} onBack={() => setPage(null)} />;
   if (page === 'push') return <Mitteilungen ctx={ctx} onBack={() => setPage(null)} />;
+  if (page === 'widget') return <Widget ctx={ctx} onBack={() => setPage(null)} />;
   const backup = async () => {
     const tables = ['events', 'shopping_items', 'frequent_items', 'pack_rules', 'pack_items', 'todo_inbox', 'buy_items', 'meals', 'recipes', 'chores', 'cleaning_areas', 'cleaning_notes', 'laundry_log', 'caregivers', 'care_needs', 'care_asks', 'calendar_subscriptions', 'settings'];
     const out = { exportiert: new Date().toISOString() };
@@ -26,6 +28,10 @@ export default function Mehr({ ctx }) {
       <section className="card tight">
         <button className="row" style={{ minHeight: 60 }} onClick={() => setPage('push')}>
           <span className="row-main"><span style={{ fontWeight: 700 }}>Mitteilungen</span><span className="sub">Morgens, abends und bei neuen Einträgen</span></span>
+          <Icon name="chev" size={18} />
+        </button>
+        <button className="row" style={{ minHeight: 60 }} onClick={() => setPage('widget')}>
+          <span className="row-main"><span style={{ fontWeight: 700 }}>Widget für den Home-Bildschirm</span><span className="sub">„Heute“ mit Terminen, Müll, Einkauf</span></span>
           <Icon name="chev" size={18} />
         </button>
         <button className="row" style={{ minHeight: 60 }} onClick={() => setPage('klender')}>
