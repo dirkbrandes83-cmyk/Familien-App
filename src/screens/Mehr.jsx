@@ -31,7 +31,7 @@ export default function Mehr({ ctx }) {
           <Icon name="chev" size={18} />
         </button>
         <button className="row" style={{ minHeight: 60 }} onClick={() => setPage('widget')}>
-          <span className="row-main"><span style={{ fontWeight: 700 }}>Widget für den Home-Bildschirm</span><span className="sub">„Heute“ mit Terminen, Müll, Einkauf</span></span>
+          <span className="row-main"><span style={{ fontWeight: 700 }}>Widget und Apple Watch</span><span className="sub">„Heute“-Widget · Einkaufsliste auf der Watch</span></span>
           <Icon name="chev" size={18} />
         </button>
         <button className="row" style={{ minHeight: 60 }} onClick={() => setPage('klender')}>
