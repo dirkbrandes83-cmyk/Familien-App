@@ -239,7 +239,8 @@ function Kind({ ctx, kid }) {
   };
   return (
     <main className="st-grid kid">
-      <section className="st-card">
+      <div className="st-col">
+      <section className="st-card st-pack">
         <div className="st-cardhead">
           <h2 style={{ color: kid.color }}>Einpacken</h2>
           <button className="icon-btn" onClick={read} aria-label="Vorlesen" style={{ width: 56, height: 56 }}><SpeakIcon /></button>
@@ -262,6 +263,7 @@ function Kind({ ctx, kid }) {
         {items.length > 0 && open.length === 0 && <div className="st-done">Alles eingepackt!</div>}
       </section>
       <StundenplanKarte ctx={ctx} kid={kid} date={date} />
+      </div>
       <section className="st-card">
         <MeineTests ctx={ctx} kid={kid} />
         <FuerMich ctx={ctx} kid={kid} />
@@ -296,7 +298,7 @@ function StundenplanKarte({ ctx, kid, date }) {
   const label = day === ctx.day ? 'heute' : day === addDays(ctx.day, 1) ? 'morgen' : WDL[weekday(day)];
   const last = [...lessons].reverse().find((l) => l.fach);
   return (
-    <section className="st-card">
+    <section className="st-card st-ttcard">
       <div className="st-cardhead"><h2>Stundenplan</h2><span className="st-ttday">{label}</span></div>
       {!tt ? <div className="st-empty">Noch kein Stundenplan. Mama oder Papa tragen ihn in der App unter „Mehr“ ein.</div>
         : lessons.length === 0 ? <div className="st-empty">Kein Unterricht eingetragen.</div>
