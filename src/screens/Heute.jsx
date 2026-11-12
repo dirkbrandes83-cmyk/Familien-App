@@ -96,7 +96,7 @@ function FuerDich({ ctx }) {
     .sort((a, b) => String(a.due || '9999').localeCompare(String(b.due || '9999')));
   for (const r of todos) {
     items.push({
-      key: `t${r.id}`, text: r.title, sub: r.due ? `bis ${shortLabel(r.due)}` : null, warn: r.due && r.due <= addDays(ctx.day, 1),
+      key: `t${r.id}`, due: r.due, text: r.title, sub: r.due ? `bis ${shortLabel(r.due)}` : null, warn: r.due && r.due <= addDays(ctx.day, 1),
       done: async () => run(supabase.from('todo_inbox').update({ done_at: new Date().toISOString() }).eq('id', r.id), ctx.fail),
       undo: async () => run(supabase.from('todo_inbox').update({ done_at: null }).eq('id', r.id), ctx.fail),
     });
@@ -104,7 +104,7 @@ function FuerDich({ ctx }) {
   // Besorgen mit Frist in den nächsten 3 Tagen (z. B. Geschenke)
   for (const b of ctx.data.buy.rows.filter((r) => !r.done && r.due && r.due <= addDays(ctx.day, 3))) {
     items.push({
-      key: `b${b.id}`, text: b.typ === 'kleidung' ? `${b.art}${b.size ? ` (${b.size})` : ''} besorgen` : b.art, sub: `bis ${shortLabel(b.due)}`, warn: b.due <= addDays(ctx.day, 1),
+      key: `b${b.id}`, due: b.due, text: b.typ === 'kleidung' ? `${b.art}${b.size ? ` (${b.size})` : ''} besorgen` : b.art, sub: `bis ${shortLabel(b.due)}`, warn: b.due <= addDays(ctx.day, 1),
       done: async () => run(supabase.from('buy_items').update({ done: true, done_at: new Date().toISOString() }).eq('id', b.id), ctx.fail),
       undo: async () => run(supabase.from('buy_items').update({ done: false, done_at: null }).eq('id', b.id), ctx.fail),
     });
@@ -112,7 +112,7 @@ function FuerDich({ ctx }) {
   // Müll – nur am Rausstell-Tag und wenn ich dran bin
   const m = muellOf(ctx);
   const st = muellHeute(m, ctx.day);
-  if (st && m.out_by === me) items.push({ key: 'muell', text: `Müll raus: ${st.bins.map((x) => BINS[x]?.label).join(' + ')}`, sub: 'heute Abend', local: true });
+  if (st && m.out_by === me) items.push({ key: 'muell', due: ctx.day, text: `Müll raus: ${st.bins.map((x) => BINS[x]?.label).join(' + ')}`, sub: 'heute Abend', local: true });
   // Meine Ämtchen
   const chores = choresToday(ctx, ctx.day).filter((c) => c.who === me);
 
@@ -128,6 +128,8 @@ function FuerDich({ ctx }) {
     if (!ok) ctx.data.events.reload();
   };
 
+  // nach Frist sortiert, ohne Frist ans Ende
+  items.sort((a, b) => String(a.due || '9999').localeCompare(String(b.due || '9999')));
   const visible = items.filter((i) => !hidden.includes(i.key) || i.local);
   if (!visible.length && !chores.length && !fahrten.length) {
     return <section className="card h-sec"><div className="h-label">Für dich</div><div className="empty">Heute nichts für dich zu tun. 🎉</div></section>;
