@@ -2,7 +2,7 @@
 // Aufruf: GET /functions/v1/widget?t=<Lese-Schlüssel aus der App>
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { expand, addDays, weekday, hm, WD } from "./dates.js";
-import { muellStatus, BINS } from "./home.js";
+import { muellHeute, BINS } from "./home.js";
 
 const cors = { "Access-Control-Allow-Origin": "*" };
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { ...cors, "Content-Type": "application/json", "Cache-Control": "no-store" } });
@@ -45,8 +45,8 @@ Deno.serve(async (req) => {
   const morgen = expand(events ?? [], tomorrow, tomorrow).map(row);
 
   const m = settings?.value;
-  const st = m ? muellStatus(m, day) : null;
-  const muell = st && (st.today || st.text.startsWith("Morgen")) ? { text: st.text, bins: st.bins.map((b: string) => ({ label: BINS[b]?.label ?? b, color: BINS[b]?.color ?? "#888" })) } : null;
+  const st = muellHeute(m, day);
+  const muell = st ? { text: st.text, bins: st.bins.map((b: string) => ({ label: BINS[b]?.label ?? b, color: BINS[b]?.color ?? "#888" })) } : null;
 
   const wd = weekday(tomorrow);
   let pack = 0;

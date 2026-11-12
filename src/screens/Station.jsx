@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase, useTable, useHomeTables, run, learnedSections } from '../data.js';
 import { mealOf, muellOf, Bin, choresToday, toggleChore } from './Zuhause.jsx';
-import { muellStatus } from '../lib/home.js';
+import { muellHeute, muellStatus } from '../lib/home.js';
 import { Icon, Check, Toast, PersonChips } from '../ui.jsx';
 import { addDays, expand, longLabel, shortLabel, today, hm, WDL, weekday } from '../lib/dates.js';
 import { sectionOf } from '../lib/shop.js';
@@ -175,7 +175,7 @@ function Alle({ ctx, openIstAlle }) {
 function BonusRow({ ctx }) {
   const tomorrow = addDays(ctx.day, 1);
   const m = muellOf(ctx);
-  const st = m ? muellStatus(m, ctx.day) : null;
+  const st = muellHeute(m, ctx.day);
   const chores = choresToday(ctx, ctx.day);
   return (
     <>

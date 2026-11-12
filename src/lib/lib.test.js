@@ -94,3 +94,12 @@ test('Haushalt-Texte', () => {
   assert.equal(weekdaysLabel([5, 6]), 'am Wochenende');
   assert.equal(weekdaysLabel([0, 2, 4]), 'Mo, Mi, Fr');
 });
+
+test('Müll nur am Rausstell-Tag', async () => {
+  const { muellHeute } = await import('./home.js');
+  const m = { ref_monday: '2026-11-09', pickup_weekday: 2, out_weekday: 1, week_a: ['papier'], week_b: ['bio'] };
+  assert.equal(muellHeute(m, '2026-11-10').text, 'Heute Abend raus');
+  assert.equal(muellHeute(m, '2026-11-11'), null);
+  assert.equal(muellHeute(m, '2026-11-16'), null);
+  assert.equal(muellHeute(null, '2026-11-10'), null);
+});

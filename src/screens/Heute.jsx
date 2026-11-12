@@ -2,7 +2,7 @@ import { Icon } from '../ui.jsx';
 import { addDays, expand, shortLabel } from '../lib/dates.js';
 import { EventRow, packList, packDay } from './common.jsx';
 import { mealOf, muellOf, Bin, choresToday, toggleChore } from './Zuhause.jsx';
-import { muellStatus, WASH, agoLabel } from '../lib/home.js';
+import { muellHeute, muellStatus, WASH, agoLabel } from '../lib/home.js';
 import { Check } from '../ui.jsx';
 
 export default function Heute({ ctx }) {
@@ -86,7 +86,7 @@ export default function Heute({ ctx }) {
 function ZuhauseHeute({ ctx }) {
   const meal = mealOf(ctx, ctx.day);
   const m = muellOf(ctx);
-  const st = m ? muellStatus(m, ctx.day) : null;
+  const st = muellHeute(m, ctx.day);
   const last = {};
   for (const r of ctx.data.laundry.rows) if (!last[r.cat] || r.washed_on > last[r.cat]) last[r.cat] = r.washed_on;
   const oldest = [...WASH].sort((a, b) => String(last[a] || '').localeCompare(String(last[b] || '')))[0];

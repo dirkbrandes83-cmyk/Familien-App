@@ -32,6 +32,13 @@ export function muellStatus(m, date) {
   return { today: false, text: when, bins: binsForWeek(m, next), next };
 }
 
+// Nur am Rausstell-Tag (z. B. Dienstag) anzeigen – sonst null
+export function muellHeute(m, date) {
+  if (!m) return null;
+  const st = muellStatus(m, date);
+  return weekday(date) === (m.out_weekday ?? 1) ? st : null;
+}
+
 export function nextCleaning(m, date) {
   return (m.cleaning_dates || []).filter((d) => d >= date).sort()[0] || null;
 }
