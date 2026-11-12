@@ -71,6 +71,7 @@ export function useHomeTables() {
     asks: useTable('care_asks', (r) => `${r.need_id}|${r.caregiver_id}`),
     subs: useTable('calendar_subscriptions'),
     shopSections: useTable('shop_sections', (r) => r.name),
+    timetables: useTable('timetables', (r) => r.kid),
   };
 }
 

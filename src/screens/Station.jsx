@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase, useTable, useHomeTables, run, learnedSections } from '../data.js';
 import { mealOf, muellOf, Bin, choresToday, toggleChore } from './Zuhause.jsx';
 import { upcomingTests, countdown, urgency, dayChip, pickDays, FAECHER, TEST_ARTEN, testTitle } from '../lib/tests.js';
+import { lessonsFor, schoolDay, fachFarbe } from '../lib/stundenplan.js';
 import { muellHeute, muellStatus } from '../lib/home.js';
 import { Icon, Check, Toast, PersonChips } from '../ui.jsx';
 import { addDays, expand, longLabel, shortLabel, today, hm, WDL, weekday } from '../lib/dates.js';
@@ -237,7 +238,7 @@ function Kind({ ctx, kid }) {
     } catch { /* kein Vorlesen möglich */ }
   };
   return (
-    <main className="st-grid two">
+    <main className="st-grid kid">
       <section className="st-card">
         <div className="st-cardhead">
           <h2 style={{ color: kid.color }}>Einpacken</h2>
@@ -260,6 +261,7 @@ function Kind({ ctx, kid }) {
         ))}
         {items.length > 0 && open.length === 0 && <div className="st-done">Alles eingepackt!</div>}
       </section>
+      <StundenplanKarte ctx={ctx} kid={kid} date={date} />
       <section className="st-card">
         <MeineTests ctx={ctx} kid={kid} />
         <FuerMich ctx={ctx} kid={kid} />
@@ -281,6 +283,42 @@ function Kind({ ctx, kid }) {
         <div className="st-meal">{mealOf(ctx, ctx.day).title}</div>
       </section>
     </main>
+  );
+}
+
+// Stundenplan des gewählten Tages (Wochenende → Montag), Tests in dem Fach markiert
+function StundenplanKarte({ ctx, kid, date }) {
+  const tt = ctx.data.timetables.rows.find((r) => r.kid === kid.id);
+  const day = schoolDay(date);
+  const lessons = lessonsFor(tt, day);
+  const tests = expand(ctx.data.events.rows.filter((e) => e.kind === 'test' && e.who.includes(kid.id)), day, day).map((o) => o.ev);
+  const testIn = (fach) => fach && tests.find((t) => t.fach === fach || t.title.includes(fach));
+  const label = day === ctx.day ? 'heute' : day === addDays(ctx.day, 1) ? 'morgen' : WDL[weekday(day)];
+  const last = [...lessons].reverse().find((l) => l.fach);
+  return (
+    <section className="st-card">
+      <div className="st-cardhead"><h2>Stundenplan</h2><span className="st-ttday">{label}</span></div>
+      {!tt ? <div className="st-empty">Noch kein Stundenplan. Mama oder Papa tragen ihn in der App unter „Mehr“ ein.</div>
+        : lessons.length === 0 ? <div className="st-empty">Kein Unterricht eingetragen.</div>
+        : (
+          <div className="st-tt">
+            {lessons.map((l) => {
+              const [bg, fg] = fachFarbe(l.fach);
+              const t = testIn(l.fach);
+              return (
+                <div key={l.n} className={`st-ttrow${l.fach ? '' : ' frei'}`}>
+                  <span className="st-ttn">{l.n}</span>
+                  <span className="st-tttime">{l.von}</span>
+                  <span className="st-ttfach" style={l.fach ? { background: bg, color: fg } : undefined}>
+                    {l.fach || 'frei'}{t && <span className="st-tttest">📝 {t.title.replace(l.fach, '').trim() || 'Test'}</span>}
+                  </span>
+                </div>
+              );
+            })}
+            {last && <div className="st-ttend">Schluss um {last.bis} Uhr</div>}
+          </div>
+        )}
+    </section>
   );
 }
 

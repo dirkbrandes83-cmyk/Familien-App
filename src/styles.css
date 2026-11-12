@@ -246,3 +246,26 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .seg-icon { position: relative; display: inline-flex; align-items: center; justify-content: center; }
 .seg-n { position: absolute; top: -7px; right: -14px; min-width: 18px; height: 18px; border-radius: 9px; padding: 0 5px; background: #B45309; color: #fff; font-size: 11px; font-weight: 800; line-height: 18px; text-align: center; }
 .cat-icon { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; flex: 0 0 30px; border-radius: 9px; background: #F5F1EA; color: #57534E; margin-right: 10px; }
+
+/* Kinderseite: Einpacken | Stundenplan | Tests & Termine */
+.st > main.st-grid.kid { grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr) minmax(0, 1.1fr); grid-template-rows: minmax(0, 1fr); }
+@media (max-width: 1000px) {
+  .st > main.st-grid.kid { grid-template-columns: 1fr 1fr; grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); }
+  .st > main.st-grid.kid > :last-child { grid-column: 1 / -1; }
+}
+.st-ttday { font-weight: 700; color: var(--muted); font-size: 17px; }
+.st-tt { display: flex; flex-direction: column; gap: 6px; }
+.st-ttrow { display: flex; align-items: center; gap: 10px; }
+.st-ttn { width: 30px; height: 30px; flex: 0 0 30px; border-radius: 15px; background: #F5F1EA; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15px; color: #57534E; }
+.st-tttime { width: 46px; flex: 0 0 46px; font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.st-ttfach { flex: 1 1 auto; border-radius: 12px; padding: 7px 12px; font-weight: 700; font-size: 18px; display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+.st-ttrow.frei .st-ttfach { color: var(--muted2); font-weight: 500; border: 2px dashed var(--line); padding: 5px 10px; }
+.st-tttest { font-size: 13px; font-weight: 800; background: #fff; color: #6D28D9; border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
+.st-ttend { margin-top: 4px; font-weight: 700; color: var(--teal-d); }
+/* Eltern-Editor */
+.tt-row { gap: 10px; min-height: 52px; }
+.tt-n { width: 28px; height: 28px; flex: 0 0 28px; border-radius: 14px; background: #F5F1EA; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; color: #57534E; }
+.tt-time { width: 92px; flex: 0 0 92px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.tt-fach { flex: 1 1 auto; text-align: left; border-radius: 10px; padding: 8px 12px; font-weight: 700; color: var(--muted2); border: 1px dashed var(--line); }
+.tt-fach[style] { border-color: transparent; }
+.tt-pick { padding: 4px 0 14px 38px; }
