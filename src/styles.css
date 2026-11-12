@@ -279,3 +279,18 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .st-col > .st-ttcard { flex: 0 1 auto; }
 .st-ttcard .st-tt { gap: 4px; }
 .st-ttcard .st-ttfach { padding: 5px 12px; font-size: 17px; }
+
+/* Kinderseite dreispaltig: Einpacken+Stundenplan | Tests & Für mich | Termine, Ämtchen, Essen */
+.st > main.st-grid.kid { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 0.9fr); grid-template-rows: minmax(0, 1fr); }
+@media (max-width: 1000px) {
+  /* hochkant: links die Spalte, rechts Tests oben und Termine unten */
+  .st > main.st-grid.kid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); }
+  .st > main.st-grid.kid > .st-col { grid-row: 1 / span 2; }
+  .st > main.st-grid.kid > :last-child { grid-column: auto; }
+}
+.st-grid.kid .st-test { gap: 10px; padding: 8px 10px; }
+.st-grid.kid .st-testday { min-width: 52px; }
+.st-grid.kid .st-testtitle { font-size: 18px; }
+.st-grid.kid .st-testday { min-width: 62px; flex: 0 0 62px; }
+.st-grid.kid .st-testday b { font-size: 16px; }
+.st-grid.kid .st-testcount { font-size: 14px; white-space: normal; text-align: right; max-width: 76px; }

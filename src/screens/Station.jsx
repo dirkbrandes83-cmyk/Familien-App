@@ -267,6 +267,11 @@ function Kind({ ctx, kid }) {
       <section className="st-card">
         <MeineTests ctx={ctx} kid={kid} />
         <FuerMich ctx={ctx} kid={kid} />
+        {!upcomingTests(ctx.data.events.rows, ctx.day, 21, kid.id).length && !fuerKind(ctx, kid.id).length && (
+          <><h2>Meine Tests</h2><div className="st-empty">Keine Tests in Sicht. 🙂</div></>
+        )}
+      </section>
+      <section className="st-card">
         <h2>Meine Termine</h2>
         <h3>Heute</h3>
         <EvList list={occ.filter((o) => o.date === ctx.day)} ctx={ctx} />
