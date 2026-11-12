@@ -9,11 +9,13 @@ export const DEFAULT_ZEITEN = [
 // Farbe je Fach (Hintergrund hell, Text dunkel)
 const FARBEN = {
   Deutsch: ['#FEE2E2', '#B91C1C'], Mathe: ['#DBEAFE', '#1D4ED8'], Englisch: ['#FEF3C7', '#B45309'],
-  Sachunterricht: ['#DCFCE7', '#15803D'], Naturwissenschaften: ['#DCFCE7', '#15803D'], Gesellschaft: ['#FFEDD5', '#C2410C'],
+  Sachunterricht: ['#DCFCE7', '#15803D'], Naturwissenschaften: ['#DCFCE7', '#15803D'], NaWi: ['#DCFCE7', '#15803D'], Gesellschaft: ['#FFEDD5', '#C2410C'], GuP: ['#FFEDD5', '#C2410C'],
   Französisch: ['#E0E7FF', '#4338CA'], Spanisch: ['#FCE7F3', '#BE185D'], Musik: ['#F3E8FF', '#7E22CE'],
   Kunst: ['#FAE8FF', '#A21CAF'], Religion: ['#F5F5F4', '#57534E'], Sport: ['#CCFBF1', '#0F766E'],
 };
-export const fachFarbe = (f) => FARBEN[f] || ['#F5F1EA', '#44403C'];
+// Pausen/Betreuung blass, alles andere (AG, Lernzeit, Projekt …) neutral
+const BLASS = /^(mittag|mittagessen|pause|betreuung|mensa)/i;
+export const fachFarbe = (f) => FARBEN[f] || (BLASS.test(f || '') ? ['#FAFAF9', '#A8A29E'] : ['#F5F1EA', '#44403C']);
 
 // Schultag für die Anzeige: Wochenende → nächster Montag
 export function schoolDay(date) {

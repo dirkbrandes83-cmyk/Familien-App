@@ -2,7 +2,7 @@
 import { addDays, diffDays, weekday, WD, WDL, parse } from './dates.js';
 import { expand } from './dates.js';
 
-export const FAECHER = ['Deutsch', 'Mathe', 'Englisch', 'Sachunterricht', 'Naturwissenschaften', 'Gesellschaft', 'Französisch', 'Spanisch', 'Musik', 'Kunst', 'Religion', 'Sport'];
+export const FAECHER = ['Deutsch', 'Mathe', 'Englisch', 'Sachunterricht', 'NaWi', 'GuP', 'Französisch', 'Spanisch', 'Musik', 'Kunst', 'Religion', 'Sport'];
 export const TEST_ARTEN = ['Test', 'Klassenarbeit', 'Vokabeltest', 'Lernkontrolle'];
 
 export const testTitle = (art, fach) => `${art} ${fach}`.trim();
