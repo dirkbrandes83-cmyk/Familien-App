@@ -264,31 +264,37 @@ function Kind({ ctx, kid }) {
       </section>
       <StundenplanKarte ctx={ctx} kid={kid} date={date} />
       </div>
-      <section className="st-card">
-        <MeineTests ctx={ctx} kid={kid} />
-        <FuerMich ctx={ctx} kid={kid} />
-        {!upcomingTests(ctx.data.events.rows, ctx.day, 21, kid.id).length && !fuerKind(ctx, kid.id).length && (
-          <><h2>Meine Tests</h2><div className="st-empty">Keine Tests in Sicht. 🙂</div></>
-        )}
-      </section>
-      <section className="st-card">
-        <h2>Meine Termine</h2>
-        <h3>Heute</h3>
-        <EvList list={occ.filter((o) => o.date === ctx.day)} ctx={ctx} />
-        <h3>Morgen</h3>
-        <EvList list={occ.filter((o) => o.date !== ctx.day)} ctx={ctx} />
-        <h3>Meine Ämtchen heute</h3>
-        {(() => {
-          const mine = choresToday(ctx, ctx.day).filter((c) => c.who === kid.id);
-          return mine.length === 0 ? <div className="st-empty">Heute frei.</div> : mine.map((c) => (
-            <button key={c.id} className="st-check" onClick={() => toggleChore(ctx, c, ctx.day, c.done)} aria-pressed={c.done}>
-              <Check on={c.done} /><span className={c.done ? 'done' : ''}>{c.title}</span>
-            </button>
-          ));
-        })()}
-        <h3>Essen heute</h3>
-        <div className="st-meal">{mealOf(ctx, ctx.day).title}</div>
-      </section>
+      <div className="st-col">
+        <section className="st-card st-auto">
+          <h2>Meine Termine</h2>
+          <h3>Heute</h3>
+          <EvList list={occ.filter((o) => o.date === ctx.day)} ctx={ctx} />
+          <h3>Morgen</h3>
+          <EvList list={occ.filter((o) => o.date !== ctx.day)} ctx={ctx} />
+        </section>
+        <section className="st-card st-grow">
+          <MeineTests ctx={ctx} kid={kid} />
+          {!upcomingTests(ctx.data.events.rows, ctx.day, 21, kid.id).length && <><h2>Meine Tests</h2><div className="st-empty">Keine Tests in Sicht. 🙂</div></>}
+        </section>
+      </div>
+      <div className="st-col">
+        <section className="st-card st-auto">
+          <h2>Essen heute</h2>
+          <div className="st-meal">{mealOf(ctx, ctx.day).title}</div>
+        </section>
+        <section className="st-card st-auto">
+          <h2>Meine Ämtchen</h2>
+          {(() => {
+            const mine = choresToday(ctx, ctx.day).filter((c) => c.who === kid.id);
+            return mine.length === 0 ? <div className="st-empty">Heute frei.</div> : mine.map((c) => (
+              <button key={c.id} className="st-check" onClick={() => toggleChore(ctx, c, ctx.day, c.done)} aria-pressed={c.done}>
+                <Check on={c.done} /><span className={c.done ? 'done' : ''}>{c.title}</span>
+              </button>
+            ));
+          })()}
+        </section>
+        {fuerKind(ctx, kid.id).length > 0 && <section className="st-card st-grow"><FuerMich ctx={ctx} kid={kid} /></section>}
+      </div>
     </main>
   );
 }
@@ -336,7 +342,7 @@ function MeineTests({ ctx, kid }) {
   return (
     <>
       <h2>Meine Tests</h2>
-      <div className="st-tests" style={{ marginBottom: 14 }}>
+      <div className="st-tests">
         {list.map((o) => {
           const c = dayChip(ctx.day, o.date);
           return (
@@ -375,7 +381,7 @@ function FuerMich({ ctx, kid }) {
   return (
     <>
       <h2>Für mich</h2>
-      <div className="st-notes" style={{ marginBottom: 16 }}>
+      <div className="st-notes">
         {list.map((x) => (
           <div key={x.id} className="st-note big">
             {x.text}{x.due ? <span style={{ fontWeight: 500 }}> · bis {shortLabel(x.due)}</span> : null}
