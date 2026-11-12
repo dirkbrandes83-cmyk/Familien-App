@@ -301,7 +301,7 @@ function MeineTests({ ctx, kid }) {
                 <span className="st-testtitle">{o.ev.title}</span>
                 {o.ev.note && <span className="st-testnote">{o.ev.note}</span>}
               </div>
-              <span className="st-testcount">{countdown(ctx.day, o.date)}</span>
+              <span className="st-testcount">{o.date === ctx.day ? 'Viel Erfolg!' : o.date === addDays(ctx.day, 1) ? 'Heute üben!' : countdown(ctx.day, o.date)}</span>
             </div>
           );
         })}
