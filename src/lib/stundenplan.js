@@ -14,8 +14,9 @@ const FARBEN = {
   Kunst: ['#FAE8FF', '#A21CAF'], Religion: ['#F5F5F4', '#57534E'], Sport: ['#CCFBF1', '#0F766E'],
 };
 // Pausen/Betreuung blass, alles andere (AG, Lernzeit, Projekt …) neutral
-const BLASS = /^(mittag|mittagessen|pause|betreuung|mensa)/i;
-export const fachFarbe = (f) => FARBEN[f] || (BLASS.test(f || '') ? ['#FAFAF9', '#A8A29E'] : ['#F5F1EA', '#44403C']);
+const BLASS = /^(mittag|mittagessen|pause|mensa)/i;
+const BETREUUNG = /betreuung/i;
+export const fachFarbe = (f) => FARBEN[f] || (BLASS.test(f || '') ? ['#FAFAF9', '#A8A29E'] : BETREUUNG.test(f || '') ? ['#E0F2FE', '#0369A1'] : ['#F5F1EA', '#44403C']);
 
 // Schultag für die Anzeige: Wochenende → nächster Montag
 export function schoolDay(date) {
