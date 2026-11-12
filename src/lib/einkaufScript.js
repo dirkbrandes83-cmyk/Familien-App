@@ -9,8 +9,6 @@ const KEY = "__KEY__";
 const API = "https://xihjjneyvtgnzfuibfzf.supabase.co/functions/v1/einkauf-sync?t=" + KEY;
 const LIST = "__LIST__"; // Name der Liste in Erinnerungen
 const norm = (s) => String(s || "").trim().toLowerCase();
-// Alte Kennungen aus früheren Versionen („Kühlregale [fa:…]“) aus den Notizen entfernen
-const OLD_TAG = /^.*\\[fa:[0-9a-f-]{36}\\]\\s*$/gm;
 
 // Merkt sich, welche Einträge beim letzten Abgleich aus der App kamen – ohne Text in den Notizen
 const fm = FileManager.local();
@@ -28,10 +26,19 @@ async function sync() {
   const prev = state && state.list === LIST ? state.items || {} : {}; // Name → ID beim letzten Abgleich
   let open = await Reminder.allIncomplete([cal]);
 
-  // Aufräumen: alte Kennungen aus den Notizen löschen
-  for (const r of [...open, ...(await Reminder.allCompleted([cal]))]) {
-    if (r.notes && r.notes.includes("[fa:")) { r.notes = r.notes.replace(OLD_TAG, "").trim(); r.save(); }
+  // Aufräumen: Einträge mit alten Kennungen in den Notizen („Kühlregale [fa:…]“) stammen aus der App.
+  // Notizen lassen sich nicht zuverlässig leeren – deshalb löschen und gleich ohne Notiz neu anlegen.
+  const alt = new Map(); // Name → Titel
+  for (const r of await Reminder.allCompleted([cal])) {
+    if (r.notes && r.notes.includes("fa:")) r.remove();
   }
+  open = open.filter((r) => {
+    if (r.notes && r.notes.includes("fa:")) { alt.set(norm(r.title), r.title.trim()); r.remove(); return false; }
+    return true;
+  });
+  // Nicht als „erledigt“ werten; was die App noch nicht kennt, als neu schicken. Unten frisch angelegt.
+  const altNeu = [...alt].filter(([n]) => !(n in prev)).map(([, t]) => t);
+  for (const n of alt.keys()) delete prev[n];
 
   const openNames = new Set(open.map((r) => norm(r.title)));
   // In Erinnerungen abgehakt oder gelöscht: war beim letzten Mal da, ist jetzt nicht mehr offen
@@ -42,13 +49,14 @@ async function sync() {
   const req = new Request(API);
   req.method = "POST";
   req.headers = { "Content-Type": "application/json" };
-  req.body = JSON.stringify({ erledigt, neu: neuRem.map((r) => r.title.trim()) });
+  const neuNamen = [...neuRem.map((r) => r.title.trim()), ...altNeu];
+  req.body = JSON.stringify({ erledigt, neu: neuNamen });
   req.timeoutInterval = 20;
   const res = await req.loadJSON();
   if (res.error) throw new Error(res.error);
 
   const app = new Map(res.offen.map((x) => [norm(x.name), x]));
-  const sentNew = new Set(neuRem.map((r) => norm(r.title)));
+  const sentNew = new Set(neuNamen.map(norm));
   const seen = new Set();
   for (const r of open) {
     const n = norm(r.title);
@@ -67,7 +75,7 @@ async function sync() {
     seen.add(norm(x.name));
   }
   fm.writeString(stateFile, JSON.stringify({ list: LIST, items: Object.fromEntries([...app].map(([n, x]) => [n, x.id])), at: new Date().toISOString() }));
-  return { liste: res.offen, erledigt: erledigt.length, neu: neuRem.length };
+  return { liste: res.offen, erledigt: erledigt.length, neu: neuRem.length, aufgeraeumt: alt.size };
 }
 
 let liste = null, fehler = null, info = null;
@@ -102,7 +110,7 @@ else if (config.runsWithSiri || config.runsInActionExtension || args.shortcutPar
 else {
   const a = new Alert();
   a.title = fehler ? "Abgleich ging nicht" : "Einkauf abgeglichen";
-  a.message = fehler ? fehler : info.erledigt + " in der App erledigt · " + info.neu + " neu in die App · " + liste.length + " offen";
+  a.message = fehler ? fehler : info.erledigt + " in der App erledigt · " + info.neu + " neu in die App · " + liste.length + " offen" + (info.aufgeraeumt ? " · " + info.aufgeraeumt + " alte Notizen entfernt" : "");
   a.addAction("OK");
   await a.present();
 }
