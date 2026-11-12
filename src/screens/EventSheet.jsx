@@ -3,6 +3,7 @@ import { supabase, run } from '../data.js';
 import { Sheet, ChipPick, Seg } from '../ui.jsx';
 import { hm, longLabel } from '../lib/dates.js';
 import { KINDS } from './common.jsx';
+import { FAECHER, TEST_ARTEN, testTitle } from '../lib/tests.js';
 import { careFromEvent } from './Betreuung.jsx';
 
 const REPS = ['keine', 'täglich', 'wöchentlich', 'alle 2 Wochen', 'monatlich', 'jährlich'];
@@ -29,7 +30,7 @@ function AboEvent({ ctx, ev, date, onClose }) {
 }
 
 // Bei diesen Wörtern im Titel wird automatisch eine Geschenk-Aufgabe angelegt (wie in der Datenbank)
-const GIFT_WORDS = /geburtstag|party|hochzeit|jubil|taufe|einschulung|konfirmation|kommunion/i;
+const GIFT_WORDS = /geburtstag|party|feier|einladung|hochzeit|jubil|taufe|einschulung|konfirmation|kommunion/i;
 
 function EditEvent({ ctx, ev, preset = {}, onClose }) {
   const editing = !!ev;
@@ -47,7 +48,8 @@ function EditEvent({ ctx, ev, preset = {}, onClose }) {
     note: ev?.note ?? '',
     bring_by: ev?.bring_by ?? '',
     pick_by: ev?.pick_by ?? '',
-    gift: ev?.gift ?? null, // null = automatisch (Geburtstag, Party …)
+    gift: ev?.gift ?? null,
+    fach: ev?.fach ?? null, // null = automatisch (Geburtstag, Party …)
   }));
   const [busy, setBusy] = useState(false);
   const [askDelete, setAskDelete] = useState(false);
@@ -79,6 +81,7 @@ function EditEvent({ ctx, ev, preset = {}, onClose }) {
       bring_by: kidEvent ? f.bring_by || null : null,
       pick_by: kidEvent ? f.pick_by || null : null,
       gift: f.gift,
+      fach: f.kind === 'test' ? f.fach : null,
     };
     let ok;
     if (editing) ok = await run(supabase.from('events').update(row).eq('id', ev.id), ctx.fail);
@@ -110,7 +113,7 @@ function EditEvent({ ctx, ev, preset = {}, onClose }) {
   const fixedAllDay = f.kind !== 'termin';
   const giftAuto = GIFT_WORDS.test(f.title);
   const giftOn = f.gift ?? giftAuto;
-  const giftPossible = f.kind !== 'geburtstag' && f.rep === 'keine';
+  const giftPossible = f.kind !== 'geburtstag' && f.kind !== 'test' && f.rep === 'keine';
   const kidEvent = f.kind === 'termin' && f.who.some((w) => ctx.member(w)?.kid);
   // Wer kann bringen/abholen? Eltern zuerst, dann die Betreuungspersonen
   const drivers = [...new Set(['Dirk', 'Catrin', ...[...ctx.data.caregivers.rows].sort((a, b) => a.sort - b.sort).map((g) => g.name)])];
@@ -134,10 +137,16 @@ function EditEvent({ ctx, ev, preset = {}, onClose }) {
         <input className="input" value={f.title} onChange={(e) => set({ title: e.target.value })} placeholder="z. B. Elternabend" autoFocus={!editing} maxLength={200} />
       </label>
       <Seg label="Art" value={f.kind} onPick={(k) => set({ kind: k, ...(k !== 'termin' ? { all_day: true } : {}) })} options={Object.entries(KINDS)} />
+      {f.kind === 'test' && (
+        <div className="field"><span>Fach</span>
+          <ChipPick options={FAECHER.map((x) => ({ id: x, label: x }))} value={f.fach}
+            onPick={(x) => set({ fach: f.fach === x ? null : x, ...(!f.title.trim() || /^(Test|Klassenarbeit|Vokabeltest|Lernkontrolle) /.test(f.title) ? { title: testTitle(f.title.split(' ')[0] && TEST_ARTEN.includes(f.title.split(' ')[0]) ? f.title.split(' ')[0] : 'Test', x) } : {}) })} />
+        </div>
+      )}
       <div className="field"><span>Wer?</span>
         <ChipPick multi options={whoOpts} value={f.who} onPick={pickWho} />
       </div>
-      {kidEvent && (
+      {kidEvent && f.kind !== 'test' && (
         <>
           <div className="field"><span>Bringt hin</span>
             <ChipPick options={drivers.map((n) => ({ id: n, label: n, color: driverColor(n)?.color, bg: driverColor(n)?.bg }))} value={f.bring_by} onPick={(n) => set({ bring_by: f.bring_by === n ? '' : n })} />

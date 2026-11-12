@@ -1,5 +1,5 @@
 import { Icon, PersonChips } from '../ui.jsx';
-import { hm, weekday, addDays } from '../lib/dates.js';
+import { hm, weekday, addDays, expand } from '../lib/dates.js';
 
 export const SRC = {
   fam: 'Familie',
@@ -7,8 +7,9 @@ export const SRC = {
   inbox: 'aus „Termine vereinbaren“',
   abo: 'Abo',
   scan: 'aus Elternbrief',
+  station: 'vom Familien-iPad',
 };
-export const KINDS = { termin: 'Termin', frist: 'Frist', geburtstag: 'Geburtstag' };
+export const KINDS = { termin: 'Termin', test: 'Test', frist: 'Frist', geburtstag: 'Geburtstag' };
 
 export function timeLabel(ev, date) {
   if (ev.all_day) {
@@ -21,15 +22,16 @@ export function timeLabel(ev, date) {
 export function EventRow({ ev, date, ctx, showDate }) {
   const sub = [
     !ev.all_day && ev.to_time ? `bis ${hm(ev.to_time)}` : null,
-    ev.kind !== 'termin' ? KINDS[ev.kind] : null,
+    ev.kind !== 'termin' && ev.kind !== 'test' ? KINDS[ev.kind] : null,
     ev.rep !== 'keine' ? ev.rep : null,
-    ev.src === 'abo' ? (ctx.data.subs?.rows.find((x) => x.id === ev.sub_id)?.name ?? 'Abo') : SRC[ev.src] && ev.src !== 'fam' ? SRC[ev.src] : null,
+    ev.src === 'station' && ctx.member(ev.created_by) ? `eingetragen von ${ctx.member(ev.created_by).name}`
+      : ev.src === 'abo' ? (ctx.data.subs?.rows.find((x) => x.id === ev.sub_id)?.name ?? 'Abo') : SRC[ev.src] && ev.src !== 'fam' ? SRC[ev.src] : null,
   ].filter(Boolean).join(' · ');
   return (
     <button className="row" onClick={() => ctx.openEvent(ev, { date })}>
       <span className="time" style={ev.all_day ? { fontSize: 12, color: '#57534E' } : undefined}>{showDate || timeLabel(ev, date)}</span>
       <span className="row-main">
-        <span className="row-title">{ev.title}</span>
+        <span className="row-title">{ev.kind === 'test' ? <span className="test-tag">📝 Test</span> : null}{ev.title}</span>
         <PersonChips who={ev.who} members={ctx.members} />
         <BringPick ev={ev} />
         {sub && <span className="small">{sub}</span>}
@@ -48,6 +50,11 @@ export function packList(ctx, kid, date) {
     ...ctx.data.packItems.rows.filter((p) => p.kid === kid && p.on_date === date && p.art === 'mit').map((p) => ({ key: `i:${p.id}`, text: p.text, one: p })),
   ].map((x) => ({ ...x, done: checks.has(x.key) }));
   const notes = ctx.data.packItems.rows.filter((p) => p.kid === kid && p.on_date === date && p.art !== 'mit');
+  // Tests: am Tag selbst und am Tag davor als Hinweis
+  for (const o of expand(ctx.data.events.rows.filter((e) => e.kind === 'test' && e.who.includes(kid)), date, addDays(date, 1))) {
+    notes.push({ id: `test-${o.ev.id}-${o.date}`, art: 'test',
+      text: o.date === date ? `📝 ${o.ev.title} – viel Erfolg!` : `📝 Morgen ${o.ev.title} – heute nochmal üben` });
+  }
   return { items, notes };
 }
 

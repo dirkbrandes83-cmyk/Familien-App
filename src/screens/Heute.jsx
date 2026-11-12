@@ -1,6 +1,7 @@
 import { Icon } from '../ui.jsx';
 import { addDays, expand, shortLabel } from '../lib/dates.js';
 import { EventRow, packList, packDay } from './common.jsx';
+import { upcomingTests, countdown, urgency } from '../lib/tests.js';
 import { mealOf, muellOf, Bin, choresToday, toggleChore } from './Zuhause.jsx';
 import { muellHeute, muellStatus, WASH, agoLabel } from '../lib/home.js';
 import { Check } from '../ui.jsx';
@@ -51,6 +52,8 @@ export default function Heute({ ctx }) {
         {tomEv.length === 0 ? <div className="empty">Nichts geplant.</div>
           : <div>{tomEv.map((o) => <EventRow key={o.ev.id + o.date} ev={o.ev} date={o.date} ctx={ctx} />)}</div>}
       </section>
+
+      <TestsBald ctx={ctx} />
 
       <section className="card tight" aria-label="Erinnerungen">
         <div className="card-head" style={{ padding: '6px 0 0' }}>
@@ -117,6 +120,29 @@ function ZuhauseHeute({ ctx }) {
             <Check on={c.done} /><span className={`row-title${c.done ? ' done' : ''}`}>{c.title}</span>
           </button>
         ))}
+      </div>
+    </section>
+  );
+}
+
+// Tests der Kinder in den nächsten 2 Wochen (heute/morgen stehen schon oben bei den Terminen)
+function TestsBald({ ctx }) {
+  const list = upcomingTests(ctx.data.events.rows, addDays(ctx.day, 2), 12);
+  if (!list.length) return null;
+  return (
+    <section className="card" aria-labelledby="h-tests" style={{ gap: 4 }}>
+      <div className="card-title" id="h-tests">📝 Tests demnächst</div>
+      <div className="tests-soon">
+        {list.map((o) => {
+          const kid = ctx.kids.find((k) => o.ev.who.includes(k.id));
+          return (
+            <button key={o.ev.id + o.date} className="test-line" onClick={() => ctx.openEvent(o.ev, { date: o.date })}>
+              <span style={{ fontWeight: 700, color: kid?.color, minWidth: 48 }}>{kid?.name ?? ''}</span>
+              <span style={{ fontWeight: 600 }}>{o.ev.title}</span>
+              <span className={`test-count ${urgency(ctx.day, o.date)}`}>{shortLabel(o.date)} · {countdown(ctx.day, o.date)}</span>
+            </button>
+          );
+        })}
       </div>
     </section>
   );

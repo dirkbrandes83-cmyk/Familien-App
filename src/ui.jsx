@@ -1,6 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 
+const DOC = <><path d="M14 3.5H6.5a1 1 0 0 0-1 1v15a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V8z" /><path d="M14 3.5V8h4.5" /></>;
 const PATHS = {
+  backpack: <><path d="M6.5 9a5.5 5.5 0 0 1 11 0v10.5a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1z" /><path d="M9.5 4.6V3.5h5v1.1" /><path d="M9 13.5h6v3.5H9z" /></>,
+  todo: <><rect x="5" y="4.5" width="14" height="16" rx="2" /><path d="M9 3h6v3H9z" /><path d="m8.5 13.2 2.4 2.4 4.6-4.8" /></>,
+  bag: <><path d="M5 8.5h14l-1.1 11.5H6.1z" /><path d="M9 11V7a3 3 0 0 1 6 0v4" /></>,
+  gift: <><rect x="4" y="10" width="16" height="10.5" rx="1" /><path d="M3 10h18M12 10v10.5" /><path d="M12 10C10.5 6 6.5 5.8 7.2 8.4 7.6 9.8 12 10 12 10zm0 0c1.5-4 5.5-4.2 4.8-1.6-.4 1.4-4.8 1.6-4.8 1.6z" /></>,
+  phone: <path d="M6.5 3.5h3l1.5 4-2 1.5a11 11 0 0 0 6 6l1.5-2 4 1.5v3a2 2 0 0 1-2 2A16 16 0 0 1 4.5 5.5a2 2 0 0 1 2-2z" />,
+  form: <>{DOC}<path d="M8.5 12.5h7M8.5 16h4.5" /></>,
+  cancel: <>{DOC}<path d="m9.5 12 5 5m0-5-5 5" /></>,
+  euro: <><circle cx="12" cy="12" r="8.5" /><path d="M15.2 8.8a4 4 0 1 0 0 6.4M7.5 11h6M7.5 13.3h6" /></>,
+  dots: <><circle cx="6" cy="12" r="1.2" /><circle cx="12" cy="12" r="1.2" /><circle cx="18" cy="12" r="1.2" /></>,
+  star: <path d="m12 3.5 2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.8l-5.2 2.8 1-5.8-4.3-4.1 5.9-.8z" />,
   home: <><path d="M3.5 11 12 4l8.5 7" /><path d="M5.5 9.5V20h13V9.5" /></>,
   cal: <><rect x="3.5" y="5" width="17" height="15" rx="2" /><path d="M3.5 10h17M8 3v4M16 3v4" /></>,
   cart: <><path d="M3 4h2l2.2 11h11l2-8H6.3" /><circle cx="9" cy="19.5" r="1.4" /><circle cx="17" cy="19.5" r="1.4" /></>,
@@ -83,8 +94,8 @@ export function ChipPick({ options, value, onPick, multi }) {
 export function Seg({ options, value, onPick, label }) {
   return (
     <div className="seg" role="group" aria-label={label}>
-      {options.map(([id, text]) => (
-        <button key={id} type="button" className={value === id ? 'on' : ''} aria-pressed={value === id} onClick={() => onPick(id)}>{text}</button>
+      {options.map(([id, text, aria]) => (
+        <button key={id} type="button" className={value === id ? 'on' : ''} aria-pressed={value === id} aria-label={aria} title={aria} onClick={() => onPick(id)}>{text}</button>
       ))}
     </div>
   );
@@ -138,4 +149,9 @@ export function Toast({ toast, onClose }) {
       {toast.undo && <button onClick={() => { toast.undo(); onClose(); }}>Rückgängig</button>}
     </div>
   );
+}
+
+// Kategorie als gezeichnetes Symbol (Name als Tooltip und für VoiceOver)
+export function CatIcon({ name, label, size = 16 }) {
+  return <span className="cat-icon" title={label} role="img" aria-label={label}><Icon name={name} size={size} /></span>;
 }

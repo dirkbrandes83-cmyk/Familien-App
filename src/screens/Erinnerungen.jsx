@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { supabase, run } from '../data.js';
-import { Icon, Check, Swipe, Sheet, Seg, ChipPick } from '../ui.jsx';
+import { Icon, Check, Swipe, Sheet, Seg, ChipPick, CatIcon } from '../ui.jsx';
 import { addDays, longLabel, shortLabel, WD } from '../lib/dates.js';
 import { packList, packDay } from './common.jsx';
 import Geschenke from './Geschenke.jsx';
@@ -11,10 +11,10 @@ export default function Erinnerungen({ ctx, seg, setSeg }) {
   return (
     <>
       <Seg label="Bereich" value={seg} onPick={setSeg} options={[
-        ['mitnehmen', 'Mitnehmen'],
-        ['vereinbaren', `Erledigen${inboxN ? ` ${inboxN}` : ''}`],
-        ['besorgen', `Besorgen${buyN ? ` ${buyN}` : ''}`],
-        ['geschenke', '🎁'],
+        ['vereinbaren', <SegIcon name="todo" n={inboxN} />, `Erledigen${inboxN ? `, ${inboxN} offen` : ''}`],
+        ['mitnehmen', <SegIcon name="backpack" />, 'Mitnehmen'],
+        ['besorgen', <SegIcon name="bag" n={buyN} />, `Besorgen${buyN ? `, ${buyN} offen` : ''}`],
+        ['geschenke', <SegIcon name="gift" />, 'Geschenke'],
       ]} />
       {seg !== 'geschenke' && <button className="btn dashed" onClick={ctx.openScan}>Elternbrief scannen</button>}
       {seg === 'mitnehmen' ? <Mitnehmen ctx={ctx} /> : seg === 'vereinbaren' ? <Vereinbaren ctx={ctx} /> : seg === 'geschenke' ? <Geschenke ctx={ctx} /> : <Besorgen ctx={ctx} />}
@@ -23,6 +23,12 @@ export default function Erinnerungen({ ctx, seg, setSeg }) {
 }
 
 const ART = { mit: 'Mitbringen', an: 'Steht an', bes: 'Besonderheit' };
+const ART_ICON = { mit: 'backpack', an: 'bell', bes: 'star' };
+const TYP_ICON = { termin: 'cal', anrufen: 'phone', ausfuellen: 'form', kuendigen: 'cancel', ueberweisen: 'euro', sonstiges: 'dots' };
+
+function SegIcon({ name, n }) {
+  return <span className="seg-icon" aria-hidden="true"><Icon name={name} size={22} />{n ? <span className="seg-n">{n}</span> : null}</span>;
+}
 const kidOpts = (ctx) => ctx.kids.map((k) => ({ id: k.id, label: k.name, color: k.color, bg: k.bg }));
 
 /* ---------------- Mitnehmen ---------------- */
@@ -58,9 +64,11 @@ function Mitnehmen({ ctx }) {
               <span style={{ fontWeight: 700, fontSize: 18, color: k.color }}>{k.name}</span>
               <span className="small">{label}</span>
             </div>
-            {notes.map((n) => (
+            {notes.map((n) => n.art === 'test' ? (
+              <div key={n.id} className="row" style={{ minHeight: 40 }}><span className="row-main" style={{ fontWeight: 600 }}>{n.text}</span></div>
+            ) : (
               <Swipe key={n.id} onLeft={() => removeOne(n)}>
-                <div className="row" style={{ minHeight: 40 }}><span className="tag">{ART[n.art]}</span><span className="row-main">{n.text}</span></div>
+                <div className="row" style={{ minHeight: 40 }}><CatIcon name={ART_ICON[n.art] || 'bell'} label={ART[n.art]} /><span className="row-main">{n.text}</span></div>
               </Swipe>
             ))}
             {items.length === 0 && <div className="empty">Nichts einzupacken.</div>}
@@ -229,10 +237,10 @@ function Vereinbaren({ ctx }) {
             return (
               <Swipe key={r.id} onRight={() => finish(r)} onLeft={() => del(r)}>
                 <div className="row">
+                  <CatIcon name={TYP_ICON[typ]} label={TYP_KURZ[typ]} size={18} />
                   <span className="row-main">
                     <span className="row-title" style={{ fontWeight: 600 }}>{r.title}</span>
                     <span className="small" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                      <span className="tag">{TYP_KURZ[typ]}</span>
                       {r.due && <b style={{ color: soon ? '#B45309' : undefined }}>bis {shortLabel(r.due)}</b>}
                       {who && <b style={{ color: who.color }}>{who.name}</b>}
                       {owner ? <span>· {owner.id === ctx.me.id ? 'du kümmerst dich' : `${owner.name} kümmert sich`}</span> : typ === 'termin' ? <span>· Dirk plant ein</span> : null}
@@ -250,7 +258,7 @@ function Vereinbaren({ ctx }) {
       </section>
       <form className="card" onSubmit={add}>
         <div className="field"><span>Was ist zu tun?</span>
-          <ChipPick options={Object.entries(TYP).map(([id, label]) => ({ id, label }))} value={f.typ} onPick={(t) => setF({ ...f, typ: t })} />
+          <ChipPick options={Object.entries(TYP).map(([id, label]) => ({ id, label: <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon name={TYP_ICON[id]} size={17} />{label}</span> }))} value={f.typ} onPick={(t) => setF({ ...f, typ: t })} />
         </div>
         <label className="field"><span>{TYP[f.typ]}: was genau?</span>
           <input className="input" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} placeholder={PLACEHOLDER[f.typ]} maxLength={200} />

@@ -66,7 +66,7 @@ function Family({ session }) {
 
 function Shell({ me, members }) {
   const [tab, setTab] = useState(() => sessionStorage.getItem('tab') || 'heute');
-  const [erSeg, setErSeg] = useState('mitnehmen');
+  const [erSeg, setErSeg] = useState('vereinbaren');
   const [zhSeg, setZhSeg] = useState('essen');
   const [calSeg, setCalSeg] = useState('termine');
   const [mehr, setMehr] = useState(false);

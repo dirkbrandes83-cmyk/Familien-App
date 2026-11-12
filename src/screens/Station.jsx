@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase, useTable, useHomeTables, run, learnedSections } from '../data.js';
 import { mealOf, muellOf, Bin, choresToday, toggleChore } from './Zuhause.jsx';
+import { upcomingTests, countdown, urgency, dayChip, pickDays, FAECHER, TEST_ARTEN, testTitle } from '../lib/tests.js';
 import { muellHeute, muellStatus } from '../lib/home.js';
 import { Icon, Check, Toast, PersonChips } from '../ui.jsx';
 import { addDays, expand, longLabel, shortLabel, today, hm, WDL, weekday } from '../lib/dates.js';
@@ -98,6 +99,7 @@ export default function Station({ members }) {
 }
 
 function timeOf(ev) {
+  if (ev.kind === 'test') return ev.all_day ? '📝' : hm(ev.from_time);
   if (ev.all_day) return ev.kind === 'geburtstag' ? 'Geb.' : ev.kind === 'frist' ? 'Frist' : 'ganzt.';
   return hm(ev.from_time);
 }
@@ -108,7 +110,7 @@ function EvList({ list, ctx, empty = 'Nichts geplant.' }) {
     <div key={o.ev.id + o.date} className="st-ev">
       <span className="st-evtime">{timeOf(o.ev)}{!o.ev.all_day && o.ev.to_time && <span className="st-evend">bis {hm(o.ev.to_time)}</span>}</span>
       <span className="st-evmain">
-        <span className="st-evtitle">{o.ev.title}</span>
+        <span className="st-evtitle">{o.ev.kind === 'test' && <span className="test-tag">Test</span>}{o.ev.title}</span>
         <PersonChips who={o.ev.who} members={ctx.members} />
         <BringPick ev={o.ev} big />
       </span>
@@ -247,7 +249,7 @@ function Kind({ ctx, kid }) {
         </div>
         {notes.length > 0 && (
           <div className="st-notes">
-            {notes.map((n) => <div key={n.id} className="st-note big">{n.art === 'bes' ? 'Besonders: ' : 'Steht an: '}{n.text}</div>)}
+            {notes.map((n) => <div key={n.id} className="st-note big">{n.art === 'bes' ? 'Besonders: ' : n.art === 'test' ? '' : 'Steht an: '}{n.text}</div>)}
           </div>
         )}
         {items.length === 0 && <div className="st-empty">Nichts einzupacken.</div>}
@@ -259,6 +261,7 @@ function Kind({ ctx, kid }) {
         {items.length > 0 && open.length === 0 && <div className="st-done">Alles eingepackt!</div>}
       </section>
       <section className="st-card">
+        <MeineTests ctx={ctx} kid={kid} />
         <FuerMich ctx={ctx} kid={kid} />
         <h2>Meine Termine</h2>
         <h3>Heute</h3>
@@ -278,6 +281,32 @@ function Kind({ ctx, kid }) {
         <div className="st-meal">{mealOf(ctx, ctx.day).title}</div>
       </section>
     </main>
+  );
+}
+
+// Kommende Tests mit Countdown – je näher, desto kräftiger die Farbe
+function MeineTests({ ctx, kid }) {
+  const list = upcomingTests(ctx.data.events.rows, ctx.day, 21, kid.id);
+  if (!list.length) return null;
+  return (
+    <>
+      <h2>Meine Tests</h2>
+      <div className="st-tests" style={{ marginBottom: 14 }}>
+        {list.map((o) => {
+          const c = dayChip(ctx.day, o.date);
+          return (
+            <div key={o.ev.id + o.date} className={`st-test ${urgency(ctx.day, o.date)}`}>
+              <div className="st-testday"><b>{c.top}</b><span>{c.sub}</span></div>
+              <div className="st-testmain">
+                <span className="st-testtitle">{o.ev.title}</span>
+                {o.ev.note && <span className="st-testnote">{o.ev.note}</span>}
+              </div>
+              <span className="st-testcount">{countdown(ctx.day, o.date)}</span>
+            </div>
+          );
+        })}
+      </div>
+    </>
   );
 }
 
@@ -311,6 +340,127 @@ function FuerMich({ ctx, kid }) {
     </>
   );
 }
+
+// Kinder tragen selbst ein: erst was, dann wann – alles mit großen Knöpfen
+const TYPEN = [
+  ['test', '📝', 'Test oder Klassenarbeit'],
+  ['feier', '🎉', 'Einladung oder Feier'],
+  ['termin', '📅', 'Anderer Termin'],
+];
+const STUNDEN = ['8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19'];
+
+function KidTermin({ ctx, by, chip, busy, setBusy, done }) {
+  const me = ctx.member(by);
+  const [kid, setKid] = useState(me?.kid ? me.id : ctx.kids.length === 1 ? ctx.kids[0].id : null);
+  const [typ, setTyp] = useState(null);
+  const [fach, setFach] = useState(null);
+  const [art, setArt] = useState('Test');
+  const [title, setTitle] = useState('');
+  const [note, setNote] = useState('');
+  const [date, setDate] = useState(null);
+  const [h, setH] = useState(null);
+  const [min, setMin] = useState('00');
+  const [other, setOther] = useState(false);
+  const k = ctx.member(kid);
+  const isTest = typ === 'test';
+  const days = pickDays(ctx.day, isTest ? 15 : 14, isTest);
+  const finalTitle = isTest ? (fach ? testTitle(art, fach) : '') : title.trim();
+  const ready = kid && typ && finalTitle && date;
+
+  const save = async () => {
+    if (!ready) return;
+    setBusy(true);
+    const ok = await run(supabase.from('events').insert({
+      title: finalTitle, kind: isTest ? 'test' : 'termin', fach: isTest ? fach : null, who: [kid],
+      start_date: date, all_day: isTest || !h, from_time: !isTest && h ? `${h.padStart(2, '0')}:${min}` : null,
+      note: note.trim(), src: 'station', created_by: by || kid,
+    }), ctx.fail);
+    setBusy(false);
+    if (ok) done(isTest ? `${finalTitle} ist eingetragen – viel Erfolg!` : `${finalTitle} steht im Kalender`);
+  };
+
+  const c = dayChip(ctx.day, date || ctx.day);
+  return (
+    <>
+      {!(me?.kid) && (
+        <div className="field"><span>Für wen?</span>
+          <div className="chips">{ctx.kids.map((x) => <button key={x.id} className="chip st-chip" style={chip(kid === x.id, x)} aria-pressed={kid === x.id} onClick={() => setKid(x.id)}>{x.name}</button>)}</div>
+        </div>
+      )}
+      <div className="field"><span>Was ist es?</span>
+        <div className="st-typen">
+          {TYPEN.map(([id, icon, label]) => (
+            <button key={id} className={`st-typ${typ === id ? ' on' : ''}`} aria-pressed={typ === id}
+              onClick={() => { setTyp(id); setDate(null); if (id === 'test') setH(null); }}>
+              <span className="st-typicon" aria-hidden="true">{icon}</span><span>{label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {isTest && (
+        <>
+          <div className="field"><span>Welches Fach?</span>
+            <div className="chips">{FAECHER.map((f) => <button key={f} className="chip st-chip" style={chip(fach === f)} aria-pressed={fach === f} onClick={() => setFach(f)}>{f}</button>)}</div>
+          </div>
+          <div className="field"><span>Was für einer?</span>
+            <div className="chips">{TEST_ARTEN.map((a) => <button key={a} className="chip st-chip" style={chip(art === a)} aria-pressed={art === a} onClick={() => setArt(a)}>{a}</button>)}</div>
+          </div>
+          <label className="field"><span>Was kommt dran? (wenn du es weißt)</span>
+            <input className="input st-input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="z. B. Einmaleins, Seite 34–36" maxLength={160} />
+          </label>
+        </>
+      )}
+      {typ && !isTest && (
+        <label className="field"><span>{typ === 'feier' ? 'Was für eine Feier?' : 'Was für ein Termin?'}</span>
+          <input className="input st-input" value={title} onChange={(e) => setTitle(e.target.value)}
+            placeholder={typ === 'feier' ? 'z. B. Geburtstag bei Paul' : 'z. B. Probe für das Theaterstück'} maxLength={120} />
+        </label>
+      )}
+
+      {typ && (
+        <div className="field"><span>Wann?{isTest ? ' (nur Schultage)' : ''}</span>
+          <div className="st-days">
+            {days.map((d) => {
+              const x = dayChip(ctx.day, d);
+              return (
+                <button key={d} className={`st-day${date === d ? ' on' : ''}`} aria-pressed={date === d} onClick={() => { setDate(d); setOther(false); }}>
+                  <b>{x.top}</b><span>{x.sub}</span>
+                </button>
+              );
+            })}
+            <button className={`st-day${other ? ' on' : ''}`} onClick={() => setOther(true)}><b>Später</b><span>Datum wählen</span></button>
+          </div>
+          {other && <input className="input st-input" type="date" min={ctx.day} value={date || ''} onChange={(e) => setDate(e.target.value || null)} style={{ marginTop: 8 }} />}
+        </div>
+      )}
+
+      {typ && !isTest && date && (
+        <div className="field"><span>Um wie viel Uhr?</span>
+          <div className="chips">
+            <button className="chip st-chip" style={chip(!h)} aria-pressed={!h} onClick={() => setH(null)}>Weiß ich nicht</button>
+            {STUNDEN.map((x) => <button key={x} className="chip st-chip" style={chip(h === x)} aria-pressed={h === x} onClick={() => setH(x)}>{x} Uhr</button>)}
+          </div>
+          {h && (
+            <div className="chips" style={{ marginTop: 8 }}>
+              {['00', '15', '30', '45'].map((m) => <button key={m} className="chip st-chip" style={chip(min === m)} aria-pressed={min === m} onClick={() => setMin(m)}>{h}:{m}</button>)}
+            </div>
+          )}
+        </div>
+      )}
+
+      {ready && (
+        <div className={`st-preview${isTest ? ' test' : ''}`}>
+          <span className="st-typicon" aria-hidden="true">{TYPEN.find((t) => t[0] === typ)[1]}</span>
+          <span><b>{finalTitle}</b><br />{c.top === 'Heute' || c.top === 'Morgen' ? c.top : weekdayName(date)}, {c.sub.replace(/^\D+ /, '')}{!isTest && h ? ` · ${h}:${min} Uhr` : ''} · {k?.name}</span>
+        </div>
+      )}
+      <button className="btn st-big" disabled={busy || !ready} onClick={save}>In den Kalender</button>
+      {!ready && typ && <div className="st-empty">{!kid ? 'Wähle oben, für wen.' : isTest && !fach ? 'Wähle das Fach.' : !finalTitle ? 'Schreib kurz, was es ist.' : 'Wähle den Tag.'}</div>}
+    </>
+  );
+}
+const weekdayName = (d) => WDL[weekday(d)];
 
 function SpeakIcon() {
   return (
@@ -380,6 +530,7 @@ function Eintragen({ ctx, init, onClose }) {
   };
 
   const tiles = [
+    ['termin', 'Termin oder Test', 'Trag es selbst in den Kalender ein'],
     ['shop', 'Ist alle!', 'Etwas ist aufgebraucht'],
     ['mit', 'Muss morgen mit', 'Für die Einpackliste'],
     ['kleidung', 'Kleidung brauche ich', 'Was und welche Größe'],
@@ -387,7 +538,7 @@ function Eintragen({ ctx, init, onClose }) {
     ['anst', 'Termin muss gemacht werden', 'Dirk plant es ein'],
     ['wunsch', 'Essenswunsch', 'Catrin plant es ein'],
   ];
-  const titles = { besorgen: 'Muss besorgt werden', shop: 'Ist alle!', mit: 'Muss morgen mit', kleidung: 'Kleidung brauche ich', anst: 'Termin muss gemacht werden', wunsch: 'Essenswunsch' };
+  const titles = { termin: 'Termin oder Test', besorgen: 'Muss besorgt werden', shop: 'Ist alle!', mit: 'Muss morgen mit', kleidung: 'Kleidung brauche ich', anst: 'Termin muss gemacht werden', wunsch: 'Essenswunsch' };
   const saveWunsch = async (title) => {
     if (!title.trim()) return;
     setBusy(true);
@@ -427,6 +578,8 @@ function Eintragen({ ctx, init, onClose }) {
             ))}
           </div>
         )}
+
+        {step === 'termin' && <KidTermin ctx={ctx} by={by} chip={chip} busy={busy} setBusy={setBusy} done={done} />}
 
         {step === 'shop' && (
           <>
