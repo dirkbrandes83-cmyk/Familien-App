@@ -98,6 +98,7 @@ function FuerDich({ ctx }) {
     items.push({
       key: `t${r.id}`, text: r.title, sub: r.due ? `bis ${shortLabel(r.due)}` : null, warn: r.due && r.due <= addDays(ctx.day, 1),
       done: async () => run(supabase.from('todo_inbox').update({ done_at: new Date().toISOString() }).eq('id', r.id), ctx.fail),
+      undo: async () => run(supabase.from('todo_inbox').update({ done_at: null }).eq('id', r.id), ctx.fail),
     });
   }
   // Besorgen mit Frist in den nächsten 3 Tagen (z. B. Geschenke)
@@ -105,6 +106,7 @@ function FuerDich({ ctx }) {
     items.push({
       key: `b${b.id}`, text: b.typ === 'kleidung' ? `${b.art}${b.size ? ` (${b.size})` : ''} besorgen` : b.art, sub: `bis ${shortLabel(b.due)}`, warn: b.due <= addDays(ctx.day, 1),
       done: async () => run(supabase.from('buy_items').update({ done: true, done_at: new Date().toISOString() }).eq('id', b.id), ctx.fail),
+      undo: async () => run(supabase.from('buy_items').update({ done: false, done_at: null }).eq('id', b.id), ctx.fail),
     });
   }
   // Müll – nur am Rausstell-Tag und wenn ich dran bin
@@ -142,7 +144,7 @@ function FuerDich({ ctx }) {
         const off = hidden.includes(i.key);
         return (
           <button key={i.key} className="h-item" aria-pressed={off}
-            onClick={async () => { if (off) { setHidden((h) => h.filter((k) => k !== i.key)); return; } hide(i.key); if (i.done) await i.done(); }}>
+            onClick={async () => { if (off) { setHidden((h) => h.filter((k) => k !== i.key)); return; } hide(i.key); if (i.done && await i.done()) ctx.say(`Erledigt: ${i.text}`, i.undo); }}>
             <Check on={off} /><span className={`h-item-text${off ? ' done' : ''}`}>{i.text}</span>
             {i.sub && <span className={`h-item-sub${i.warn ? ' warn' : ''}`}>{i.sub}</span>}
           </button>

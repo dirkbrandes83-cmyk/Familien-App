@@ -255,6 +255,7 @@ function Vereinbaren({ ctx }) {
             );
           })}
         </div>
+        <ZuletztErledigt ctx={ctx} />
       </section>
       <form className="card" onSubmit={add}>
         <div className="field"><span>Was ist zu tun?</span>
@@ -394,5 +395,28 @@ function OtherSheet({ ctx, onClose }) {
         <input className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="z. B. Paul wünscht sich Lego, ca. 15 €" maxLength={200} />
       </label>
     </Sheet>
+  );
+}
+
+// Versehentlich abgehakt? Die letzten 7 Tage lassen sich zurückholen.
+function ZuletztErledigt({ ctx }) {
+  const [open, setOpen] = useState(false);
+  const seit = Date.now() - 7 * 86400000;
+  const list = ctx.data.inbox.rows.filter((r) => r.done_at && Date.parse(r.done_at) > seit).sort((a, b) => b.done_at.localeCompare(a.done_at));
+  if (!list.length) return null;
+  const back = async (r) => {
+    const ok = await run(supabase.from('todo_inbox').update({ done_at: null }).eq('id', r.id), ctx.fail);
+    if (ok) ctx.say(`„${r.title}“ ist wieder offen`);
+  };
+  return (
+    <div style={{ borderTop: '1px solid #F0EBE3', paddingTop: 6 }}>
+      <button className="h-more" onClick={() => setOpen(!open)} aria-expanded={open}>{open ? 'Zuletzt erledigt ausblenden' : `Zuletzt erledigt (${list.length})`}</button>
+      {open && list.map((r) => (
+        <div key={r.id} className="row" style={{ minHeight: 44 }}>
+          <span className="row-main"><span className="row-title done">{r.title}</span><span className="small">erledigt {shortLabel(r.done_at.slice(0, 10))}</span></span>
+          <button className="btn ghost small" style={{ width: 'auto' }} onClick={() => back(r)}>Zurückholen</button>
+        </div>
+      ))}
+    </div>
   );
 }
