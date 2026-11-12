@@ -72,6 +72,7 @@ export function useHomeTables() {
     subs: useTable('calendar_subscriptions'),
     shopSections: useTable('shop_sections', (r) => r.name),
     timetables: useTable('timetables', (r) => r.kid),
+    checkins: useTable('checkins', (r) => r.sonntag),
   };
 }
 

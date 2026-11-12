@@ -3,6 +3,7 @@ import { supabase, useTable, useHomeTables, run, learnedSections } from '../data
 import { mealOf, muellOf, Bin, choresToday, toggleChore } from './Zuhause.jsx';
 import { upcomingTests, countdown, urgency, dayChip, pickDays, FAECHER, TEST_ARTEN, testTitle } from '../lib/tests.js';
 import { lessonsFor, schoolDay, fachFarbe } from '../lib/stundenplan.js';
+import CheckIn from './CheckIn.jsx';
 import { muellHeute, muellStatus } from '../lib/home.js';
 import { Icon, Check, Toast, PersonChips } from '../ui.jsx';
 import { addDays, expand, longLabel, shortLabel, today, hm, WDL, weekday } from '../lib/dates.js';
@@ -20,6 +21,7 @@ export default function Station({ members }) {
   const [day, setDay] = useState(today());
   const [now, setNow] = useState(new Date());
   const [sheet, setSheet] = useState(null);
+  const [checkin, setCheckin] = useState(false);
   const [toast, setToast] = useState(null);
   const idle = useRef(null);
   const hold = useRef(null);
@@ -87,6 +89,11 @@ export default function Station({ members }) {
             </button>
           ))}
         </nav>
+        {weekday(day) === 6 && (
+          <button className="btn st-add st-ci" onClick={() => setCheckin(true)}>
+            {ctx.data.checkins.rows.find((r) => r.sonntag === day)?.fertig ? '✓ Check-in' : '☀️ Check-in'}
+          </button>
+        )}
         <button className="btn st-add" onClick={() => setSheet({ by: view !== 'alle' ? view : null })}><Icon name="plus" size={24} />Eintragen</button>
       </header>
 
@@ -94,6 +101,7 @@ export default function Station({ members }) {
         : <Kind ctx={ctx} kid={ctx.member(view)} />}
 
       {sheet && <Eintragen ctx={ctx} init={sheet} onClose={() => setSheet(null)} />}
+      {checkin && <CheckIn ctx={ctx} onClose={() => setCheckin(false)} />}
       <Toast toast={toast} onClose={() => setToast(null)} />
     </div>
   );

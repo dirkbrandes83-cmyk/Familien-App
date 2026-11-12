@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { Icon } from '../ui.jsx';
-import { addDays, expand, shortLabel } from '../lib/dates.js';
+import CheckIn from './CheckIn.jsx';
+import { addDays, expand, shortLabel, weekday } from '../lib/dates.js';
 import { EventRow, packList, packDay } from './common.jsx';
 import { upcomingTests, countdown, urgency } from '../lib/tests.js';
 import { mealOf, muellOf, Bin, choresToday, toggleChore } from './Zuhause.jsx';
@@ -7,6 +9,7 @@ import { muellHeute, muellStatus, WASH, agoLabel } from '../lib/home.js';
 import { Check } from '../ui.jsx';
 
 export default function Heute({ ctx }) {
+  const [ci, setCi] = useState(false);
   const { day, data } = ctx;
   const tomorrow = addDays(day, 1);
   const occ = expand(data.events.rows, day, tomorrow);
@@ -53,6 +56,14 @@ export default function Heute({ ctx }) {
           : <div>{tomEv.map((o) => <EventRow key={o.ev.id + o.date} ev={o.ev} date={o.date} ctx={ctx} />)}</div>}
       </section>
 
+      {weekday(day) === 6 && !ctx.data.checkins.rows.find((r) => r.sonntag === day)?.fertig && (
+        <button className="card ci-card" onClick={() => setCi(true)}>
+          <span style={{ fontSize: 28 }} aria-hidden="true">☀️</span>
+          <span className="row-main"><b>Sonntags-Check-in</b><span className="small">Wie war die Woche? Was kommt? Am iPad oder hier starten.</span></span>
+          <Icon name="chev" size={18} />
+        </button>
+      )}
+      {ci && <CheckIn ctx={ctx} onClose={() => setCi(false)} />}
       <TestsBald ctx={ctx} />
 
       <section className="card tight" aria-label="Erinnerungen">

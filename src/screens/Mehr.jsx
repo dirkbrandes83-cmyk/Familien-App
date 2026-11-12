@@ -6,6 +6,8 @@ import { shortLabel, hm } from '../lib/dates.js';
 import Mitteilungen from './Mitteilungen.jsx';
 import Widget from './Widget.jsx';
 import Stundenplan from './Stundenplan.jsx';
+import CheckIn, { checkinSunday } from './CheckIn.jsx';
+import { shortLabel as sl } from '../lib/dates.js';
 
 export default function Mehr({ ctx }) {
   const [page, setPage] = useState(null);
@@ -14,6 +16,7 @@ export default function Mehr({ ctx }) {
   if (page === 'push') return <Mitteilungen ctx={ctx} onBack={() => setPage(null)} />;
   if (page === 'widget') return <Widget ctx={ctx} onBack={() => setPage(null)} />;
   if (page === 'stundenplan') return <Stundenplan ctx={ctx} onBack={() => setPage(null)} />;
+  if (page === 'checkins') return <CheckinVerlauf ctx={ctx} onBack={() => setPage(null)} />;
   const backup = async () => {
     const tables = ['events', 'shopping_items', 'frequent_items', 'pack_rules', 'pack_items', 'todo_inbox', 'buy_items', 'meals', 'recipes', 'chores', 'cleaning_areas', 'cleaning_notes', 'laundry_log', 'caregivers', 'care_needs', 'care_asks', 'calendar_subscriptions', 'settings'];
     const out = { exportiert: new Date().toISOString() };
@@ -28,6 +31,10 @@ export default function Mehr({ ctx }) {
   return (
     <>
       <section className="card tight">
+        <button className="row" style={{ minHeight: 60 }} onClick={() => setPage('checkins')}>
+          <span className="row-main"><span style={{ fontWeight: 700 }}>☀️ Sonntags-Check-in</span><span className="sub">Starten und frühere Wochen ansehen</span></span>
+          <Icon name="chev" size={18} />
+        </button>
         <button className="row" style={{ minHeight: 60 }} onClick={() => setPage('stundenplan')}>
           <span className="row-main"><span style={{ fontWeight: 700 }}>Stundenplan</span><span className="sub">{ctx.kids.map((k) => k.name).join(' und ')} – erscheint auf dem iPad</span></span>
           <Icon name="chev" size={18} />
@@ -280,6 +287,35 @@ function Abos({ ctx, onBack }) {
         <button className="btn" disabled={!f.url.trim() || !f.name.trim()}>Abo hinzufügen und abgleichen</button>
         <div className="small">Bei Kalender.digital findest du den Abo-Link in den Kalender-Einstellungen unter „Abonnieren“ bzw. „iCal-Link“.</div>
       </form>
+    </>
+  );
+}
+
+const FACE = { 1: '😢', 2: '😕', 3: '😐', 4: '🙂', 5: '😄' };
+function CheckinVerlauf({ ctx, onBack }) {
+  const [open, setOpen] = useState(false);
+  const list = [...ctx.data.checkins.rows].sort((a, b) => b.sonntag.localeCompare(a.sonntag));
+  const cur = list.find((r) => r.sonntag === checkinSunday(ctx.day));
+  return (
+    <>
+      <button className="btn ghost" onClick={onBack} style={{ alignSelf: 'flex-start' }}><Icon name="left" size={18} />Zurück</button>
+      <section className="card">
+        <div className="card-title">☀️ Sonntags-Check-in</div>
+        <div className="small">Am besten sonntags gemeinsam am Familien-iPad – dort erscheint der Knopf oben rechts. Hier geht es auch.</div>
+        <button className="btn" onClick={() => setOpen(true)}>{cur?.fertig ? 'Check-in ansehen / ergänzen' : 'Check-in starten'}</button>
+      </section>
+      {list.map((c) => (
+        <section key={c.sonntag} className="card" style={{ gap: 6 }}>
+          <div className="card-head"><b>Sonntag, {sl(c.sonntag)}</b>{!c.fertig && <span className="small">nicht abgeschlossen</span>}</div>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            {Object.entries(c.stimmung || {}).map(([id, v]) => <span key={id}><b style={{ color: ctx.member(id)?.color }}>{ctx.member(id)?.name}</b> {FACE[v]}</span>)}
+          </div>
+          {Object.entries(c.schoenstes || {}).filter(([, t]) => t).map(([id, t]) => <div key={id} className="small">✨ {ctx.member(id)?.name}: {t}</div>)}
+          {(c.danke || []).map((t, i) => <div key={i} className="small">💛 {ctx.member(t.von)?.name} → {ctx.member(t.an)?.name}{t.text ? `: ${t.text}` : ''}</div>)}
+          {c.vorhaben && <div className="small">🎯 {c.vorhaben}</div>}
+        </section>
+      ))}
+      {open && <CheckIn ctx={ctx} onClose={() => setOpen(false)} />}
     </>
   );
 }
