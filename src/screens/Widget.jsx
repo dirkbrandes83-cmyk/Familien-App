@@ -8,6 +8,7 @@ export default function Widget({ ctx, onBack }) {
   const [tokens, setTokens] = useState([]);
   const [script, setScript] = useState('');
   const [kind, setKind] = useState(null); // 'lesen' | 'einkauf'
+  const [listName, setListName] = useState('Einkaufen');
   const [copied, setCopied] = useState(false);
   const load = async () => {
     const { data } = await supabase.from('widget_tokens').select('*').order('created_at');
@@ -19,7 +20,8 @@ export default function Widget({ ctx, onBack }) {
     const dev = /iPad/.test(navigator.userAgent) ? 'iPad' : 'iPhone';
     const label = scope === 'einkauf' ? `${dev} · Einkauf/Watch` : `${dev} · Widget Heute`;
     const res = await run(supabase.from('widget_tokens').insert({ member_id: ctx.me.id, label, scope }).select('token').single(), ctx.fail);
-    if (res) { setScript((scope === 'einkauf' ? EINKAUF_SCRIPT : WIDGET_SCRIPT).replace('__KEY__', res.token)); setKind(scope); setCopied(false); load(); }
+    const name = (listName.trim() || 'Einkaufen').replace(/["\\]/g, '');
+    if (res) { setScript((scope === 'einkauf' ? EINKAUF_SCRIPT.replace('__LIST__', name) : WIDGET_SCRIPT).replace('__KEY__', res.token)); setKind(scope); setCopied(false); load(); }
   };
   const copy = async () => {
     try { await navigator.clipboard.writeText(script); setCopied(true); } catch { ctx.fail('Kopieren ging nicht – bitte den Text lange antippen und „Alles auswählen“.'); }
@@ -48,13 +50,17 @@ export default function Widget({ ctx, onBack }) {
       </section>
       <section className="card">
         <div className="card-title">Einkaufsliste auf der Apple Watch</div>
-        <div className="sub">Die Einkaufsliste erscheint in Apples <b>Erinnerungen</b> als Liste „Einkauf (Familie)“ – auf iPhone und Watch. Was du dort abhakst, ist in der Familien-App erledigt. Was du dort einträgst (auch per Siri: „Füge Milch zu Einkauf Familie hinzu“), kommt in die App.</div>
+        <div className="sub">Die Einkaufsliste wird mit einer Liste in Apples <b>Erinnerungen</b> abgeglichen – auch eure bestehende –, auf iPhone und Watch. Was du dort abhakst, ist in der Familien-App erledigt. Was du dort einträgst (auch per Siri: „Füge Milch zu Einkaufen hinzu“), kommt in die App.</div>
         <ol className="sub" style={{ margin: 0, paddingLeft: 20, lineHeight: 1.55 }}>
           <li>„Einkauf einrichten“ antippen, „Skript kopieren“.</li>
           <li>In Scriptable mit <b>+</b> ein neues Skript anlegen, einfügen, Namen „Einkauf“ geben, einmal ▶ antippen und den Zugriff auf Erinnerungen erlauben.</li>
           <li>Damit es von selbst läuft: ein Scriptable-Widget (klein) auf den Home-Bildschirm legen und „Einkauf“ wählen – es gleicht dann regelmäßig ab und zeigt die Liste.</li>
           <li>Für sofortigen Abgleich vor dem Einkaufen: In der App „Kurzbefehle“ › Automation › „App“ › <b>Erinnerungen</b> „Wird geöffnet“ und „Wird geschlossen“ › Aktion „Script ausführen“ (Scriptable) › „Einkauf“ › „Sofort ausführen“.</li>
         </ol>
+        <label className="field"><span>Name der Liste in Erinnerungen (genau wie dort geschrieben)</span>
+          <input className="input" value={listName} onChange={(e) => setListName(e.target.value)} maxLength={60} />
+        </label>
+        <div className="small">Gibt es die Liste schon, übernimmt die App beim ersten Abgleich alles, was dort offen ist. Gibt es sie nicht, wird sie angelegt. Bei einer mit Catrin geteilten Liste reicht es, wenn eine Person den Abgleich einrichtet.</div>
         {kind !== 'einkauf' && <button className="btn" onClick={() => create('einkauf')}>Einkauf einrichten</button>}
         <div className="small">Auf der Watch selbst läuft kein Abgleich: Was du dort abhakst, kommt in die Familien-App, sobald das iPhone das nächste Mal abgleicht (Widget oder Kurzbefehl).</div>
       </section>

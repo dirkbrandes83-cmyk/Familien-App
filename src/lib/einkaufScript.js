@@ -1,12 +1,12 @@
 // Vorlage für Scriptable: Einkaufsliste ↔ Apple Erinnerungen (iPhone + Apple Watch).
 // __KEY__ wird durch den persönlichen Einkaufs-Schlüssel ersetzt.
 export const EINKAUF_SCRIPT = `// Familien-App · Einkauf ↔ Erinnerungen (für iPhone und Apple Watch)
-// Gleicht die Einkaufsliste der Familien-App mit der Erinnerungen-Liste „Einkauf (Familie)“ ab:
+// Gleicht die Einkaufsliste der Familien-App mit einer Liste in Apple Erinnerungen ab:
 // – App → Erinnerungen: alles, was offen ist, erscheint in der Liste (auch auf der Watch)
 // – Erinnerungen → App: Abgehaktes wird in der App erledigt, Neues (auch per Siri) kommt dazu
 const KEY = "__KEY__";
 const API = "https://xihjjneyvtgnzfuibfzf.supabase.co/functions/v1/einkauf-sync?t=" + KEY;
-const LIST = "Einkauf (Familie)";
+const LIST = "__LIST__"; // Name der Liste in Erinnerungen
 const TAG = /\\[fa:([0-9a-f-]{36})\\]/;
 const idOf = (r) => { const m = (r.notes || "").match(TAG); return m ? m[1] : null; };
 const tag = (section, id) => (section ? section + " " : "") + "[fa:" + id + "]";
@@ -14,7 +14,8 @@ const tag = (section, id) => (section ? section + " " : "") + "[fa:" + id + "]";
 async function sync() {
   let cal;
   try { cal = await Calendar.forRemindersByTitle(LIST); }
-  catch (e) { cal = await Calendar.createForReminders(LIST); }
+  catch (e) { cal = null; }
+  if (!cal) cal = await Calendar.createForReminders(LIST);
 
   const open = await Reminder.allIncomplete([cal]);
   const done = await Reminder.allCompleted([cal]);
