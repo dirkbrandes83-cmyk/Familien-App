@@ -3,7 +3,7 @@ import { supabase, useTable, useHomeTables, run, learnedSections } from '../data
 import { mealOf, muellOf, Bin, choresToday, toggleChore } from './Zuhause.jsx';
 import { muellStatus } from '../lib/home.js';
 import { Icon, Check, Toast, PersonChips } from '../ui.jsx';
-import { addDays, expand, longLabel, today, hm, WDL, weekday } from '../lib/dates.js';
+import { addDays, expand, longLabel, shortLabel, today, hm, WDL, weekday } from '../lib/dates.js';
 import { sectionOf } from '../lib/shop.js';
 import { packList, BringPick } from './common.jsx';
 
@@ -259,6 +259,7 @@ function Kind({ ctx, kid }) {
         {items.length > 0 && open.length === 0 && <div className="st-done">Alles eingepackt!</div>}
       </section>
       <section className="st-card">
+        <FuerMich ctx={ctx} kid={kid} />
         <h2>Meine Termine</h2>
         <h3>Heute</h3>
         <EvList list={occ.filter((o) => o.date === ctx.day)} ctx={ctx} />
@@ -277,6 +278,37 @@ function Kind({ ctx, kid }) {
         <div className="st-meal">{mealOf(ctx, ctx.day).title}</div>
       </section>
     </main>
+  );
+}
+
+// Erinnerungen, die dieses Kind betreffen: Erledigen, Besorgen und Geschenke zu seinen Terminen
+function fuerKind(ctx, kidId) {
+  const evById = new Map(ctx.data.events.rows.map((e) => [e.id, e]));
+  const todos = ctx.data.inbox.rows.filter((r) => !r.done_at && r.for_who === kidId)
+    .map((r) => ({ id: 't' + r.id, text: r.title, due: r.due }));
+  const buys = ctx.data.buy.rows.filter((r) => {
+    if (r.done) return false;
+    if (r.for_who === kidId) return true;
+    const ev = r.event_id && evById.get(r.event_id);
+    return !!ev && ev.kind !== 'geburtstag' && ev.who.includes(kidId);
+  }).map((r) => ({ id: 'b' + r.id, text: r.typ === 'kleidung' ? `${r.art}${r.size ? ' (' + r.size + ')' : ''} besorgen` : r.art, due: r.due }));
+  return [...todos, ...buys].sort((a, b) => String(a.due || '9999').localeCompare(String(b.due || '9999')));
+}
+
+function FuerMich({ ctx, kid }) {
+  const list = fuerKind(ctx, kid.id);
+  if (!list.length) return null;
+  return (
+    <>
+      <h2>Für mich</h2>
+      <div className="st-notes" style={{ marginBottom: 16 }}>
+        {list.map((x) => (
+          <div key={x.id} className="st-note big">
+            {x.text}{x.due ? <span style={{ fontWeight: 500 }}> · bis {shortLabel(x.due)}</span> : null}
+          </div>
+        ))}
+      </div>
+    </>
   );
 }
 
