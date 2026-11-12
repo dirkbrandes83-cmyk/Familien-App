@@ -67,6 +67,7 @@ function Family({ session }) {
 function Shell({ me, members }) {
   const [tab, setTab] = useState(() => sessionStorage.getItem('tab') || 'heute');
   const [erSeg, setErSeg] = useState('vereinbaren');
+  const [plus, setPlus] = useState(false);
   const [zhSeg, setZhSeg] = useState('essen');
   const [calSeg, setCalSeg] = useState('termine');
   const [mehr, setMehr] = useState(false);
@@ -124,11 +125,24 @@ function Shell({ me, members }) {
             <div className="date">{longLabel(day)}</div>
             <h1>{mehr ? 'Mehr' : titles[tab]}</h1>
           </div>
+          {tab === 'heute' && !mehr && (
+            <button className="icon-btn plus-btn" aria-label="Eintragen" aria-expanded={plus} onClick={() => setPlus(!plus)}><Icon name={plus ? 'x' : 'plus'} /></button>
+          )}
           <button className="me-btn" onClick={() => setMehr(!mehr)} aria-label="Mehr: Klender-Umzug, Konto" aria-expanded={mehr}>
             <span className="avatar" style={{ background: me.bg, color: me.color }} aria-hidden="true">{me.name[0]}</span>
             <Icon name={mehr ? 'x' : 'menu'} />
           </button>
         </div>
+        {plus && tab === 'heute' && !mehr && (
+          <div className="plus-menu" role="menu">
+            {[['cal', 'Termin', () => ctx.openEvent(null, { start_date: day })],
+              ['cart', 'Einkauf', () => ctx.go('einkauf')],
+              ['todo', 'Erinnerung', () => ctx.go('erinn', 'vereinbaren')],
+              ['form', 'Elternbrief scannen', () => ctx.openScan()]].map(([ic, l, fn]) => (
+              <button key={l} role="menuitem" className="plus-item" onClick={() => { setPlus(false); fn(); }}><Icon name={ic} size={18} />{l}</button>
+            ))}
+          </div>
+        )}
       </header>
 
       <main className="main">

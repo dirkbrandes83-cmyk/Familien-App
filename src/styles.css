@@ -390,3 +390,43 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
   .wk-hearts { margin-right: auto; }
 }
 .wk-station .wk-actions .btn { min-height: 60px; font-size: 19px; }
+/* Heute (Eltern-App) */
+.plus-btn { margin-left: auto; width: 44px; height: 44px; border-radius: 22px; background: var(--teal, #0F766E); color: #fff; border: 0; }
+.head { position: relative; }
+.plus-menu { position: absolute; right: 16px; top: 100%; z-index: 30; background: #fff; border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 8px 24px rgba(28,25,23,0.12); padding: 6px; display: flex; flex-direction: column; min-width: 220px; }
+.plus-item { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 12px; border: 0; background: none; font: inherit; font-weight: 600; text-align: left; border-radius: 10px; cursor: pointer; color: inherit; }
+.plus-item:active { background: #F5F1EA; }
+.h-hints { display: flex; flex-direction: column; gap: 6px; }
+.h-hint { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; padding: 0 14px; border-radius: 14px; border: 1px solid #FCD34D; background: #FFFBEB; color: #92400E; font: inherit; font-weight: 600; text-align: left; cursor: pointer; }
+.h-next { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; border: 0; border-radius: 18px; background: #CCFBF1; color: #134E4A; padding: 14px 16px; font: inherit; cursor: pointer; width: 100%; }
+.h-next-when { font-size: 13px; font-weight: 600; color: #0F766E; }
+.h-next-title { font-family: 'Bricolage Grotesque', sans-serif; font-size: 22px; font-weight: 700; line-height: 1.2; }
+.h-next-sub { font-size: 14px; color: #115E59; }
+.h-sec { gap: 0; padding-top: 12px; padding-bottom: 8px; }
+.h-head { display: flex; align-items: center; justify-content: space-between; }
+.h-label { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; padding-bottom: 4px; }
+.h-item { display: flex; align-items: center; gap: 12px; min-height: 48px; border: 0; border-top: 1px solid #F0EBE3; background: none; padding: 0; font: inherit; text-align: left; width: 100%; color: inherit; cursor: pointer; }
+.h-label + .h-item, .h-kidname + .h-item { border-top: 0; }
+.h-item-text { flex: 1 1 auto; font-weight: 500; }
+.h-item-text.done { text-decoration: line-through; color: var(--muted2); }
+.h-item-sub { font-size: 13px; color: var(--muted); white-space: nowrap; }
+.h-item-sub.warn { color: #B45309; font-weight: 700; }
+.h-more { border: 0; background: none; color: var(--teal-d, #0F766E); font: inherit; font-weight: 600; text-align: left; padding: 8px 0; cursor: pointer; }
+.h-fahrt { border-top: 1px solid #F0EBE3; padding: 10px 0; display: flex; flex-direction: column; gap: 6px; }
+.h-fahrt-chips { display: flex; gap: 8px; }
+.h-fahrt-chips .chip { min-height: 38px; }
+.h-kid { padding: 4px 0; }
+.h-kidname { font-weight: 800; }
+.h-note { background: #FEF3C7; color: #92400E; border-radius: 10px; padding: 6px 10px; font-weight: 600; font-size: 14px; margin: 4px 0; }
+.h-tl { display: flex; align-items: center; gap: 10px; min-height: 44px; border: 0; border-top: 1px solid #F0EBE3; background: none; padding: 4px 0; font: inherit; text-align: left; width: 100%; color: inherit; cursor: pointer; flex-wrap: wrap; }
+.h-head + .h-tl { border-top: 0; }
+.h-tl-time { width: 48px; flex: 0 0 48px; font-weight: 700; font-variant-numeric: tabular-nums; font-size: 14px; }
+.h-tl-title { flex: 1 1 auto; font-weight: 600; min-width: 0; }
+.h-tl-to { font-weight: 400; font-size: 13px; color: var(--muted); }
+.h-tl.past { opacity: 0.45; }
+.h-tomorrow { border: 0; border-top: 1px solid #F0EBE3; background: none; padding: 10px 0 6px; font: inherit; font-size: 14px; color: var(--muted); text-align: left; width: 100%; cursor: pointer; }
+.h-tomorrow b { color: var(--ink, #1C1917); }
+.h-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.h-tile { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 12px; font: inherit; text-align: left; color: inherit; cursor: pointer; min-width: 0; }
+.h-tile-label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); font-weight: 600; }
+.h-tile-value { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
