@@ -8,6 +8,7 @@ import { addDays } from "./dates.js";
 const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type" };
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { ...cors, "Content-Type": "application/json" } });
 const FIELDS = ["title", "start_date", "end_date", "all_day", "from_time", "to_time", "rep", "rep_until", "note"] as const;
+const sameWho = (a: string[] = [], b: string[] = []) => [...a].sort().join() === [...b].sort().join();
 
 function berlinToday() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Berlin" }).format(new Date());
@@ -24,7 +25,20 @@ function same(a: Record<string, unknown>, b: Record<string, unknown>) {
   }) && JSON.stringify((a.exdates as string[]) ?? []) === JSON.stringify((b.exdates as string[]) ?? []);
 }
 
-async function syncOne(db: any, sub: any) {
+// Bei Abos mit who_auto (z. B. Klender) die Personen aus den Teilnehmern lesen: „Dirk Brandes“ → dirk
+function whoFor(sub: any, groups: string[], members: any[]) {
+  if (!sub.who_auto) return sub.who;
+  const ids = new Set<string>();
+  for (const g of groups ?? []) {
+    const first = String(g).trim().split(/\s+/)[0]?.toLowerCase();
+    const m = members.find((x: any) => x.name.toLowerCase() === first);
+    if (m) ids.add(m.id);
+  }
+  if (!ids.size) return sub.who;
+  return ids.size === members.length ? ["all"] : [...ids];
+}
+
+async function syncOne(db: any, sub: any, members: any[]) {
   let url = String(sub.url).trim();
   if (url.startsWith("webcal://")) url = "https://" + url.slice(9);
   const res = await fetch(url, { headers: { "User-Agent": "Familien-App/1.0", Accept: "text/calendar, */*" }, signal: AbortSignal.timeout(20000) });
@@ -37,10 +51,10 @@ async function syncOne(db: any, sub: any) {
   const want = new Map<string, any>();
   for (const e of feed) {
     const uid = e.ext_uid ?? `${e.title}|${e.start_date}|${e.from_time ?? ""}`;
-    const { groups: _g, ext_uid: _u, src: _s, ...row } = e;
-    want.set(`abo:${sub.id}:${uid}`, row);
+    const { groups, ext_uid: _u, src: _s, ...row } = e;
+    want.set(`abo:${sub.id}:${uid}`, { ...row, who: whoFor(sub, groups, members) });
   }
-  const { data: have, error } = await db.from("events").select("id, ext_uid, exdates, " + FIELDS.join(",")).eq("sub_id", sub.id);
+  const { data: have, error } = await db.from("events").select("id, ext_uid, exdates, who, " + FIELDS.join(",")).eq("sub_id", sub.id);
   if (error) throw new Error(error.message);
   const haveMap = new Map<string, any>((have ?? []).map((h: any) => [h.ext_uid, h]));
 
@@ -49,8 +63,8 @@ async function syncOne(db: any, sub: any) {
   for (const [key, row] of want) {
     const h = haveMap.get(key);
     if (!h) {
-      inserts.push({ ...row, ext_uid: key, sub_id: sub.id, src: "abo", who: sub.who, kind: row.kind ?? "termin", review: !firstSync && (row.rep !== "keine" || row.start_date >= today) });
-    } else if (!same(h, row)) {
+      inserts.push({ ...row, ext_uid: key, sub_id: sub.id, src: "abo", kind: row.kind ?? "termin", review: !firstSync && (row.rep !== "keine" || row.start_date >= today) });
+    } else if (!same(h, row) || !sameWho(h.who, row.who)) {
       const { error: e2 } = await db.from("events").update({ ...row }).eq("id", h.id);
       if (!e2) updated++;
     }
@@ -75,11 +89,12 @@ Deno.serve(async (req) => {
   let q = db.from("calendar_subscriptions").select("*").eq("active", true);
   if (body?.sub_id) q = q.eq("id", body.sub_id);
   const { data: subs, error } = await q;
+  const { data: members } = await db.from("members").select("id, name");
   if (error) return json({ error: error.message }, 500);
   const out: Record<string, unknown> = {};
   for (const sub of subs ?? []) {
     try {
-      out[sub.name] = await syncOne(db, sub);
+      out[sub.name] = await syncOne(db, sub, members ?? []);
       await db.from("calendar_subscriptions").update({ last_sync: new Date().toISOString(), last_error: null }).eq("id", sub.id);
     } catch (e) {
       const msg = (e as Error).name === "TimeoutError" ? "Link hat zu lange nicht geantwortet" : (e as Error).message;
