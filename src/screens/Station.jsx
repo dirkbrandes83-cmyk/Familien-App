@@ -106,7 +106,7 @@ function EvList({ list, ctx, empty = 'Nichts geplant.' }) {
   if (!list.length) return <div className="st-empty">{empty}</div>;
   return list.map((o) => (
     <div key={o.ev.id + o.date} className="st-ev">
-      <span className="st-evtime">{timeOf(o.ev)}</span>
+      <span className="st-evtime">{timeOf(o.ev)}{!o.ev.all_day && o.ev.to_time && <span className="st-evend">bis {hm(o.ev.to_time)}</span>}</span>
       <span className="st-evmain">
         <span className="st-evtitle">{o.ev.title}</span>
         <PersonChips who={o.ev.who} members={ctx.members} />

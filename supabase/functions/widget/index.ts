@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
   const mem = new Map((members ?? []).map((m: any) => [m.id, m]));
   const who = (w: string[]) => (w.includes("all") ? [{ name: "Alle", color: "#0F766E" }] : w.map((x) => mem.get(x)).filter(Boolean).map((m: any) => ({ name: m.name, color: m.color })));
   const row = (o: any) => ({
-    time: o.ev.all_day ? (o.ev.kind === "geburtstag" ? "🎂" : "ganzt.") : hm(o.ev.from_time),
+    time: o.ev.all_day ? (o.ev.kind === "geburtstag" ? "🎂" : "ganzt.") : hm(o.ev.from_time) + (o.ev.to_time ? "–" + hm(o.ev.to_time) : ""),
     title: o.ev.title,
     who: who(o.ev.who),
     fahrt: o.ev.bring_by || o.ev.pick_by ? [o.ev.bring_by ? `bringt ${o.ev.bring_by}` : null, o.ev.pick_by ? `holt ${o.ev.pick_by}` : null].filter(Boolean).join(" · ") : null,
