@@ -282,6 +282,12 @@ function Besorgen({ ctx }) {
     else ctx.data.buy.reload();
   };
   const del = async (r) => {
+    // Geschenk aus einem Termin: nur ausblenden, sonst legt der Kalender sie morgen wieder an
+    if (r.event_id) {
+      const ok = await run(supabase.from('buy_items').update({ done: true, done_at: new Date().toISOString() }).eq('id', r.id), ctx.fail);
+      if (ok) ctx.say('Gelöscht', () => run(supabase.from('buy_items').update({ done: false, done_at: null }).eq('id', r.id), ctx.fail));
+      return;
+    }
     const ok = await run(supabase.from('buy_items').delete().eq('id', r.id), ctx.fail);
     if (ok) ctx.say('Gelöscht', () => run(supabase.from('buy_items').insert(r), ctx.fail));
   };

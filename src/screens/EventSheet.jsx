@@ -28,6 +28,9 @@ function AboEvent({ ctx, ev, date, onClose }) {
   );
 }
 
+// Bei diesen Wörtern im Titel wird automatisch eine Geschenk-Aufgabe angelegt (wie in der Datenbank)
+const GIFT_WORDS = /geburtstag|party|hochzeit|jubil|taufe|einschulung|konfirmation|kommunion/i;
+
 function EditEvent({ ctx, ev, preset = {}, onClose }) {
   const editing = !!ev;
   const [f, setF] = useState(() => ({
@@ -44,6 +47,7 @@ function EditEvent({ ctx, ev, preset = {}, onClose }) {
     note: ev?.note ?? '',
     bring_by: ev?.bring_by ?? '',
     pick_by: ev?.pick_by ?? '',
+    gift: ev?.gift ?? null, // null = automatisch (Geburtstag, Party …)
   }));
   const [busy, setBusy] = useState(false);
   const [askDelete, setAskDelete] = useState(false);
@@ -74,6 +78,7 @@ function EditEvent({ ctx, ev, preset = {}, onClose }) {
       note: f.note.trim(),
       bring_by: kidEvent ? f.bring_by || null : null,
       pick_by: kidEvent ? f.pick_by || null : null,
+      gift: f.gift,
     };
     let ok;
     if (editing) ok = await run(supabase.from('events').update(row).eq('id', ev.id), ctx.fail);
@@ -83,7 +88,7 @@ function EditEvent({ ctx, ev, preset = {}, onClose }) {
       if (res && preset.inboxId) await run(supabase.from('todo_inbox').update({ done_at: new Date().toISOString(), event_id: res.id }).eq('id', preset.inboxId), ctx.fail);
     }
     setBusy(false);
-    if (ok) { ctx.say(editing ? 'Termin gespeichert' : 'Termin angelegt'); onClose(); }
+    if (ok) { ctx.say((editing ? 'Termin gespeichert' : 'Termin angelegt') + (giftOn && giftPossible && !(editing && (ev.gift ?? (ev.kind === 'geburtstag' || GIFT_WORDS.test(ev.title)))) ? ' · Geschenk unter Besorgen' : '')); onClose(); }
   };
 
   const remove = async (onlyThis) => {
@@ -103,6 +108,9 @@ function EditEvent({ ctx, ev, preset = {}, onClose }) {
 
   const whoOpts = [{ id: 'all', label: 'Alle', color: '#0F766E', bg: '#CCFBF1' }, ...ctx.members.map((m) => ({ id: m.id, label: m.name, color: m.color, bg: m.bg }))];
   const fixedAllDay = f.kind !== 'termin';
+  const giftAuto = f.kind === 'geburtstag' || GIFT_WORDS.test(f.title);
+  const giftOn = f.gift ?? giftAuto;
+  const giftPossible = f.kind === 'geburtstag' || ['keine', 'jährlich'].includes(f.rep);
   const kidEvent = f.kind === 'termin' && f.who.some((w) => ctx.member(w)?.kid);
   // Wer kann bringen/abholen? Eltern zuerst, dann die Betreuungspersonen
   const drivers = [...new Set(['Dirk', 'Catrin', ...[...ctx.data.caregivers.rows].sort((a, b) => a.sort - b.sort).map((g) => g.name)])];
@@ -172,6 +180,13 @@ function EditEvent({ ctx, ev, preset = {}, onClose }) {
         </div>
       )}
       {f.kind === 'geburtstag' && <div className="small">Geburtstage wiederholen sich jedes Jahr.</div>}
+      {giftPossible && (
+        <label className="toggle-row">
+          <span><span style={{ fontWeight: 600 }}>🎁 Geschenk besorgen</span>
+            <span className="small" style={{ display: 'block' }}>Aufgabe unter Erinnerungen → Besorgen, fällig 2 Tage vorher</span></span>
+          <input type="checkbox" checked={giftOn} onChange={(e) => set({ gift: e.target.checked === giftAuto ? null : e.target.checked })} style={{ width: 24, height: 24 }} />
+        </label>
+      )}
       <label className="field"><span>Notiz</span>
         <textarea className="input" value={f.note} onChange={(e) => set({ note: e.target.value })} placeholder="z. B. Geschenk mitnehmen" maxLength={1000} />
       </label>
