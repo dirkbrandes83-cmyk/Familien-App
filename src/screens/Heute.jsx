@@ -5,7 +5,7 @@ import { supabase, run } from '../data.js';
 import { Icon, Check, PersonChips } from '../ui.jsx';
 import CheckIn from './CheckIn.jsx';
 import { addDays, expand, shortLabel, weekday, WDL, hm } from '../lib/dates.js';
-import { packList, packDay } from './common.jsx';
+import { packList, packDay, fahrtText, NICHT } from './common.jsx';
 import { upcomingTests } from '../lib/tests.js';
 import { mealOf, muellOf, choresToday, toggleChore } from './Zuhause.jsx';
 import { muellHeute, BINS } from '../lib/home.js';
@@ -64,7 +64,7 @@ function AlsNaechstes({ ctx, now }) {
   const ev = next.ev;
   const heute = next.date === ctx.day;
   const label = heute ? inLabel(mins(ev.from_time) - now) : `morgen, ${WDL[weekday(tomorrow)]}`;
-  const fahrt = [ev.bring_by && `bringt ${ev.bring_by}`, ev.pick_by && `holt ${ev.pick_by}`].filter(Boolean).join(' · ');
+  const fahrt = fahrtText(ev);
   return (
     <button className="h-next" onClick={() => ctx.openEvent(ev, { date: next.date })}>
       <span className="h-next-when">Als Nächstes · {label}</span>
@@ -155,6 +155,7 @@ function FuerDich({ ctx }) {
                   {p.id === ctx.me.id ? 'Ich' : p.name}
                 </button>
               ))}
+              <button className="chip" onClick={() => setFahrt(o, field, NICHT)}>Nicht nötig</button>
             </div>
           </div>
         );

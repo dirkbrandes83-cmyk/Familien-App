@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
     time: o.ev.all_day ? (o.ev.kind === "geburtstag" ? "🎂" : "ganzt.") : hm(o.ev.from_time) + (o.ev.to_time ? "–" + hm(o.ev.to_time) : ""),
     title: o.ev.title,
     who: who(o.ev.who),
-    fahrt: o.ev.bring_by || o.ev.pick_by ? [o.ev.bring_by ? `bringt ${o.ev.bring_by}` : null, o.ev.pick_by ? `holt ${o.ev.pick_by}` : null].filter(Boolean).join(" · ") : null,
+    fahrt: [o.ev.bring_by && o.ev.bring_by !== "nicht nötig" ? `bringt ${o.ev.bring_by}` : null, o.ev.pick_by && o.ev.pick_by !== "nicht nötig" ? `holt ${o.ev.pick_by}` : null].filter(Boolean).join(" · ") || null,
   });
   // Heute: was noch kommt (Ganztägiges immer, Zeittermine ab 30 Minuten vor jetzt)
   const soon = (t2: string) => { const [h, m] = t2.split(":").map(Number); const [h2, m2] = time.split(":").map(Number); return h * 60 + m >= h2 * 60 + m2 - 30; };

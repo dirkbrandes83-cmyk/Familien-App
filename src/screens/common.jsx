@@ -64,14 +64,17 @@ export function packDay(ctx) {
 }
 
 // „bringt Dirk · holt Catrin“ – offen wird orange angezeigt, wenn nur eins fehlt
+// „nicht nötig“: Kind geht allein hin bzw. kommt allein nach Hause
+export const NICHT = 'nicht nötig';
+export function fahrtText(ev) {
+  return [ev.bring_by && ev.bring_by !== NICHT && `bringt ${ev.bring_by}`, ev.pick_by && ev.pick_by !== NICHT && `holt ${ev.pick_by}`].filter(Boolean).join(' · ');
+}
 export function BringPick({ ev, big }) {
   if (!ev.bring_by && !ev.pick_by) return null;
   const st = { fontSize: big ? 15 : 12, fontWeight: 600 };
-  return (
-    <span style={{ ...st, color: '#44403C' }}>
-      🚗 {ev.bring_by ? `bringt ${ev.bring_by}` : <span style={{ color: '#B45309' }}>bringen offen</span>}
-      {' · '}
-      {ev.pick_by ? `holt ${ev.pick_by}` : <span style={{ color: '#B45309' }}>abholen offen</span>}
-    </span>
-  );
+  const part = (v, verb, offen) => (v === NICHT ? null : v ? `${verb} ${v}` : <span style={{ color: '#B45309' }}>{offen}</span>);
+  const a = part(ev.bring_by, 'bringt', 'bringen offen');
+  const b = part(ev.pick_by, 'holt', 'abholen offen');
+  if (!a && !b) return null;
+  return <span style={{ ...st, color: '#44403C' }}>🚗 {a}{a && b ? ' · ' : ''}{b}</span>;
 }

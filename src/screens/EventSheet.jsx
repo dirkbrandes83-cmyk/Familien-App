@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { supabase, run } from '../data.js';
 import { Sheet, ChipPick, Seg } from '../ui.jsx';
 import { hm, longLabel } from '../lib/dates.js';
-import { KINDS } from './common.jsx';
+import { KINDS, NICHT } from './common.jsx';
 import { FAECHER, TEST_ARTEN, testTitle } from '../lib/tests.js';
 import { careFromEvent } from './Betreuung.jsx';
 
@@ -149,10 +149,10 @@ function EditEvent({ ctx, ev, preset = {}, onClose }) {
       {kidEvent && f.kind !== 'test' && (
         <>
           <div className="field"><span>Bringt hin</span>
-            <ChipPick options={drivers.map((n) => ({ id: n, label: n, color: driverColor(n)?.color, bg: driverColor(n)?.bg }))} value={f.bring_by} onPick={(n) => set({ bring_by: f.bring_by === n ? '' : n })} />
+            <ChipPick options={[...drivers.map((n) => ({ id: n, label: n, color: driverColor(n)?.color, bg: driverColor(n)?.bg })), { id: NICHT, label: 'Nicht nötig' }]} value={f.bring_by} onPick={(n) => set({ bring_by: f.bring_by === n ? '' : n })} />
           </div>
           <div className="field"><span>Holt ab</span>
-            <ChipPick options={drivers.map((n) => ({ id: n, label: n, color: driverColor(n)?.color, bg: driverColor(n)?.bg }))} value={f.pick_by} onPick={(n) => set({ pick_by: f.pick_by === n ? '' : n })} />
+            <ChipPick options={[...drivers.map((n) => ({ id: n, label: n, color: driverColor(n)?.color, bg: driverColor(n)?.bg })), { id: NICHT, label: 'Nicht nötig' }]} value={f.pick_by} onPick={(n) => set({ pick_by: f.pick_by === n ? '' : n })} />
           </div>
         </>
       )}
