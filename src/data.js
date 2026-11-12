@@ -73,6 +73,9 @@ export function useHomeTables() {
     shopSections: useTable('shop_sections', (r) => r.name),
     timetables: useTable('timetables', (r) => r.kid),
     checkins: useTable('checkins', (r) => r.sonntag),
+    ideas: useTable('ideas'),
+    ideaVotes: useTable('idea_votes', (r) => `${r.idea_id}|${r.member}`),
+    weekendLog: useTable('weekend_log'),
   };
 }
 

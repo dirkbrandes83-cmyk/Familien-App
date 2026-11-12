@@ -4,6 +4,8 @@ import { mealOf, muellOf, Bin, choresToday, toggleChore } from './Zuhause.jsx';
 import { upcomingTests, countdown, urgency, dayChip, pickDays, FAECHER, TEST_ARTEN, testTitle } from '../lib/tests.js';
 import { lessonsFor, schoolDay, fachFarbe } from '../lib/stundenplan.js';
 import CheckIn from './CheckIn.jsx';
+import Ideenkiste, { WochenendKarte } from './Wochenende.jsx';
+import { isWeekendSoon } from '../lib/wochenende.js';
 import { muellHeute, muellStatus } from '../lib/home.js';
 import { Icon, Check, Toast, PersonChips } from '../ui.jsx';
 import { addDays, expand, longLabel, shortLabel, today, hm, WDL, weekday } from '../lib/dates.js';
@@ -22,6 +24,7 @@ export default function Station({ members }) {
   const [now, setNow] = useState(new Date());
   const [sheet, setSheet] = useState(null);
   const [checkin, setCheckin] = useState(false);
+  const [kiste, setKiste] = useState(false);
   const [toast, setToast] = useState(null);
   const idle = useRef(null);
   const hold = useRef(null);
@@ -97,10 +100,18 @@ export default function Station({ members }) {
         <button className="btn st-add" onClick={() => setSheet({ by: view !== 'alle' ? view : null })}><Icon name="plus" size={24} />Eintragen</button>
       </header>
 
-      {view === 'alle' ? <Alle ctx={ctx} openIstAlle={() => setSheet({ step: 'shop' })} />
+      {view === 'alle' ? <Alle ctx={ctx} openIstAlle={() => setSheet({ step: 'shop' })} openKiste={() => setKiste(true)} />
         : <Kind ctx={ctx} kid={ctx.member(view)} />}
 
-      {sheet && <Eintragen ctx={ctx} init={sheet} onClose={() => setSheet(null)} />}
+      {sheet && <Eintragen ctx={ctx} init={sheet} onClose={() => setSheet(null)} openKiste={() => { setSheet(null); setKiste(true); }} />}
+      {kiste && (
+        <div className="sheet-bg" onClick={(e) => { if (e.target === e.currentTarget) setKiste(false); }}>
+          <div className="sheet st-sheet wk-sheet" role="dialog" aria-modal="true" aria-label="Ideenkiste">
+            <div className="sheet-head"><h2>🎈 Ideenkiste</h2><button className="icon-btn st-icon" onClick={() => setKiste(false)} aria-label="Schließen"><Icon name="x" /></button></div>
+            <Ideenkiste ctx={ctx} station />
+          </div>
+        </div>
+      )}
       {checkin && <CheckIn ctx={ctx} onClose={() => setCheckin(false)} />}
       <Toast toast={toast} onClose={() => setToast(null)} />
     </div>
@@ -140,7 +151,7 @@ function packDate(ctx) {
   return new Date().getHours() < 12 ? ctx.day : addDays(ctx.day, 1);
 }
 
-function Alle({ ctx, openIstAlle }) {
+function Alle({ ctx, openIstAlle, openKiste }) {
   const tomorrow = addDays(ctx.day, 1);
   const occ = expand(ctx.data.events.rows, ctx.day, tomorrow);
   const pd = packDate(ctx);
@@ -178,12 +189,13 @@ function Alle({ ctx, openIstAlle }) {
         {shop.length > 14 && <div className="st-empty">… und {shop.length - 14} weitere</div>}
         <button className="btn st-big" onClick={openIstAlle}>Ist alle!</button>
       </section>
-      <BonusRow ctx={ctx} />
+      <BonusRow ctx={ctx} openKiste={openKiste} />
     </main>
   );
 }
 
-function BonusRow({ ctx }) {
+function BonusRow({ ctx, openKiste }) {
+  const we = isWeekendSoon(ctx.day);
   const tomorrow = addDays(ctx.day, 1);
   const m = muellOf(ctx);
   const st = muellHeute(m, ctx.day);
@@ -204,7 +216,8 @@ function BonusRow({ ctx }) {
           </>
         )}
       </section>
-      <section className="st-card st-wide">
+      {we && <WochenendKarte ctx={ctx} station onOpen={openKiste} />}
+      <section className={`st-card${we ? '' : ' st-wide'}`}>
         <h2>Wer macht heute was</h2>
         <div className="st-who">
           {ctx.members.map((p) => {
@@ -537,7 +550,7 @@ const KID_SIZES = ['122', '128', '134', '140', '146', '152', '158', '164'];
 const SHOE_SIZES = ['28', '29', '30', '31', '32', '33', '34', '35', '36', '37', '38', '39', '40'];
 const ADULT_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 
-function Eintragen({ ctx, init, onClose }) {
+function Eintragen({ ctx, init, onClose, openKiste }) {
   const [by, setBy] = useState(init.by ?? null);
   const [step, setStep] = useState(init.step ?? null);
   const [text, setText] = useState('');
@@ -596,6 +609,7 @@ function Eintragen({ ctx, init, onClose }) {
     ['besorgen', 'Muss besorgt werden', 'z. B. Geschenk, Bastelsachen'],
     ['anst', 'Termin muss gemacht werden', 'Dirk plant es ein'],
     ['wunsch', 'Essenswunsch', 'Catrin plant es ein'],
+    ['idee', 'Idee fürs Wochenende', 'Ab in die Ideenkiste'],
   ];
   const titles = { termin: 'Termin oder Test', besorgen: 'Muss besorgt werden', shop: 'Ist alle!', mit: 'Muss morgen mit', kleidung: 'Kleidung brauche ich', anst: 'Termin muss gemacht werden', wunsch: 'Essenswunsch' };
   const saveWunsch = async (title) => {
@@ -631,7 +645,7 @@ function Eintragen({ ctx, init, onClose }) {
         {!step && (
           <div className="st-tiles">
             {tiles.map(([id, label, sub]) => (
-              <button key={id} className="st-tile" onClick={() => setStep(id)}>
+              <button key={id} className="st-tile" onClick={() => (id === 'idee' ? openKiste() : setStep(id))}>
                 <span className="st-tilelabel">{label}</span><span className="sub">{sub}</span>
               </button>
             ))}

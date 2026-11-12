@@ -5,9 +5,11 @@ import { supabase, run } from '../data.js';
 import { Icon, PersonChips } from '../ui.jsx';
 import { addDays, expand, weekday, WDL, hm, shortLabel } from '../lib/dates.js';
 import { muellStatus, BINS } from '../lib/home.js';
+import { rankIdeas } from '../lib/wochenende.js';
+import { toggleVote } from './Wochenende.jsx';
 
 const FACES = [[1, '😢', 'schlecht'], [2, '😕', 'nicht so gut'], [3, '😐', 'geht so'], [4, '🙂', 'gut'], [5, '😄', 'super']];
-const STEPS = ['Wer ist dabei?', 'Wie war deine Woche?', 'Das Schönste', 'Die neue Woche', 'Was steht an?', 'Danke-Runde', 'Unser Vorhaben', 'Fertig'];
+const STEPS = ['Wer ist dabei?', 'Wie war deine Woche?', 'Das Schönste', 'Die neue Woche', 'Was steht an?', 'Danke-Runde', 'Unser Vorhaben', 'Nächstes Wochenende', 'Fertig'];
 
 // Der Sonntag, zu dem der Check-in gehört: heute (So) oder der kommende Sonntag
 export function checkinSunday(day) {
@@ -179,6 +181,25 @@ export default function CheckIn({ ctx, onClose }) {
           )}
 
           {step === 7 && (
+            <>
+              <div className="ci-note">Was machen wir nächstes Wochenende? Jeder tippt auf die Ideen, die ihm gefallen.</div>
+              {rankIdeas(ctx.data.ideas.rows, ctx.data.ideaVotes.rows).slice(0, 6).map((i) => (
+                <div key={i.id} className="ci-idea">
+                  <span className="ci-ideatitle">{i.title}</span>
+                  <span className="ci-ideavotes">
+                    {people.map((m) => {
+                      const on = ctx.data.ideaVotes.rows.some((v) => v.idea_id === i.id && v.member === m.id);
+                      return <button key={m.id} className={`ci-vote${on ? ' on' : ''}`} aria-pressed={on} aria-label={`${m.name}: ${i.title}`}
+                        style={on ? { background: m.color, borderColor: m.color, color: '#fff' } : { borderColor: m.bg, color: m.color }}
+                        onClick={() => toggleVote(ctx, i, m.id)}>{on ? '❤️' : ''}{m.name}</button>;
+                    })}
+                  </span>
+                </div>
+              ))}
+            </>
+          )}
+
+          {step === 8 && (
             <div className="ci-done">
               <div className="ci-big">🎉 Schöne Woche!</div>
               <div className="ci-moods">
