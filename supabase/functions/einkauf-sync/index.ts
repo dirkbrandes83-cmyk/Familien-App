@@ -17,9 +17,15 @@ Deno.serve(async (req) => {
   await db.from("widget_tokens").update({ last_used: new Date().toISOString() }).eq("token", t);
   const { data: me } = await db.from("members").select("name").eq("id", tok.member_id).single();
 
-  // 1. Auf der Uhr/im iPhone abgehakt → in der App erledigt
-  const done = (Array.isArray(body.erledigt) ? body.erledigt : []).filter((x: unknown) => typeof x === "string" && UUID.test(x)).slice(0, 200);
-  if (done.length) await db.from("shopping_items").update({ done: true, done_at: new Date().toISOString() }).in("id", done).eq("done", false);
+  // 1. Auf der Uhr/im iPhone abgehakt → in der App erledigt (per ID oder per Name)
+  const raw = (Array.isArray(body.erledigt) ? body.erledigt : []).filter((x: unknown) => typeof x === "string").slice(0, 200) as string[];
+  const doneIds = raw.filter((x) => UUID.test(x));
+  const doneNames = new Set(raw.filter((x) => !UUID.test(x)).map((x) => x.trim().toLowerCase()).filter(Boolean));
+  if (doneNames.size) {
+    const { data: o } = await db.from("shopping_items").select("id, name").eq("done", false);
+    for (const r of o ?? []) if (doneNames.has(r.name.trim().toLowerCase())) doneIds.push(r.id);
+  }
+  if (doneIds.length) await db.from("shopping_items").update({ done: true, done_at: new Date().toISOString() }).in("id", doneIds).eq("done", false);
 
   // 2. In Erinnerungen neu eingetragen (auch per Siri) → in die App, mit Kategorie
   const { data: openNow } = await db.from("shopping_items").select("id, name").eq("done", false);

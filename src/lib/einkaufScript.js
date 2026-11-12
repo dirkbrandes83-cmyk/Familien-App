@@ -4,23 +4,40 @@ export const EINKAUF_SCRIPT = `// Familien-App · Einkauf ↔ Erinnerungen (für
 // Gleicht die Einkaufsliste der Familien-App mit einer Liste in Apple Erinnerungen ab:
 // – App → Erinnerungen: alles, was offen ist, erscheint in der Liste (auch auf der Watch)
 // – Erinnerungen → App: Abgehaktes wird in der App erledigt, Neues (auch per Siri) kommt dazu
+// Zuordnung über den Namen; in die Notizen wird nichts geschrieben.
 const KEY = "__KEY__";
 const API = "https://xihjjneyvtgnzfuibfzf.supabase.co/functions/v1/einkauf-sync?t=" + KEY;
 const LIST = "__LIST__"; // Name der Liste in Erinnerungen
-const TAG = /\\[fa:([0-9a-f-]{36})\\]/;
-const idOf = (r) => { const m = (r.notes || "").match(TAG); return m ? m[1] : null; };
-const tag = (section, id) => (section ? section + " " : "") + "[fa:" + id + "]";
+const norm = (s) => String(s || "").trim().toLowerCase();
+// Alte Kennungen aus früheren Versionen („Kühlregale [fa:…]“) aus den Notizen entfernen
+const OLD_TAG = /^.*\\[fa:[0-9a-f-]{36}\\]\\s*$/gm;
+
+// Merkt sich, welche Einträge beim letzten Abgleich aus der App kamen – ohne Text in den Notizen
+const fm = FileManager.local();
+const stateFile = fm.joinPath(fm.documentsDirectory(), "familien-einkauf-state.json");
+function loadState() {
+  try { return fm.fileExists(stateFile) ? JSON.parse(fm.readString(stateFile)) : null; } catch (e) { return null; }
+}
 
 async function sync() {
-  let cal;
-  try { cal = await Calendar.forRemindersByTitle(LIST); }
-  catch (e) { cal = null; }
+  let cal = null;
+  try { cal = await Calendar.forRemindersByTitle(LIST); } catch (e) { cal = null; }
   if (!cal) cal = await Calendar.createForReminders(LIST);
 
-  const open = await Reminder.allIncomplete([cal]);
-  const done = await Reminder.allCompleted([cal]);
-  const erledigt = done.map(idOf).filter(Boolean);
-  const neuRem = open.filter((r) => !idOf(r) && r.title && r.title.trim());
+  const state = loadState();
+  const prev = state && state.list === LIST ? state.items || {} : {}; // Name → ID beim letzten Abgleich
+  let open = await Reminder.allIncomplete([cal]);
+
+  // Aufräumen: alte Kennungen aus den Notizen löschen
+  for (const r of [...open, ...(await Reminder.allCompleted([cal]))]) {
+    if (r.notes && r.notes.includes("[fa:")) { r.notes = r.notes.replace(OLD_TAG, "").trim(); r.save(); }
+  }
+
+  const openNames = new Set(open.map((r) => norm(r.title)));
+  // In Erinnerungen abgehakt oder gelöscht: war beim letzten Mal da, ist jetzt nicht mehr offen
+  const erledigt = Object.entries(prev).filter(([n]) => !openNames.has(n)).map(([, id]) => id);
+  // In Erinnerungen neu (auch per Siri): offen, aber beim letzten Mal nicht aus der App
+  const neuRem = open.filter((r) => r.title && r.title.trim() && !(norm(r.title) in prev));
 
   const req = new Request(API);
   req.method = "POST";
@@ -30,42 +47,31 @@ async function sync() {
   const res = await req.loadJSON();
   if (res.error) throw new Error(res.error);
 
-  // Abgehakte Einträge sind übertragen → aus der Liste entfernen
-  for (const r of done) if (idOf(r)) r.remove();
-
-  // Neu eingetragene Einträge mit der App verknüpfen (oder entfernen, wenn sie aufgeteilt wurden: „Milch, Brot“)
-  const byName = new Map(res.neu.map((x) => [x.name.toLowerCase(), x.id]));
-  const want = new Map(res.offen.map((x) => [x.id, x]));
-  for (const r of neuRem) {
-    const id = byName.get(r.title.trim().toLowerCase());
-    if (id && want.has(id)) { r.notes = tag(want.get(id).section, id); r.save(); }
-    else r.remove();
+  const app = new Map(res.offen.map((x) => [norm(x.name), x]));
+  const sentNew = new Set(neuRem.map((r) => norm(r.title)));
+  const seen = new Set();
+  for (const r of open) {
+    const n = norm(r.title);
+    const fromApp = (n in prev) || sentNew.has(n);
+    // In der App erledigt/gelöscht, aufgeteilt („Milch, Brot“) oder doppelt → hier entfernen
+    if ((fromApp && !app.has(n)) || (app.has(n) && seen.has(n))) { r.remove(); continue; }
+    seen.add(n);
   }
-
-  // In der App erledigt oder gelöscht → hier entfernen; Doppelte entfernen
-  const have = new Set();
-  for (const r of await Reminder.allIncomplete([cal])) {
-    const id = idOf(r);
-    if (!id) continue;
-    if (!want.has(id) || have.has(id)) { r.remove(); continue; }
-    have.add(id);
-    if (r.title !== want.get(id).name) { r.title = want.get(id).name; r.save(); }
-  }
-
-  // Fehlendes anlegen – in der Reihenfolge wie im Laden
+  // Was in der App offen ist, aber hier fehlt → anlegen (Reihenfolge wie im Laden)
   for (const x of res.offen) {
-    if (have.has(x.id)) continue;
+    if (seen.has(norm(x.name))) continue;
     const r = new Reminder();
     r.title = x.name;
-    r.notes = tag(x.section, x.id);
     r.calendar = cal;
     r.save();
+    seen.add(norm(x.name));
   }
-  return res.offen;
+  fm.writeString(stateFile, JSON.stringify({ list: LIST, items: Object.fromEntries([...app].map(([n, x]) => [n, x.id])), at: new Date().toISOString() }));
+  return { liste: res.offen, erledigt: erledigt.length, neu: neuRem.length };
 }
 
-let liste = null, fehler = null;
-try { liste = await sync(); } catch (e) { fehler = String(e.message || e); }
+let liste = null, fehler = null, info = null;
+try { info = await sync(); liste = info.liste; } catch (e) { fehler = String(e.message || e); }
 
 // Anzeige: als Widget eine kleine Einkaufsliste, sonst eine kurze Meldung
 const bg = Color.dynamic(new Color("#FBF8F3"), new Color("#1C1917"));
@@ -92,7 +98,13 @@ if (fehler) {
 w.addSpacer();
 
 if (config.runsInWidget) Script.setWidget(w);
-else if (config.runsWithSiri || config.runsInActionExtension || args.shortcutParameter !== undefined) Script.setShortcutOutput(fehler ? "Fehler: " + fehler : "Einkauf abgeglichen (" + liste.length + " offen)");
-else await w.presentSmall();
+else if (config.runsWithSiri || config.runsInActionExtension || args.shortcutParameter !== undefined) Script.setShortcutOutput(fehler ? "Fehler: " + fehler : "Einkauf abgeglichen: " + info.erledigt + " erledigt, " + info.neu + " neu, " + liste.length + " offen");
+else {
+  const a = new Alert();
+  a.title = fehler ? "Abgleich ging nicht" : "Einkauf abgeglichen";
+  a.message = fehler ? fehler : info.erledigt + " in der App erledigt · " + info.neu + " neu in die App · " + liste.length + " offen";
+  a.addAction("OK");
+  await a.present();
+}
 Script.complete();
 `;
