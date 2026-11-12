@@ -178,7 +178,7 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 @media (max-width: 900px) { .st-ini { display: none; } .st-face { padding: 0 20px; } .st-time { font-size: 48px; } }
 .st-meal { font-family: 'Bricolage Grotesque', sans-serif; font-size: 26px; font-weight: 700; }
 .st-wide { grid-column: span 2; }
-.st-who { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; }
+.st-who { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px; }
 .st-who .st-kid { border-top: none; padding-top: 0; }
 @media (max-width: 1000px) { .st-wide { grid-column: 1 / -1; } }
 .st-tiles .st-tile:last-child:nth-child(odd) { grid-column: 1 / -1; min-height: 90px; }
@@ -190,3 +190,20 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .gift-status[data-s="gekauft"] { background: #DBEAFE; color: #1D4ED8; }
 .gift-status[data-s="verpackt"] { background: #DCFCE7; color: #15803D; }
 .small-btn { min-height: 40px; font-size: 14px; }
+
+/* Station: alles auf einer Seite – die Seite scrollt nicht, volle Karten scrollen innen */
+.st { height: 100dvh; min-height: 0; overflow: hidden; padding-bottom: calc(env(safe-area-inset-bottom) + 16px); gap: 14px; }
+.st > main.st-grid { flex: 1 1 auto; min-height: 0; align-items: stretch; gap: 14px;
+  grid-template-rows: minmax(0, 1.25fr) minmax(0, 1fr); }
+.st > main.st-grid.two { grid-template-rows: minmax(0, 1fr); }
+.st-grid > .st-card { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 16px 20px; gap: 8px; }
+.st-check { min-height: 48px; }
+.st-card h3 { padding-top: 8px; margin-top: 4px; }
+@media (max-width: 1000px) {
+  /* hochkant: Termine | Einpacken · Einkauf | Essen · Wer macht was */
+  .st > main.st-grid { grid-template-columns: 1fr 1fr; grid-template-rows: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 0.8fr); }
+  .st > main.st-grid > :first-child { grid-column: auto; }
+  .st > main.st-grid.two { grid-template-columns: 1fr 1fr; grid-template-rows: minmax(0, 1fr); }
+  .st > main.st-grid.two > :first-child { grid-column: auto; }
+}
+@media (max-height: 800px) { .st-time { font-size: 44px; } .st-face, .st-add { min-height: 56px; } .st-card h2 { font-size: 22px; } }
