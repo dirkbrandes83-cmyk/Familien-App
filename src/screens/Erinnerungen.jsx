@@ -3,6 +3,7 @@ import { supabase, run } from '../data.js';
 import { Icon, Check, Swipe, Sheet, Seg, ChipPick } from '../ui.jsx';
 import { addDays, longLabel, shortLabel, WD } from '../lib/dates.js';
 import { packList, packDay } from './common.jsx';
+import Geschenke from './Geschenke.jsx';
 
 export default function Erinnerungen({ ctx, seg, setSeg }) {
   const inboxN = ctx.data.inbox.rows.filter((r) => !r.done_at).length;
@@ -13,9 +14,10 @@ export default function Erinnerungen({ ctx, seg, setSeg }) {
         ['mitnehmen', 'Mitnehmen'],
         ['vereinbaren', `Erledigen${inboxN ? ` ${inboxN}` : ''}`],
         ['besorgen', `Besorgen${buyN ? ` ${buyN}` : ''}`],
+        ['geschenke', '🎁'],
       ]} />
-      <button className="btn dashed" onClick={ctx.openScan}>Elternbrief scannen</button>
-      {seg === 'mitnehmen' ? <Mitnehmen ctx={ctx} /> : seg === 'vereinbaren' ? <Vereinbaren ctx={ctx} /> : <Besorgen ctx={ctx} />}
+      {seg !== 'geschenke' && <button className="btn dashed" onClick={ctx.openScan}>Elternbrief scannen</button>}
+      {seg === 'mitnehmen' ? <Mitnehmen ctx={ctx} /> : seg === 'vereinbaren' ? <Vereinbaren ctx={ctx} /> : seg === 'geschenke' ? <Geschenke ctx={ctx} /> : <Besorgen ctx={ctx} />}
     </>
   );
 }

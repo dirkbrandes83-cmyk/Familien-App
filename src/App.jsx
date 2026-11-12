@@ -93,6 +93,7 @@ function Shell({ me, members }) {
     checks: useTable('pack_checks'),
     inbox: useTable('todo_inbox'),
     buy: useTable('buy_items'),
+    gifts: useTable('gift_ideas'),
     ...useHomeTables(),
   };
 

@@ -184,3 +184,9 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .st-tiles .st-tile:last-child:nth-child(odd) { grid-column: 1 / -1; min-height: 90px; }
 
 .st-evend { display: block; font-size: 0.7em; font-weight: 500; opacity: 0.7; }
+
+.gift-status { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-width: 64px; min-height: 48px; margin-right: 12px; border-radius: 12px; border: 0; font: inherit; font-size: 11px; font-weight: 600; cursor: pointer; background: #F5F5F4; color: #57534E; }
+.gift-status span:first-child { font-size: 20px; line-height: 1; }
+.gift-status[data-s="gekauft"] { background: #DBEAFE; color: #1D4ED8; }
+.gift-status[data-s="verpackt"] { background: #DCFCE7; color: #15803D; }
+.small-btn { min-height: 40px; font-size: 14px; }

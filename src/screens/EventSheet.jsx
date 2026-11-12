@@ -88,7 +88,7 @@ function EditEvent({ ctx, ev, preset = {}, onClose }) {
       if (res && preset.inboxId) await run(supabase.from('todo_inbox').update({ done_at: new Date().toISOString(), event_id: res.id }).eq('id', preset.inboxId), ctx.fail);
     }
     setBusy(false);
-    if (ok) { ctx.say((editing ? 'Termin gespeichert' : 'Termin angelegt') + (giftOn && giftPossible && !(editing && (ev.gift ?? (ev.kind === 'geburtstag' || GIFT_WORDS.test(ev.title)))) ? ' · Geschenk unter Besorgen' : '')); onClose(); }
+    if (ok) { ctx.say((editing ? 'Termin gespeichert' : 'Termin angelegt') + (giftOn && giftPossible && !(editing && (ev.gift ?? GIFT_WORDS.test(ev.title))) ? ' · Geschenk unter Besorgen' : '')); onClose(); }
   };
 
   const remove = async (onlyThis) => {
@@ -108,9 +108,9 @@ function EditEvent({ ctx, ev, preset = {}, onClose }) {
 
   const whoOpts = [{ id: 'all', label: 'Alle', color: '#0F766E', bg: '#CCFBF1' }, ...ctx.members.map((m) => ({ id: m.id, label: m.name, color: m.color, bg: m.bg }))];
   const fixedAllDay = f.kind !== 'termin';
-  const giftAuto = f.kind === 'geburtstag' || GIFT_WORDS.test(f.title);
+  const giftAuto = GIFT_WORDS.test(f.title);
   const giftOn = f.gift ?? giftAuto;
-  const giftPossible = f.kind === 'geburtstag' || ['keine', 'jährlich'].includes(f.rep);
+  const giftPossible = f.kind !== 'geburtstag' && f.rep === 'keine';
   const kidEvent = f.kind === 'termin' && f.who.some((w) => ctx.member(w)?.kid);
   // Wer kann bringen/abholen? Eltern zuerst, dann die Betreuungspersonen
   const drivers = [...new Set(['Dirk', 'Catrin', ...[...ctx.data.caregivers.rows].sort((a, b) => a.sort - b.sort).map((g) => g.name)])];
