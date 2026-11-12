@@ -54,25 +54,32 @@ function Hinweise({ ctx, onCheckin }) {
   );
 }
 
-/* ---------- Als Nächstes ---------- */
+/* ---------- Als Nächstes: bis zu drei Termine ---------- */
 function AlsNaechstes({ ctx, now }) {
   const tomorrow = addDays(ctx.day, 1);
-  const occ = expand(ctx.data.events.rows, ctx.day, tomorrow).filter((o) => !o.ev.all_day);
-  const next = occ.find((o) => o.date === ctx.day && mins(o.ev.to_time || o.ev.from_time) + (o.ev.to_time ? 0 : 30) > now)
-    || occ.find((o) => o.date === tomorrow);
-  if (!next) return null;
-  const ev = next.ev;
-  const heute = next.date === ctx.day;
-  const label = heute ? inLabel(mins(ev.from_time) - now) : `morgen, ${WDL[weekday(tomorrow)]}`;
-  const fahrt = fahrtText(ev);
+  const list = expand(ctx.data.events.rows, ctx.day, tomorrow)
+    .filter((o) => !o.ev.all_day && (o.date === tomorrow || mins(o.ev.to_time || o.ev.from_time) + (o.ev.to_time ? 0 : 30) > now))
+    .slice(0, 3);
+  if (!list.length) return null;
+  const when = (o) => (o.date === ctx.day ? inLabel(mins(o.ev.from_time) - now) : `morgen, ${WDL[weekday(tomorrow)]}`);
+  const wer = (ev) => (ev.who.includes('all') ? 'Alle' : ev.who.map((w) => ctx.member(w)?.name).filter(Boolean).join(', '));
+  const [first, ...rest] = list;
+  const fahrt = fahrtText(first.ev);
   return (
-    <button className="h-next" onClick={() => ctx.openEvent(ev, { date: next.date })}>
-      <span className="h-next-when">Als Nächstes · {label}</span>
-      <span className="h-next-title">{hm(ev.from_time)} {ev.title}</span>
-      <span className="h-next-sub">
-        {ev.to_time ? `bis ${hm(ev.to_time)} · ` : ''}{ev.who.includes('all') ? 'Alle' : ev.who.map((w) => ctx.member(w)?.name).filter(Boolean).join(', ')}{fahrt ? ` · ${fahrt}` : ''}
-      </span>
-    </button>
+    <section className="h-next" aria-label="Als Nächstes">
+      <button className="h-next-main" onClick={() => ctx.openEvent(first.ev, { date: first.date })}>
+        <span className="h-next-when">Als Nächstes · {when(first)}</span>
+        <span className="h-next-title">{hm(first.ev.from_time)} {first.ev.title}</span>
+        <span className="h-next-sub">{first.ev.to_time ? `bis ${hm(first.ev.to_time)} · ` : ''}{wer(first.ev)}{fahrt ? ` · ${fahrt}` : ''}</span>
+      </button>
+      {rest.map((o) => (
+        <button key={o.ev.id + o.date} className="h-next-row" onClick={() => ctx.openEvent(o.ev, { date: o.date })}>
+          <span className="h-next-rtime">{o.date === ctx.day ? hm(o.ev.from_time) : `${WDL[weekday(tomorrow)].slice(0, 2)} ${hm(o.ev.from_time)}`}</span>
+          <span className="h-next-rtitle">{o.ev.title}</span>
+          <span className="h-next-rwho">{wer(o.ev)}</span>
+        </button>
+      ))}
+    </section>
   );
 }
 

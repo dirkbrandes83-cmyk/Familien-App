@@ -430,3 +430,9 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .h-tile { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 12px; font: inherit; text-align: left; color: inherit; cursor: pointer; min-width: 0; }
 .h-tile-label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); font-weight: 600; }
 .h-tile-value { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.h-next { display: flex; flex-direction: column; border-radius: 18px; background: #CCFBF1; color: #134E4A; padding: 4px 16px 6px; }
+.h-next-main { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; border: 0; background: none; padding: 10px 0; font: inherit; color: inherit; cursor: pointer; width: 100%; }
+.h-next-row { display: flex; align-items: baseline; gap: 10px; border: 0; border-top: 1px solid #99F6E4; background: none; padding: 9px 0; font: inherit; color: inherit; text-align: left; width: 100%; cursor: pointer; }
+.h-next-rtime { width: 64px; flex: 0 0 64px; font-weight: 700; font-variant-numeric: tabular-nums; font-size: 14px; }
+.h-next-rtitle { flex: 1 1 auto; font-weight: 600; min-width: 0; }
+.h-next-rwho { font-size: 13px; color: #0F766E; white-space: nowrap; }
