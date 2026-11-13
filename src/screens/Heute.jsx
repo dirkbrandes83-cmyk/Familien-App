@@ -87,7 +87,7 @@ function AlsNaechstes({ ctx, now }) {
 function Fahrt({ ev, ctx }) {
   const kidEv = !ev.all_day && ev.kind === 'termin' && ev.who.some((w) => ctx.member(w)?.kid);
   if (!kidEv && !ev.bring_by && !ev.pick_by) return null;
-  const part = (v, verb, offen) => (v === NICHT ? null : v ? <span key={verb}>{verb} <b>{v === ctx.me.name ? 'du' : v}</b></span> : kidEv ? <span key={verb} className="h-fahrt-open">{offen}</span> : null);
+  const part = (v, verb, offen) => (v === NICHT ? null : v ? <span key={verb}>{verb} <b>{v}</b></span> : kidEv ? <span key={verb} className="h-fahrt-open">{offen}</span> : null);
   const parts = [part(ev.bring_by, 'bringt', 'bringen offen'), part(ev.pick_by, 'holt', 'abholen offen')].filter(Boolean);
   if (!parts.length) return null;
   return <span className="h-fahrt-line">🚗 {parts.reduce((a, x, i) => (i ? [...a, ' · ', x] : [x]), [])}</span>;
