@@ -3,6 +3,7 @@ import { supabase, useTable, useHomeTables, run, learnedSections } from '../data
 import { mealOf, muellOf, Bin, choresToday, toggleChore } from './Zuhause.jsx';
 import { upcomingTests, countdown, urgency, dayChip, pickDays, FAECHER, TEST_ARTEN, testTitle } from '../lib/tests.js';
 import { lessonsFor, schoolDay, fachFarbe } from '../lib/stundenplan.js';
+import { TIERE, begruessung, countdowns, schlafen } from '../lib/kinder.js';
 import CheckIn from './CheckIn.jsx';
 import Ideenkiste, { WochenendKarte } from './Wochenende.jsx';
 import { isWeekendSoon } from '../lib/wochenende.js';
@@ -17,7 +18,7 @@ import { packList, BringPick } from './common.jsx';
 
 const IDLE_MS = 120000;
 
-export default function Station({ members }) {
+export default function Station({ members, reloadMembers }) {
   const kids = members.filter((m) => m.kid);
   const [view, setView] = useState('alle');
   const [day, setDay] = useState(today());
@@ -42,7 +43,7 @@ export default function Station({ members }) {
   };
   const say = useCallback((text) => setToast({ text, k: Math.random() }), []);
   const fail = useCallback((m) => setToast({ text: `Nicht gespeichert: ${m}` }), []);
-  const ctx = { members, kids, data, day, say, fail, member: (id) => members.find((m) => m.id === id) };
+  const ctx = { members, kids, data, day, say, fail, reloadMembers, member: (id) => members.find((m) => m.id === id) };
 
   // Uhr und Datum
   useEffect(() => {
@@ -87,7 +88,7 @@ export default function Station({ members }) {
             <button key={f.id} className={`st-face${view === f.id ? ' on' : ''}`} aria-pressed={view === f.id}
               style={view === f.id ? { background: f.color, borderColor: f.color, color: '#fff' } : { borderColor: f.bg, color: f.color }}
               onClick={() => setView(f.id)}>
-              <span className="st-ini" style={{ background: view === f.id ? 'rgba(255,255,255,0.25)' : f.bg }} aria-hidden="true">{f.name[0]}</span>
+              <span className="st-ini" style={{ background: view === f.id ? 'rgba(255,255,255,0.25)' : f.bg, fontSize: f.tier ? 20 : undefined }} aria-hidden="true">{f.tier || f.name[0]}</span>
               {f.name}
             </button>
           ))}
@@ -113,6 +114,7 @@ export default function Station({ members }) {
         </div>
       )}
       {checkin && <CheckIn ctx={ctx} onClose={() => setCheckin(false)} />}
+      <Konfetti />
       <Toast toast={toast} onClose={() => setToast(null)} />
     </div>
   );
@@ -138,7 +140,38 @@ function EvList({ list, ctx, empty = 'Nichts geplant.' }) {
   ));
 }
 
-async function togglePack(ctx, kid, date, item) {
+// Kleines Fest, wenn ein Kind das Letzte abhakt
+const LOB = ['Stark', 'Super', 'Klasse', 'Spitze', 'Toll gemacht', 'Bravo'];
+function feiern(name) {
+  window.dispatchEvent(new CustomEvent('feiern', { detail: `${LOB[Math.floor(Math.random() * LOB.length)]}, ${name}!` }));
+}
+function Konfetti() {
+  const [msg, setMsg] = useState(null);
+  useEffect(() => {
+    let t;
+    const on = (e) => { setMsg({ text: e.detail, key: Date.now() }); clearTimeout(t); t = setTimeout(() => setMsg(null), 2600); };
+    window.addEventListener('feiern', on);
+    return () => { window.removeEventListener('feiern', on); clearTimeout(t); };
+  }, []);
+  if (!msg) return null;
+  const colors = ['#F59E0B', '#0F766E', '#E11D48', '#2563EB', '#7C3AED', '#16A34A'];
+  return (
+    <div className="konfetti" key={msg.key} aria-live="polite">
+      {Array.from({ length: 70 }, (_, i) => (
+        <span key={i} style={{ left: `${Math.random() * 100}%`, background: colors[i % colors.length], animationDelay: `${Math.random() * 0.4}s`, animationDuration: `${1.6 + Math.random() * 1}s`, transform: `rotate(${Math.random() * 360}deg)` }} />
+      ))}
+      <div className="konfetti-msg">🎉 {msg.text}</div>
+    </div>
+  );
+}
+async function toggleChoreFeier(ctx, c) {
+  const last = !c.done && choresToday(ctx, ctx.day).filter((x) => x.who === c.who && !x.done).length === 1;
+  await toggleChore(ctx, c, ctx.day, c.done);
+  if (last && ctx.member(c.who)?.kid) feiern(ctx.member(c.who).name);
+}
+
+async function togglePack(ctx, kid, date, item, last = false) {
+  if (last && !item.done) feiern(ctx.member(kid)?.name ?? '');
   const row = { kid, on_date: date, item_key: item.key };
   ctx.data.checks.local((rows) => (item.done ? rows.filter((r) => !(r.kid === kid && r.on_date === date && r.item_key === item.key)) : [...rows, row]));
   const ok = item.done
@@ -174,7 +207,7 @@ function Alle({ ctx, openIstAlle, openKiste }) {
               {notes.map((n) => <div key={n.id} className="st-note">{n.text}</div>)}
               {items.length === 0 && <div className="st-empty">Nichts einzupacken.</div>}
               {items.map((it) => (
-                <button key={it.key} className="st-check" onClick={() => togglePack(ctx, k.id, pd, it)} aria-pressed={it.done}>
+                <button key={it.key} className="st-check" onClick={() => togglePack(ctx, k.id, pd, it, items.filter((x) => !x.done).length === 1)} aria-pressed={it.done}>
                   <Check on={it.done} /><span className={it.done ? 'done' : ''}>{it.text}</span>
                 </button>
               ))}
@@ -226,7 +259,7 @@ function BonusRow({ ctx, openKiste }) {
               <div key={p.id} className="st-kid">
                 <span className="st-kidname" style={{ color: p.color }}>{p.name}</span>
                 {list.length === 0 ? <span className="st-empty">heute frei</span> : list.map((c) => (
-                  <button key={c.id} className="st-check" onClick={() => toggleChore(ctx, c, ctx.day, c.done)} aria-pressed={c.done}>
+                  <button key={c.id} className="st-check" onClick={() => toggleChoreFeier(ctx, c)} aria-pressed={c.done}>
                     <Check on={c.done} /><span className={c.done ? 'done' : ''}>{c.title}</span>
                   </button>
                 ))}
@@ -241,6 +274,7 @@ function BonusRow({ ctx, openKiste }) {
 
 function Kind({ ctx, kid }) {
   const [which, setWhich] = useState(() => (new Date().getHours() < 12 ? 'h' : 'm'));
+  const [tierWahl, setTierWahl] = useState(false);
   const date = which === 'h' ? ctx.day : addDays(ctx.day, 1);
   const { items, notes } = packList(ctx, kid.id, date);
   const occ = expand(ctx.data.events.rows, ctx.day, addDays(ctx.day, 1)).filter((o) => o.ev.who.includes(kid.id) || o.ev.who.includes('all'));
@@ -258,7 +292,30 @@ function Kind({ ctx, kid }) {
       window.speechSynthesis.speak(u);
     } catch { /* kein Vorlesen möglich */ }
   };
+  const cds = countdowns(ctx.data.events.rows, kid.id, ctx.day);
   return (
+    <>
+    <div className="st-kidbar">
+      <button className="st-hello" onClick={() => setTierWahl(true)} aria-label="Mein Tier wählen">{begruessung(kid.name, kid.tier)}{!kid.tier && <span className="st-hello-hint">Tier wählen</span>}</button>
+      {cds.map((c) => (
+        <span key={c.title} className="st-cd"><span aria-hidden="true">{c.icon}</span> {schlafen(c.n)} <b>{c.title}</b>{c.n === 1 ? '!' : ''}</span>
+      ))}
+    </div>
+    {tierWahl && (
+      <div className="sheet-bg" onClick={(e) => { if (e.target === e.currentTarget) setTierWahl(false); }}>
+        <div className="sheet st-sheet" role="dialog" aria-modal="true" aria-label="Tier wählen">
+          <div className="sheet-head"><h2>{kid.name}, welches Tier bist du?</h2><button className="icon-btn st-icon" onClick={() => setTierWahl(false)} aria-label="Schließen"><Icon name="x" /></button></div>
+          <div className="st-tiere">
+            {TIERE.map((t) => (
+              <button key={t} className={`st-tier${kid.tier === t ? ' on' : ''}`} aria-pressed={kid.tier === t} onClick={async () => {
+                const ok = await run(supabase.rpc('tier_setzen', { kind: kid.id, t }), ctx.fail);
+                if (ok) { ctx.reloadMembers?.(); setTierWahl(false); ctx.say(`Hallo, ${kid.name} ${t}`); }
+              }}>{t}</button>
+            ))}
+          </div>
+        </div>
+      </div>
+    )}
     <main className="st-grid kid">
       <div className="st-col">
       <section className="st-card st-pack">
@@ -277,7 +334,7 @@ function Kind({ ctx, kid }) {
         )}
         {items.length === 0 && <div className="st-empty">Nichts einzupacken.</div>}
         {items.map((it) => (
-          <button key={it.key} className="st-check big" onClick={() => togglePack(ctx, kid.id, date, it)} aria-pressed={it.done}>
+          <button key={it.key} className="st-check big" onClick={() => togglePack(ctx, kid.id, date, it, open.length === 1)} aria-pressed={it.done}>
             <Check on={it.done} /><span className={it.done ? 'done' : ''}>{it.text}</span>
           </button>
         ))}
@@ -308,7 +365,7 @@ function Kind({ ctx, kid }) {
           {(() => {
             const mine = choresToday(ctx, ctx.day).filter((c) => c.who === kid.id);
             return mine.length === 0 ? <div className="st-empty">Heute frei.</div> : mine.map((c) => (
-              <button key={c.id} className="st-check" onClick={() => toggleChore(ctx, c, ctx.day, c.done)} aria-pressed={c.done}>
+              <button key={c.id} className="st-check" onClick={() => toggleChoreFeier(ctx, c)} aria-pressed={c.done}>
                 <Check on={c.done} /><span className={c.done ? 'done' : ''}>{c.title}</span>
               </button>
             ));
@@ -317,6 +374,7 @@ function Kind({ ctx, kid }) {
         {fuerKind(ctx, kid.id).length > 0 && <section className="st-card st-grow"><FuerMich ctx={ctx} kid={kid} /></section>}
       </div>
     </main>
+    </>
   );
 }
 

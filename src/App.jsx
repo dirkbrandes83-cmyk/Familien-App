@@ -51,7 +51,7 @@ function Family({ session }) {
 
   if (!members.loaded || station === null) return null;
   const sorted = [...members.rows].sort((a, b) => a.sort - b.sort);
-  if (station) return <Station members={sorted} />;
+  if (station) return <Station members={sorted} reloadMembers={members.reload} />;
   if (!me) {
     return (
       <div className="login"><div className="card">
