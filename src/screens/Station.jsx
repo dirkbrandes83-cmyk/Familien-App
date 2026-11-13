@@ -3,7 +3,7 @@ import { supabase, useTable, useHomeTables, run, learnedSections } from '../data
 import { mealOf, muellOf, Bin, choresToday, toggleChore } from './Zuhause.jsx';
 import { upcomingTests, countdown, urgency, dayChip, pickDays, FAECHER, TEST_ARTEN, testTitle } from '../lib/tests.js';
 import { lessonsFor, schoolDay, fachFarbe } from '../lib/stundenplan.js';
-import { TIERE, begruessung, countdowns, schlafen } from '../lib/kinder.js';
+import { TIERE, begruessung } from '../lib/kinder.js';
 import CheckIn from './CheckIn.jsx';
 import Ideenkiste, { WochenendKarte } from './Wochenende.jsx';
 import { isWeekendSoon } from '../lib/wochenende.js';
@@ -292,14 +292,10 @@ function Kind({ ctx, kid }) {
       window.speechSynthesis.speak(u);
     } catch { /* kein Vorlesen möglich */ }
   };
-  const cds = countdowns(ctx.data.events.rows, kid.id, ctx.day, 1);
   return (
     <>
     <div className="st-kidbar">
       <button className="st-hello" onClick={() => setTierWahl(true)} aria-label="Mein Tier wählen">{begruessung(kid.name, kid.tier)}{!kid.tier && <span className="st-hello-hint">Tier wählen</span>}</button>
-      {cds.map((c) => (
-        <span key={c.title} className="st-cd"><span aria-hidden="true">{c.icon}</span> {schlafen(c.n)} <b>{c.title}</b>{c.n === 1 ? '!' : ''}</span>
-      ))}
     </div>
     {tierWahl && (
       <div className="sheet-bg" onClick={(e) => { if (e.target === e.currentTarget) setTierWahl(false); }}>
