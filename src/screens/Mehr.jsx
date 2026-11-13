@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase, run } from '../data.js';
 import { Icon, ChipPick, Check } from '../ui.jsx';
 import { parseIcs, isCurrent } from '../lib/ics.js';
@@ -52,7 +52,7 @@ export default function Mehr({ ctx }) {
           <Icon name="chev" size={18} />
         </button>
         <button className="row" style={{ minHeight: 60 }} onClick={() => setPage('abos')}>
-          <span className="row-main"><span style={{ fontWeight: 700 }}>Kalender-Abos</span><span className="sub">{ctx.data.subs.rows.length ? ctx.data.subs.rows.map((x) => x.name).join(', ') : 'z. B. Kalender.digital (Schule)'}</span></span>
+          <span className="row-main"><span style={{ fontWeight: 700 }}>Kalender-Abgleich</span><span className="sub">{ctx.data.subs.rows.length ? ctx.data.subs.rows.map((x) => x.name).join(', ') : 'z. B. Kalender.digital (Schule)'}</span></span>
           <Icon name="chev" size={18} />
         </button>
         <button className="row" style={{ minHeight: 60 }} onClick={backup}>
@@ -229,6 +229,41 @@ function KlenderUmzug({ ctx, onBack }) {
   );
 }
 
+// Gegenrichtung: die eigenen Termine der App als abonnierbarer Kalender (Apple Kalender → Klender)
+function FeedLink({ ctx }) {
+  const [tokens, setTokens] = useState([]);
+  const load = async () => {
+    const { data } = await supabase.from('widget_tokens').select('*').eq('scope', 'kalender').order('created_at');
+    setTokens(data || []);
+  };
+  useEffect(() => { load(); }, []);
+  const make = async () => {
+    const res = await run(supabase.from('widget_tokens').insert({ member_id: ctx.me.id, label: `Kalender-Abo ${ctx.me.name}`, scope: 'kalender' }).select('token').single(), ctx.fail);
+    if (res) load();
+  };
+  const del = async (t) => { await run(supabase.from('widget_tokens').delete().eq('token', t.token), ctx.fail); load(); };
+  const host = import.meta.env.VITE_SUPABASE_URL.replace(/^https?:\/\//, '');
+  const link = (t) => `webcal://${host}/functions/v1/kalender-feed?t=${t.token}`;
+  const copy = async (t) => { try { await navigator.clipboard.writeText(link(t).replace('webcal://', 'https://')); ctx.say('Link kopiert'); } catch { ctx.fail('Kopieren ging nicht'); } };
+  return (
+    <section className="card">
+      <div className="card-title">Familien-App → Klender und iPhone-Kalender</div>
+      <div className="small">Eure Termine aus der App als Kalender-Abo. Einmal in Apple Kalender abonnieren – dann kann Klender sie anzeigen, wenn dort Termine aus anderen Kalendern eingeblendet sind (Kalender „Familien-App“ auswählen). Aktualisierung etwa stündlich.</div>
+      {tokens.map((t) => (
+        <div key={t.token} style={{ display: 'flex', flexDirection: 'column', gap: 8, borderTop: '1px solid #F0EBE3', paddingTop: 10 }}>
+          <div className="small">{t.label}{t.last_used ? ` · zuletzt abgerufen ${new Date(t.last_used).toLocaleString('de-DE', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ' · noch nicht abgerufen'}</div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <a className="btn" href={link(t)} style={{ flex: 1 }}>In Kalender abonnieren</a>
+            <button className="btn ghost" style={{ width: 'auto' }} onClick={() => copy(t)}>Link kopieren</button>
+            <button className="icon-btn" aria-label="Link sperren" onClick={() => del(t)}><Icon name="trash" size={18} /></button>
+          </div>
+        </div>
+      ))}
+      {tokens.length === 0 && <button className="btn" onClick={make}>Abo-Link erstellen</button>}
+    </section>
+  );
+}
+
 function Abos({ ctx, onBack }) {
   const [f, setF] = useState({ name: 'Kalender.digital (Schule)', url: '', who: ['dirk'] });
   const [busy, setBusy] = useState(null);
@@ -259,6 +294,7 @@ function Abos({ ctx, onBack }) {
   return (
     <>
       <button className="btn ghost small" style={{ alignSelf: 'flex-start' }} onClick={onBack}><Icon name="left" size={16} />Zurück</button>
+      <FeedLink ctx={ctx} />
       <section className="card">
         <div className="card-title">Kalender-Abos</div>
         <div className="sub">Termine aus Abos sind nur lesbar und werden stündlich aktualisiert. Neue Termine erscheinen im Kalender unter „Neue Termine prüfen“ – mit der Frage nach Kinderbetreuung.</div>
