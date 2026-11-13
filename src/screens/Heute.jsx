@@ -31,9 +31,9 @@ export default function Heute({ ctx }) {
     <>
       <Hinweise ctx={ctx} onCheckin={() => setCi(true)} />
       <AlsNaechstes ctx={ctx} now={now} />
-      <FuerDich ctx={ctx} />
+      <FuerDich ctx={ctx} skip={new Set(nextList(ctx, now).filter((o) => o.date === day).map((o) => o.ev.id))} />
       {abends && <EinpackenMorgen ctx={ctx} />}
-      <FamilieHeute ctx={ctx} now={now} short={abends} />
+      <FamilieHeute ctx={ctx} now={now} short={abends} skip={new Set(nextList(ctx, now).filter((o) => o.date === day).map((o) => o.ev.id))} />
       <Kacheln ctx={ctx} hidePack={abends} />
       {ci && <CheckIn ctx={ctx} onClose={() => setCi(false)} />}
       <div style={{ height: 4 }} aria-hidden="true" data-day={day} />
@@ -55,11 +55,15 @@ function Hinweise({ ctx, onCheckin }) {
 }
 
 /* ---------- Als Nächstes: bis zu drei Termine ---------- */
-function AlsNaechstes({ ctx, now }) {
+function nextList(ctx, now) {
   const tomorrow = addDays(ctx.day, 1);
-  const list = expand(ctx.data.events.rows, ctx.day, tomorrow)
+  return expand(ctx.data.events.rows, ctx.day, tomorrow)
     .filter((o) => !o.ev.all_day && (o.date === tomorrow || mins(o.ev.to_time || o.ev.from_time) + (o.ev.to_time ? 0 : 30) > now))
     .slice(0, 3);
+}
+function AlsNaechstes({ ctx, now }) {
+  const tomorrow = addDays(ctx.day, 1);
+  const list = nextList(ctx, now);
   if (!list.length) return null;
   const when = (o) => (o.date === ctx.day ? inLabel(mins(o.ev.from_time) - now) : `morgen, ${WDL[weekday(tomorrow)]}`);
   const wer = (ev) => (ev.who.includes('all') ? 'Alle' : ev.who.map((w) => ctx.member(w)?.name).filter(Boolean).join(', '));
@@ -94,7 +98,7 @@ function Fahrt({ ev, ctx }) {
 }
 
 /* ---------- Für dich: alles zum Abhaken ---------- */
-function FuerDich({ ctx }) {
+function FuerDich({ ctx, skip }) {
   const me = ctx.me.id;
   const [hidden, setHidden] = useState([]); // gerade abgehakt → kurz durchgestrichen, dann weg
   const hide = (key) => { setHidden((h) => [...h, key]); };
@@ -127,7 +131,8 @@ function FuerDich({ ctx }) {
   const chores = choresToday(ctx, ctx.day).filter((c) => c.who === me);
 
   // Meine Fahrten heute (bringen/abholen)
-  const meine = expand(ctx.data.events.rows, ctx.day, ctx.day).filter((o) => !o.ev.all_day && (o.ev.bring_by === ctx.me.name || o.ev.pick_by === ctx.me.name))
+  // (Termine aus „Als Nächstes“ stehen dort schon mit 🚗 – hier nicht doppelt)
+  const meine = expand(ctx.data.events.rows, ctx.day, ctx.day).filter((o) => !skip.has(o.ev.id) && !o.ev.all_day && (o.ev.bring_by === ctx.me.name || o.ev.pick_by === ctx.me.name))
     .flatMap((o) => {
       const kid = ctx.kids.filter((k) => o.ev.who.includes(k.id)).map((k) => k.name).join(' und ') || o.ev.who.map((w) => ctx.member(w)?.name).filter(Boolean).join(', ');
       const out = [];
@@ -232,13 +237,13 @@ function EinpackenMorgen({ ctx }) {
 }
 
 /* ---------- Familie heute: Zeitleiste + Morgen-Zeile ---------- */
-function FamilieHeute({ ctx, now, short }) {
+function FamilieHeute({ ctx, now, short, skip }) {
   const tomorrow = addDays(ctx.day, 1);
   const occ = expand(ctx.data.events.rows, ctx.day, tomorrow);
   const today = occ.filter((o) => o.date === ctx.day);
   const meal = mealOf(ctx, ctx.day);
   const rows = [
-    ...today.map((o) => ({ key: o.ev.id, t: o.ev.all_day ? -1 : mins(o.ev.from_time), o })),
+    ...today.filter((o) => !skip.has(o.ev.id)).map((o) => ({ key: o.ev.id, t: o.ev.all_day ? -1 : mins(o.ev.from_time), o })),
     ...(meal && (meal.planned || meal.fixed) ? [{ key: 'essen', t: 18 * 60, meal: meal.title }] : []),
   ].sort((a, b) => a.t - b.t);
   const past = (r) => (r.meal ? r.t + 60 <= now : r.o && !r.o.ev.all_day && mins(r.o.ev.to_time || r.o.ev.from_time) + (r.o.ev.to_time ? 0 : 60) <= now);
@@ -252,10 +257,10 @@ function FamilieHeute({ ctx, now, short }) {
   return (
     <section className="card h-sec" aria-labelledby="h-familie">
       <div className="h-head">
-        <div className="h-label" id="h-familie">Familie heute</div>
+        <div className="h-label" id="h-familie">{skip.size ? 'Außerdem heute' : 'Familie heute'}</div>
         <button className="icon-btn" aria-label="Neuer Termin" onClick={() => ctx.openEvent(null, { start_date: ctx.day })}><Icon name="plus" size={18} /></button>
       </div>
-      {shown.length === 0 && <div className="empty">{rows.length ? 'Für heute ist alles vorbei.' : 'Heute nichts geplant.'}</div>}
+      {shown.length === 0 && <div className="empty">{rows.length ? 'Für heute ist alles vorbei.' : skip.size ? 'Sonst nichts heute.' : 'Heute nichts geplant.'}</div>}
       {shown.map((r) => r.meal ? (
         <button key="essen" className={`h-tl${past(r) ? ' past' : ''}`} onClick={() => ctx.go('zuhause', 'essen')}>
           <span className="h-tl-time">18:00</span><span className="h-tl-title">🍽 {r.meal}</span>
