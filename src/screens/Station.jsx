@@ -352,26 +352,32 @@ function Kind({ ctx, kid }) {
         </section>
         <section className="st-card st-grow">
           <MeineTests ctx={ctx} kid={kid} />
-          {!upcomingTests(ctx.data.events.rows, ctx.day, 21, kid.id).length && <><h2>Meine Tests</h2><div className="st-empty">Keine Tests in Sicht. 🙂</div></>}
+          {!upcomingTests(ctx.data.events.rows, ctx.day, 7, kid.id).length && <><h2>Meine Tests</h2><div className="st-empty">Diese Woche keine Tests. 🙂</div></>}
         </section>
       </div>
       <div className="st-col">
-        <section className="st-card st-auto">
-          <h2>Essen heute</h2>
-          <div className="st-meal">{mealOf(ctx, ctx.day).title}</div>
-        </section>
-        <section className="st-card st-auto">
-          <h2>Meine Ämtchen</h2>
+        <section className="st-card st-grow">
+          <h2>Meine Aufgaben</h2>
           {(() => {
             const mine = choresToday(ctx, ctx.day).filter((c) => c.who === kid.id);
-            return mine.length === 0 ? <div className="st-empty">Heute frei.</div> : mine.map((c) => (
-              <button key={c.id} className="st-check" onClick={() => toggleChoreFeier(ctx, c)} aria-pressed={c.done}>
-                <Check on={c.done} /><span className={c.done ? 'done' : ''}>{c.title}</span>
-              </button>
-            ));
+            const extra = fuerKind(ctx, kid.id);
+            if (!mine.length && !extra.length) return <div className="st-empty">Heute nichts zu tun. 🙂</div>;
+            return (
+              <>
+                {mine.map((c) => (
+                  <button key={c.id} className="st-check" onClick={() => toggleChoreFeier(ctx, c)} aria-pressed={c.done}>
+                    <Check on={c.done} /><span className={c.done ? 'done' : ''}>{c.title}</span>
+                  </button>
+                ))}
+                {extra.map((x) => (
+                  <div key={x.id} className="st-note big">
+                    {x.text}{x.due ? <span style={{ fontWeight: 500 }}> · bis {shortLabel(x.due)}</span> : null}
+                  </div>
+                ))}
+              </>
+            );
           })()}
         </section>
-        {fuerKind(ctx, kid.id).length > 0 && <section className="st-card st-grow"><FuerMich ctx={ctx} kid={kid} /></section>}
       </div>
     </main>
     </>
@@ -416,7 +422,7 @@ function StundenplanKarte({ ctx, kid, date }) {
 
 // Kommende Tests mit Countdown – je näher, desto kräftiger die Farbe
 function MeineTests({ ctx, kid }) {
-  const list = upcomingTests(ctx.data.events.rows, ctx.day, 21, kid.id);
+  const list = upcomingTests(ctx.data.events.rows, ctx.day, 7, kid.id);
   if (!list.length) return null;
   return (
     <>
