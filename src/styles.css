@@ -502,3 +502,25 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .st-ttsoonrow.hot { background: #FEE2E2; color: #991B1B; }
 .st-ttsoonrow span:last-child { font-weight: 700; white-space: nowrap; }
 .st-grid.kid > .st-col:nth-child(2) > .st-ttcard { flex: 1 1 auto; }
+/* Alle: einheitliche Zeilen – jede Zeile 48px, gleiche Schrift, gleiche Trennlinien */
+.alle3 .st-card { gap: 0; }
+.alle3 .st-card h2 { font-size: 22px; padding-bottom: 6px; }
+.alle3 .st-cardhead { padding-bottom: 6px; }
+.alle3 .st-cardhead h2 { padding-bottom: 0; }
+.alle3 .st-card h3 { margin: 0; padding: 10px 0 2px; font-size: 13px; }
+.alle3 .st-ev, .alle3 .st-check, .alle3 .st-shop li, .alle3 .wk-top, .alle3 .st-kid > .st-empty {
+  min-height: 48px; padding: 6px 0; border-top: 1px solid var(--line2); font-size: 17px; line-height: 1.3; align-items: center; }
+.alle3 .st-ev { align-items: center; }
+.alle3 .st-evtime { font-size: 17px; }
+.alle3 .st-evtitle { font-size: 17px; font-weight: 600; }
+.alle3 .st-check .check { width: 28px; height: 28px; flex-basis: 28px; border-radius: 8px; }
+.alle3 .st-kid { gap: 0; border-top: 0; padding-top: 6px; }
+.alle3 .st-kidname { font-size: 15px; text-transform: uppercase; letter-spacing: 0.04em; padding: 4px 0 0; }
+.alle3 .st-note { margin: 4px 0; }
+.alle3 .st-shop { list-style: none; padding: 0; gap: 0; font-weight: 600; }
+.alle3 .st-shop li { display: flex; }
+.alle3 .wk-top { justify-content: center; }
+.alle3 .wk-title { font-size: 17px; }
+.alle3 .st-meal { font-size: 20px; min-height: 48px; display: flex; align-items: center; border-top: 1px solid var(--line2); }
+.alle3 .st-big { margin-top: 10px; }
+.alle3 .wk-top { align-items: flex-start; justify-content: center; } .alle3 .st-kid > .st-empty { display: flex; }
