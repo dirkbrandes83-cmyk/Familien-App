@@ -235,8 +235,8 @@ function Nacht({ ctx, clock, onWake }) {
 function packDate(ctx) {
   return new Date().getHours() < 15 ? ctx.day : addDays(ctx.day, 1);
 }
-const morgens = () => { const h = new Date().getHours(); return h >= 5 && h < 9; };
-const nachts = (d = new Date()) => d.getHours() >= 21 || d.getHours() < 6;
+const morgens = () => { const h = new Date().getHours(); return h >= 7 && h < 9; };
+const nachts = (d = new Date()) => d.getHours() >= 21 || d.getHours() < 7; // 21–7 Uhr
 
 function Alle({ ctx, openIstAlle, openKiste }) {
   const tomorrow = addDays(ctx.day, 1);
