@@ -5,10 +5,10 @@ import { supabase, run } from '../data.js';
 import { Icon, Check, PersonChips } from '../ui.jsx';
 import CheckIn from './CheckIn.jsx';
 import { addDays, expand, shortLabel, weekday, WDL, hm } from '../lib/dates.js';
-import { packList, packDay, fahrtText, NICHT } from './common.jsx';
+import { packList, packDay, fahrtText } from './common.jsx';
+import { aufgaben, offen, fahrtSetzen, NICHT } from '../lib/aufgaben.js';
 import { upcomingTests } from '../lib/tests.js';
-import { mealOf, muellOf, choresToday, toggleChore } from './Zuhause.jsx';
-import { muellHeute, BINS } from '../lib/home.js';
+import { mealOf, choresToday, toggleChore } from './Zuhause.jsx';
 import { isWeekendSoon } from '../lib/wochenende.js';
 
 const mins = (t) => { const [h, m] = String(t).split(':').map(Number); return h * 60 + m; };
@@ -102,56 +102,36 @@ function FuerDich({ ctx, skip }) {
   const me = ctx.me.id;
   const [hidden, setHidden] = useState([]); // gerade abgehakt → kurz durchgestrichen, dann weg
   const hide = (key) => { setHidden((h) => [...h, key]); };
-  const items = [];
+  const alle = offen(aufgaben(ctx));
+  const bald = addDays(ctx.day, 3);
 
-  // Erledigen: meins (Terminvereinbarung ohne Zuständigen landet bei Dirk)
-  const todos = ctx.data.inbox.rows
-    .filter((r) => !r.done_at && (r.owner ?? ((r.typ ?? 'termin') === 'termin' ? 'dirk' : null)) === me)
-    .sort((a, b) => String(a.due || '9999').localeCompare(String(b.due || '9999')));
-  for (const r of todos) {
-    items.push({
-      key: `t${r.id}`, due: r.due, text: r.title, sub: r.due ? `bis ${shortLabel(r.due)}` : null, warn: r.due && r.due <= addDays(ctx.day, 1),
-      done: async () => run(supabase.from('todo_inbox').update({ done_at: new Date().toISOString() }).eq('id', r.id), ctx.fail),
-      undo: async () => run(supabase.from('todo_inbox').update({ done_at: null }).eq('id', r.id), ctx.fail),
-    });
-  }
-  // Besorgen mit Frist in den nächsten 3 Tagen (z. B. Geschenke)
-  for (const b of ctx.data.buy.rows.filter((r) => !r.done && r.due && r.due <= addDays(ctx.day, 3))) {
-    items.push({
-      key: `b${b.id}`, due: b.due, text: b.typ === 'kleidung' ? `${b.art}${b.size ? ` (${b.size})` : ''} besorgen` : b.art, sub: `bis ${shortLabel(b.due)}`, warn: b.due <= addDays(ctx.day, 1),
-      done: async () => run(supabase.from('buy_items').update({ done: true, done_at: new Date().toISOString() }).eq('id', b.id), ctx.fail),
-      undo: async () => run(supabase.from('buy_items').update({ done: false, done_at: null }).eq('id', b.id), ctx.fail),
-    });
-  }
-  // Müll – nur am Rausstell-Tag und wenn ich dran bin
-  const m = muellOf(ctx);
-  const st = muellHeute(m, ctx.day);
-  if (st && m.out_by === me) items.push({ key: 'muell', due: ctx.day, text: `Müll raus: ${st.bins.map((x) => BINS[x]?.label).join(' + ')}`, sub: 'heute Abend', local: true });
+  // Zum Abhaken: meine Erledigen-Punkte, Besorgen mit Frist (für alle), Müll wenn ich dran bin
+  const items = alle.filter((a) =>
+    (a.art === 'erledigen' && a.owner === me) ||
+    (a.art === 'besorgen' && a.due && a.due <= bald) ||
+    (a.art === 'muell' && a.owner === me))
+    .map((a) => ({
+      key: a.key, due: a.due, text: a.text, local: a.art === 'muell',
+      sub: a.art === 'muell' ? 'heute Abend' : a.due ? `bis ${shortLabel(a.due)}` : null,
+      warn: a.art !== 'muell' && a.due && a.due <= addDays(ctx.day, 1),
+      done: a.erledigen, undo: a.zurueck,
+    }));
   // Meine Ämtchen
   const chores = choresToday(ctx, ctx.day).filter((c) => c.who === me);
 
-  // Meine Fahrten heute (bringen/abholen)
-  // (Termine aus „Als Nächstes“ stehen dort schon mit 🚗 – hier nicht doppelt)
-  const meine = expand(ctx.data.events.rows, ctx.day, ctx.day).filter((o) => !skip.has(o.ev.id) && !o.ev.all_day && (o.ev.bring_by === ctx.me.name || o.ev.pick_by === ctx.me.name))
-    .flatMap((o) => {
-      const kid = ctx.kids.filter((k) => o.ev.who.includes(k.id)).map((k) => k.name).join(' und ') || o.ev.who.map((w) => ctx.member(w)?.name).filter(Boolean).join(', ');
-      const out = [];
-      if (o.ev.bring_by === ctx.me.name) out.push({ key: `fb${o.ev.id}`, t: hm(o.ev.from_time), text: `${kid} hinbringen`, ev: o.ev });
-      if (o.ev.pick_by === ctx.me.name) out.push({ key: `fp${o.ev.id}`, t: hm(o.ev.to_time || o.ev.from_time), text: `${kid} abholen`, ev: o.ev });
-      return out;
-    }).sort((a, b) => a.t.localeCompare(b.t));
+  // Meine Fahrten heute (Termine aus „Als Nächstes“ stehen dort schon mit Auto-Symbol – hier nicht doppelt)
+  const meine = alle.filter((a) => a.art === 'fahrt' && a.owner === me && a.date === ctx.day && !skip.has(a.eventId))
+    .map((a) => ({ key: a.key, t: a.zeit, text: a.text, ev: a.ev }))
+    .sort((x, y) => x.t.localeCompare(y.t));
 
-  // Offene Fahrten der nächsten 3 Tage
-  const fahrten = expand(ctx.data.events.rows, ctx.day, addDays(ctx.day, 3))
-    .filter((o) => o.ev.kind === 'termin' && !o.ev.all_day && o.ev.who.some((w) => ctx.member(w)?.kid) && (!o.ev.bring_by || !o.ev.pick_by)
-      && !(o.date === ctx.day && mins(o.ev.from_time) < nowMins()))
-    .slice(0, 3);
+  // Offene Fahrten der nächsten 3 Tage (je Termin die erste offene Lücke)
+  const seen = new Set();
+  const fahrten = alle.filter((a) => a.art === 'fahrt' && a.offen && !(a.date === ctx.day && mins(a.ev.from_time) < nowMins()))
+    .filter((a) => { const k = a.eventId + a.date; if (seen.has(k)) return false; seen.add(k); return true; })
+    .slice(0, 3)
+    .map((a) => ({ ev: a.ev, date: a.date, field: a.feld }));
   const parents = ctx.members.filter((p) => !p.kid);
-  const setFahrt = async (o, field, name) => {
-    ctx.data.events.local((rows) => rows.map((e) => (e.id === o.ev.id ? { ...e, [field]: name } : e)));
-    const ok = await run(supabase.from('events').update({ [field]: name }).eq('id', o.ev.id), ctx.fail);
-    if (!ok) ctx.data.events.reload();
-  };
+  const setFahrt = (o, field, wert) => fahrtSetzen(ctx, o.ev, field, wert);
 
   // nach Frist sortiert, ohne Frist ans Ende
   items.sort((a, b) => String(a.due || '9999').localeCompare(String(b.due || '9999')));
@@ -186,7 +166,7 @@ function FuerDich({ ctx, skip }) {
       })}
       {visible.length > 6 && <button className="h-more" onClick={() => ctx.go('erinn', 'vereinbaren')}>… und {visible.length - 6} weitere</button>}
       {fahrten.map((o) => {
-        const field = !o.ev.bring_by ? 'bring_by' : 'pick_by';
+        const field = o.field;
         const kid = ctx.kids.filter((k) => o.ev.who.includes(k.id)).map((k) => k.name).join(' und ');
         const when = o.date === ctx.day ? hm(o.ev.from_time) : `${WDL[weekday(o.date)].slice(0, 2)} ${hm(o.ev.from_time)}`;
         return (
@@ -194,7 +174,7 @@ function FuerDich({ ctx, skip }) {
             <div><b>{field === 'bring_by' ? 'Wer bringt' : 'Wer holt'} {kid}?</b> <span className="h-item-sub">{o.ev.title} · {when}</span></div>
             <div className="h-fahrt-chips">
               {parents.map((p) => (
-                <button key={p.id} className="chip" style={{ borderColor: p.bg, color: p.color }} onClick={() => setFahrt(o, field, p.name)}>
+                <button key={p.id} className="chip" style={{ borderColor: p.bg, color: p.color }} onClick={() => setFahrt(o, field, p.id)}>
                   {p.id === ctx.me.id ? 'Ich' : p.name}
                 </button>
               ))}
@@ -289,12 +269,12 @@ function Kacheln({ ctx, hidePack }) {
   const shop = ctx.data.shop.rows.filter((r) => !r.done);
   const pd = packDay(ctx);
   const packOpen = ctx.kids.reduce((n, k) => n + packList(ctx, k.id, pd).items.filter((i) => !i.done).length, 0);
-  const buy = ctx.data.buy.rows.filter((r) => !r.done);
+  const buy = offen(aufgaben(ctx)).filter((a) => a.art === 'besorgen');
   const tests = upcomingTests(ctx.data.events.rows, ctx.day, 14);
   const tiles = [
     shop.length && { icon: 'cart', label: 'Einkauf', value: `${shop.length} · ${shop.slice(0, 2).map((s) => s.name).join(', ')}`, go: () => ctx.go('einkauf') },
     !hidePack && packOpen && { icon: 'backpack', label: pd === ctx.day ? 'Einpacken heute' : 'Einpacken morgen', value: `${packOpen} offen`, go: () => ctx.go('erinn', 'mitnehmen') },
-    buy.length && { icon: 'bag', label: 'Besorgen', value: `${buy.length} · ${buy[0].art}`, go: () => ctx.go('erinn', 'besorgen') },
+    buy.length && { icon: 'bag', label: 'Besorgen', value: `${buy.length} · ${buy[0].text}`, go: () => ctx.go('erinn', 'besorgen') },
     tests.length && { icon: 'form', label: 'Tests', value: `${tests.length} in 2 Wochen`, go: () => ctx.go('kalender') },
   ].filter(Boolean);
   if (!tiles.length) return null;

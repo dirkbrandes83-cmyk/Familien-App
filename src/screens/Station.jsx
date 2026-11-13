@@ -11,6 +11,7 @@ import { Icon, Check, Toast, PersonChips } from '../ui.jsx';
 import { addDays, expand, longLabel, shortLabel, today, hm, WDL, weekday } from '../lib/dates.js';
 import { sectionOf } from '../lib/shop.js';
 import { packList, BringPick } from './common.jsx';
+import { aufgaben, offen } from '../lib/aufgaben.js';
 
 // Familien-Station: gemeinsames iPad. Eigenes Konto mit wenigen Rechten
 // (lesen, eintragen, abhaken – nichts löschen, keine Termine ändern).
@@ -503,16 +504,9 @@ function MeineTests({ ctx, kid }) {
 
 // Erinnerungen, die dieses Kind betreffen: Erledigen, Besorgen und Geschenke zu seinen Terminen
 function fuerKind(ctx, kidId) {
-  const evById = new Map(ctx.data.events.rows.map((e) => [e.id, e]));
-  const todos = ctx.data.inbox.rows.filter((r) => !r.done_at && r.for_who === kidId)
-    .map((r) => ({ id: 't' + r.id, text: r.title, due: r.due }));
-  const buys = ctx.data.buy.rows.filter((r) => {
-    if (r.done) return false;
-    if (r.for_who === kidId) return true;
-    const ev = r.event_id && evById.get(r.event_id);
-    return !!ev && ev.kind !== 'geburtstag' && ev.who.includes(kidId);
-  }).map((r) => ({ id: 'b' + r.id, text: r.typ === 'kleidung' ? `${r.art}${r.size ? ' (' + r.size + ')' : ''} besorgen` : r.art, due: r.due }));
-  return [...todos, ...buys].sort((a, b) => String(a.due || '9999').localeCompare(String(b.due || '9999')));
+  // Aus dem gemeinsamen Aufgaben-Modell: Erledigen und Besorgen, die dieses Kind betreffen
+  return offen(aufgaben(ctx)).filter((a) => a.forWho === kidId && (a.art === 'erledigen' || a.art === 'besorgen'))
+    .map((a) => ({ id: a.key, text: a.text, due: a.due }));
 }
 
 function FuerMich({ ctx, kid }) {

@@ -65,7 +65,8 @@ export function packDay(ctx) {
 
 // „bringt Dirk · holt Catrin“ – offen wird orange angezeigt, wenn nur eins fehlt
 // „nicht nötig“: Kind geht allein hin bzw. kommt allein nach Hause
-export const NICHT = 'nicht nötig';
+export { NICHT } from '../lib/aufgaben.js';
+import { NICHT } from '../lib/aufgaben.js';
 export function fahrtText(ev) {
   return [ev.bring_by && ev.bring_by !== NICHT && `bringt ${ev.bring_by}`, ev.pick_by && ev.pick_by !== NICHT && `holt ${ev.pick_by}`].filter(Boolean).join(' · ');
 }

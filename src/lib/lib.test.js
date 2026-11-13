@@ -103,3 +103,27 @@ test('Müll nur am Rausstell-Tag', async () => {
   assert.equal(muellHeute(m, '2026-11-16'), null);
   assert.equal(muellHeute(null, '2026-11-10'), null);
 });
+
+test('Aufgaben-Modell: Quellen, Zuständige, Fahrten', async () => {
+  const { aufgaben, offen, vonPerson, fuerPerson, fahrer } = await import('./aufgaben.js');
+  const members = [{ id: 'dirk', name: 'Dirk' }, { id: 'catrin', name: 'Catrin' }, { id: 'jonte', name: 'Jonte', kid: true }, { id: 'emil', name: 'Emil', kid: true }];
+  const T = (rows) => ({ rows });
+  const ctx = {
+    day: '2026-11-17', members, kids: members.filter((m) => m.kid), fail: () => {},
+    data: {
+      inbox: T([{ id: 1, title: 'Zahnarzt anrufen', typ: 'termin', owner: null, due: '2026-11-20' }, { id: 2, title: 'Formular', typ: 'ausfuellen', owner: 'catrin', for_who: 'emil', done_at: '2026-11-16T10:00:00Z' }]),
+      buy: T([{ id: 3, typ: 'sonstiges', art: 'Geschenk: Party Paul', due: '2026-11-18', event_id: 'e1', done: false }]),
+      chores: T([{ id: 4, title: 'Tisch decken', who: 'jonte', weekdays: [1], sort: 1 }]),
+      choreChecks: T([{ chore_id: 4, on_date: '2026-11-17' }]),
+      settings: T([{ key: 'muell', value: { ref_monday: '2026-11-16', out_weekday: 1, pickup_weekday: 2, week_a: ['bio'], week_b: [], out_by: 'dirk' } }]),
+      events: T([{ id: 'e1', title: 'Party Paul', kind: 'termin', who: ['emil'], start_date: '2026-11-18', all_day: false, from_time: '15:00', to_time: '17:00', rep: 'keine', exdates: [], bring_by: 'nicht nötig', pick_by: null }]),
+    },
+  };
+  const a = aufgaben(ctx);
+  assert.deepEqual(vonPerson(offen(a), 'dirk').map((x) => x.art).sort(), ['erledigen', 'muell']); // Terminvereinbarung → Dirk
+  assert.equal(fuerPerson(a, 'emil').filter((x) => x.art === 'besorgen').length, 1);                 // Geschenk zum Kindertermin
+  assert.equal(a.find((x) => x.art === 'aemtchen').done, true);
+  const f = a.filter((x) => x.art === 'fahrt');
+  assert.equal(f.length, 1); assert.equal(f[0].feld, 'pick_by'); assert.equal(f[0].offen, true);   // Bringen „nicht nötig“ fällt weg
+  assert.deepEqual(fahrer(ctx, 'Catrin'), { id: 'catrin', name: 'Catrin' });
+});

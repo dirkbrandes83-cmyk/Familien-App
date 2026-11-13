@@ -6,6 +6,7 @@ import { Icon, PersonChips } from '../ui.jsx';
 import { addDays, expand, weekday, WDL, hm, shortLabel } from '../lib/dates.js';
 import { muellStatus, BINS } from '../lib/home.js';
 import { rankIdeas } from '../lib/wochenende.js';
+import { aufgaben, offen } from '../lib/aufgaben.js';
 import { toggleVote } from './Wochenende.jsx';
 
 const FACES = [[1, '😢', 'schlecht'], [2, '😕', 'nicht so gut'], [3, '😐', 'geht so'], [4, '🙂', 'gut'], [5, '😄', 'super']];
@@ -223,9 +224,9 @@ export default function CheckIn({ ctx, onClose }) {
 }
 
 function Anstehend({ ctx, to }) {
-  const inbox = ctx.data.inbox.rows.filter((r) => !r.done_at);
-  const buy = ctx.data.buy.rows.filter((r) => !r.done);
-  const soon = buy.filter((r) => r.due && r.due <= to);
+  const alle = offen(aufgaben(ctx));
+  const inbox = alle.filter((a) => a.art === 'erledigen').map((a) => ({ title: a.text, due: a.due }));
+  const soon = alle.filter((a) => a.art === 'besorgen' && a.due && a.due <= to).map((a) => ({ text: a.text, due: a.due }));
   const wishes = ctx.data.wishes.rows.filter((w) => !w.done_at);
   const Block = ({ icon, title, items, empty }) => (
     <section className="ci-block">
@@ -237,7 +238,7 @@ function Anstehend({ ctx, to }) {
   return (
     <div className="ci-blocks">
        <Block icon="todo" title="Zu erledigen" empty="Nichts offen." items={inbox.map((r) => r.title + (r.due ? ` (bis ${shortLabel(r.due)})` : ''))} />
-      <Block icon="bag" title="Diese Woche besorgen" empty="Nichts mit Frist." items={soon.map((r) => (r.typ === 'kleidung' ? `${r.art}${r.size ? ` (${r.size})` : ''}` : r.art) + ` – bis ${shortLabel(r.due)}`)} />
+      <Block icon="bag" title="Diese Woche besorgen" empty="Nichts mit Frist." items={soon.map((r) => `${r.text} – bis ${shortLabel(r.due)}`)} />
       <Block icon="cart" title="Essenswünsche" empty="Keine Wünsche offen." items={wishes.map((w) => `${w.title}${ctx.member(w.who) ? ` (${ctx.member(w.who).name})` : ''}`)} />
     </div>
   );
