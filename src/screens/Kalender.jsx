@@ -15,30 +15,40 @@ export default function Kalender({ ctx, seg = 'termine', setSeg = () => {} }) {
   const people = [{ id: 'all', name: 'Alle', color: '#1C1917', bg: '#E7E1D8' }, ...ctx.members];
 
   const openCare = ctx.data.care.rows.filter((c) => c.on_date >= ctx.day && careStatus(ctx.data.asks.rows.filter((a) => a.need_id === c.id)) !== 'gesichert').length;
-  const top = (
-    <Seg label="Bereich" value={seg} onPick={setSeg} options={[['termine', 'Termine'], ['betreuung', `Betreuung${openCare ? ` ${openCare} offen` : ''}`]]} />
-  );
-  if (seg === 'betreuung') return <>{top}<Betreuung ctx={ctx} /></>;
+  const bereich = <Seg label="Bereich" value={seg} onPick={setSeg} options={[['termine', 'Termine'], ['betreuung', `Betreuung${openCare ? ` ${openCare}` : ''}`]]} />;
+  if (seg === 'betreuung') return <><div className="cal-bar"><div className="cal-row">{bereich}</div></div><Betreuung ctx={ctx} /></>;
 
+  const isThis = weekStart === mondayOf(ctx.day);
+  const s = parse(weekStart), e = parse(addDays(weekStart, 6));
+  const range = `${s.getDate()}.${s.getMonth() + 1}. – ${e.getDate()}.${e.getMonth() + 1}.`;
   return (
     <>
-      {top}
-      <ReviewBox ctx={ctx} />
-      <div style={{ display: 'flex', gap: 8 }}>
-        <div style={{ flex: '1 1 auto' }}>
+      <div className="cal-bar">
+        <div className="cal-row">
+          {bereich}
           <Seg label="Ansicht" value={view} onPick={setView} options={[['woche', 'Woche'], ['monat', 'Monat']]} />
         </div>
-        <button className="btn dark" onClick={() => ctx.openEvent(null, { start_date: view === 'monat' ? sel : ctx.day })}><Icon name="plus" size={18} />Neu</button>
+        <div className="cal-row">
+          <div className="chips scroll cal-chips" role="group" aria-label="Nach Person filtern">
+            {people.map((p) => (
+              <button key={p.id} className={`chip${who === p.id ? ' on' : ''}`} aria-pressed={who === p.id}
+                style={who === p.id ? { background: p.color, borderColor: p.color, color: '#fff' } : { color: p.color, borderColor: p.bg }}
+                onClick={() => setWho(p.id)}>{p.name}</button>
+            ))}
+          </div>
+          <button className="icon-btn cal-new" aria-label="Neuer Termin" onClick={() => ctx.openEvent(null, { start_date: view === 'monat' ? sel : ctx.day })}><Icon name="plus" size={18} /></button>
+        </div>
+        {view === 'woche' && (
+          <div className="cal-row cal-week">
+            <button className="icon-btn" aria-label="Vorige Woche" onClick={() => setWeekStart(addDays(weekStart, -7))}><Icon name="left" size={18} /></button>
+            <button className="cal-range" onClick={() => setWeekStart(mondayOf(ctx.day))} disabled={isThis}>{isThis ? `Diese Woche · ${range}` : `${range} · zu heute`}</button>
+            <button className="icon-btn" aria-label="Nächste Woche" onClick={() => setWeekStart(addDays(weekStart, 7))}><Icon name="chev" size={18} /></button>
+          </div>
+        )}
       </div>
-      <div className="chips scroll" role="group" aria-label="Nach Person filtern">
-        {people.map((p) => (
-          <button key={p.id} className={`chip${who === p.id ? ' on' : ''}`} aria-pressed={who === p.id}
-            style={who === p.id ? { background: p.color, borderColor: p.color } : { color: p.color, borderColor: p.bg }}
-            onClick={() => setWho(p.id)}>{p.name}</button>
-        ))}
-      </div>
+      <ReviewBox ctx={ctx} />
 
-      {view === 'woche' ? <Woche ctx={ctx} events={events} start={weekStart} setStart={setWeekStart} />
+      {view === 'woche' ? <Woche ctx={ctx} events={events} start={weekStart} />
         : <Monat ctx={ctx} events={events} month={month} setMonth={setMonth} sel={sel} setSel={setSel} />}
 
       <div className="small">Neue Familientermine legt ihr hier an. Kalender.digital und andere Abos richtet ihr unter „Mehr“ ein – sie sind nur lesbar.</div>
@@ -46,12 +56,10 @@ export default function Kalender({ ctx, seg = 'termine', setSeg = () => {} }) {
   );
 }
 
-function Woche({ ctx, events, start, setStart }) {
+function Woche({ ctx, events, start }) {
   const end = addDays(start, 6);
   const occ = expand(events, start, end);
   const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
-  const s = parse(start), e = parse(end);
-  const range = `${s.getDate()}. ${s.getMonth() !== e.getMonth() ? MONTHS[s.getMonth()] + ' ' : ''}– ${e.getDate()}. ${MONTHS[e.getMonth()]}`;
   const isThis = start === mondayOf(ctx.day);
   // Beim Öffnen (und bei „zu heute“) bis zum heutigen Tag scrollen
   useEffect(() => {
@@ -61,11 +69,6 @@ function Woche({ ctx, events, start, setStart }) {
   }, [isThis, start, ctx.day]);
   return (
     <>
-      <div className="card-head">
-        <button className="icon-btn" aria-label="Vorige Woche" onClick={() => setStart(addDays(start, -7))}><Icon name="left" /></button>
-        <button className="btn ghost small" onClick={() => setStart(mondayOf(ctx.day))} disabled={isThis} style={{ flex: '1 1 auto' }}>{isThis ? `Diese Woche · ${range}` : `${range} · zu heute`}</button>
-        <button className="icon-btn" aria-label="Nächste Woche" onClick={() => setStart(addDays(start, 7))}><Icon name="chev" /></button>
-      </div>
       {days.map((d) => {
         const list = occ.filter((o) => o.date === d);
         const isToday = d === ctx.day;

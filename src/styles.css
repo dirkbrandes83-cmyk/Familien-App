@@ -448,3 +448,18 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .main { padding-top: calc(env(safe-area-inset-top) + 62px); }
 .plus-menu { top: calc(100% + 4px); }
 .cal-day { scroll-margin-top: calc(env(safe-area-inset-top) + 64px); }
+/* Kalender: kompakte, feste Auswahlleiste unter der Kopfzeile */
+.cal-bar { position: sticky; top: calc(env(safe-area-inset-top) + 49px); z-index: 10; background: var(--bg); margin: -4px -20px 0; padding: 6px 20px 8px; display: flex; flex-direction: column; gap: 6px; border-bottom: 1px solid var(--line); }
+.cal-row { display: flex; align-items: center; gap: 6px; }
+.cal-row > .seg { flex: 1 1 0; min-width: 0; }
+.cal-bar .seg { padding: 3px; border-radius: 11px; }
+.cal-bar .seg button { min-height: 30px; font-size: 13px; border-radius: 8px; }
+.cal-new { width: 36px; height: 36px; flex: 0 0 36px; }
+.cal-chips { gap: 6px; }
+.cal-chips .chip { min-height: 30px; padding: 0 12px; font-size: 13px; border-width: 1.5px; }
+.cal-week .icon-btn { width: 32px; height: 32px; flex: 0 0 32px; }
+.cal-range { flex: 1 1 auto; min-height: 32px; border: 0; background: none; font: inherit; font-size: 14px; font-weight: 600; color: var(--teal-d, #0F766E); cursor: pointer; }
+.cal-range:disabled { color: var(--ink2, #44403C); cursor: default; }
+.cal-day { scroll-margin-top: calc(env(safe-area-inset-top) + 175px); }
+.cal-row > .seg:first-child { flex: 1.35 1 0; } .cal-bar .seg button { padding: 0 6px; }
+.cal-chips { flex: 1 1 auto; min-width: 0; } .cal-row > .seg:first-child { flex: 1.15 1 0; }
