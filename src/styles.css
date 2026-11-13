@@ -436,3 +436,15 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .h-next-rtitle { flex: 1 1 auto; font-weight: 600; min-width: 0; }
 .h-next-rwho { font-size: 13px; color: #0F766E; white-space: nowrap; }
 .cal-day { scroll-margin-top: 110px; }
+/* Schmale, feste Kopfzeile: Titel und Datum in einer Zeile */
+.head { position: fixed; left: 0; right: 0; top: 0; z-index: 15; padding: calc(env(safe-area-inset-top) + 6px) 16px 6px; gap: 0; border-bottom: 1px solid var(--line); max-width: 560px; margin: 0 auto; }
+.head-row { align-items: center; gap: 8px; }
+.head-row > div:first-child { display: flex; align-items: baseline; gap: 8px; min-width: 0; flex: 1 1 auto; }
+.head h1 { font-size: 21px; line-height: 1.2; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; order: 1; }
+.head .date { font-size: 12px; white-space: nowrap; order: 2; }
+.head .me-btn { min-height: 36px; }
+.head .avatar { width: 28px; height: 28px; border-radius: 14px; font-size: 14px; }
+.head .plus-btn { width: 36px; height: 36px; border-radius: 18px; }
+.main { padding-top: calc(env(safe-area-inset-top) + 62px); }
+.plus-menu { top: calc(100% + 4px); }
+.cal-day { scroll-margin-top: calc(env(safe-area-inset-top) + 64px); }
