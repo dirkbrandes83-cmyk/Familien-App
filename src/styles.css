@@ -496,3 +496,9 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
   .st > main.st-grid.alle3 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); }
   .st > main.st-grid.alle3 > .st-col:first-child { grid-row: 1 / span 2; }
 }
+.st-ttsoon { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+.st-ttsoonrow { display: flex; justify-content: space-between; gap: 10px; border-radius: 12px; padding: 6px 12px; background: #F5F3FF; color: #5B21B6; font-size: 16px; }
+.st-ttsoonrow.warm { background: #FEF3C7; color: #92400E; }
+.st-ttsoonrow.hot { background: #FEE2E2; color: #991B1B; }
+.st-ttsoonrow span:last-child { font-weight: 700; white-space: nowrap; }
+.st-grid.kid > .st-col:nth-child(2) > .st-ttcard { flex: 1 1 auto; }

@@ -352,10 +352,6 @@ function Kind({ ctx, kid }) {
       </section>
       </div>
       <div className="st-col">
-        <section className="st-card st-auto">
-          <MeineTests ctx={ctx} kid={kid} />
-          {!upcomingTests(ctx.data.events.rows, ctx.day, 7, kid.id).length && <><h2>Meine Tests</h2><div className="st-empty">Diese Woche keine Tests. 🙂</div></>}
-        </section>
         <StundenplanKarte ctx={ctx} kid={kid} date={date} />
       </div>
       <div className="st-col">
@@ -396,6 +392,8 @@ function StundenplanKarte({ ctx, kid, date }) {
   const testIn = (fach) => fach && tests.find((t) => t.fach === fach || t.title.includes(fach));
   const label = day === ctx.day ? 'heute' : day === addDays(ctx.day, 1) ? 'morgen' : WDL[weekday(day)];
   const last = [...lessons].reverse().find((l) => l.fach);
+  // weitere Tests der nächsten 7 Tage – nur wenn es welche gibt
+  const bald = upcomingTests(ctx.data.events.rows, ctx.day, 7, kid.id).filter((o) => o.date !== day);
   return (
     <section className="st-card st-ttcard">
       <div className="st-cardhead"><h2>Stundenplan</h2><span className="st-ttday">{label}</span></div>
@@ -419,6 +417,16 @@ function StundenplanKarte({ ctx, kid, date }) {
             {last && <div className="st-ttend">Schluss um {last.bis} Uhr</div>}
           </div>
         )}
+      {bald.length > 0 && (
+        <div className="st-ttsoon">
+          {bald.map((o) => (
+            <div key={o.ev.id + o.date} className={`st-ttsoonrow ${urgency(ctx.day, o.date)}`}>
+              <span>📝 <b>{o.ev.title}</b></span>
+              <span>{o.date === ctx.day ? 'heute' : o.date === addDays(ctx.day, 1) ? 'morgen' : `${dayChip(ctx.day, o.date).top} ${dayChip(ctx.day, o.date).sub}`}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
