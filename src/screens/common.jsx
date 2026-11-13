@@ -31,7 +31,7 @@ export function EventRow({ ev, date, ctx, showDate }) {
     <button className="row" onClick={() => ctx.openEvent(ev, { date })}>
       <span className="time" style={ev.all_day ? { fontSize: 12, color: '#57534E' } : undefined}>{showDate || timeLabel(ev, date)}</span>
       <span className="row-main">
-        <span className="row-title">{ev.kind === 'test' ? <span className="test-tag">📝 Test</span> : null}{ev.title}</span>
+        <span className="row-title">{ev.kind === 'test' ? <span className="test-tag">Test</span> : null}{ev.title}</span>
         <PersonChips who={ev.who} members={ctx.members} />
         <BringPick ev={ev} />
         {sub && <span className="small">{sub}</span>}
@@ -53,7 +53,7 @@ export function packList(ctx, kid, date) {
   // Tests: am Tag selbst und am Tag davor als Hinweis
   for (const o of expand(ctx.data.events.rows.filter((e) => e.kind === 'test' && e.who.includes(kid)), date, addDays(date, 1))) {
     notes.push({ id: `test-${o.ev.id}-${o.date}`, art: 'test',
-      text: o.date === date ? `📝 ${o.ev.title} – viel Erfolg!` : `📝 Morgen ${o.ev.title} – heute nochmal üben` });
+      text: o.date === date ? `${o.ev.title} – viel Erfolg!` : `Morgen ${o.ev.title} – heute nochmal üben` });
   }
   return { items, notes };
 }
@@ -76,5 +76,5 @@ export function BringPick({ ev, big }) {
   const a = part(ev.bring_by, 'bringt', 'bringen offen');
   const b = part(ev.pick_by, 'holt', 'abholen offen');
   if (!a && !b) return null;
-  return <span style={{ ...st, color: '#44403C' }}>🚗 {a}{a && b ? ' · ' : ''}{b}</span>;
+  return <span style={{ ...st, color: '#44403C', display: 'inline-flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}><Icon name="car" size={big ? 18 : 14} />{a}{a && b ? ' · ' : ''}{b}</span>;
 }

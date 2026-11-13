@@ -3,15 +3,15 @@ import { addDays, weekday, expand } from './dates.js';
 
 // WMO-Wettercodes → Symbol und Text
 export function wetterInfo(code) {
-  if (code === 0) return { icon: '☀️', label: 'sonnig' };
-  if (code <= 2) return { icon: '🌤️', label: 'heiter' };
-  if (code === 3) return { icon: '☁️', label: 'bewölkt' };
-  if (code <= 48) return { icon: '🌫️', label: 'neblig' };
-  if (code <= 57) return { icon: '🌦️', label: 'Niesel' };
-  if (code <= 67) return { icon: '🌧️', label: 'Regen' };
-  if (code <= 77) return { icon: '🌨️', label: 'Schnee' };
-  if (code <= 82) return { icon: '🌦️', label: 'Schauer' };
-  return { icon: '⛈️', label: 'Gewitter' };
+  if (code === 0) return { icon: 'sun', label: 'sonnig' };
+  if (code <= 2) return { icon: 'partsun', label: 'heiter' };
+  if (code === 3) return { icon: 'cloud', label: 'bewölkt' };
+  if (code <= 48) return { icon: 'fog', label: 'neblig' };
+  if (code <= 57) return { icon: 'rain', label: 'Niesel' };
+  if (code <= 67) return { icon: 'rain', label: 'Regen' };
+  if (code <= 77) return { icon: 'snow', label: 'Schnee' };
+  if (code <= 82) return { icon: 'rain', label: 'Schauer' };
+  return { icon: 'storm', label: 'Gewitter' };
 }
 export const nass = (w) => !!w && (w.regen >= 50 || (w.code >= 61 && w.code <= 67) || w.code >= 80);
 
@@ -30,7 +30,7 @@ export function busyOf(events, date) {
   return expand(events, date, date).filter((o) => o.ev.kind !== 'geburtstag');
 }
 
-export const WO = { drinnen: ['🏠', 'drinnen'], draussen: ['🌳', 'draußen'], beides: ['🏠🌳', 'drinnen & draußen'] };
+export const WO = { drinnen: [['house'], 'drinnen'], draussen: [['tree'], 'draußen'], beides: [['house', 'tree'], 'drinnen & draußen'] };
 export const DAUER = { kurz: '1–2 Std.', halb: 'halber Tag', ganz: 'ganzer Tag' };
 export const KOSTEN = ['kostenlos', '€', '€€'];
 

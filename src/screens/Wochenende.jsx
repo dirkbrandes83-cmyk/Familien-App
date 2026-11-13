@@ -29,7 +29,7 @@ export async function toggleVote(ctx, idea, member) {
 }
 
 const Meta = ({ i }) => (
-  <span className="wk-meta">{WO[i.wo][0]} · {DAUER[i.dauer]} · {KOSTEN[i.kosten]}{i.auto ? ' · 🚗' : ''}</span>
+  <span className="wk-meta">{WO[i.wo][0].map((n) => <Icon key={n} name={n} size={14} />)} {DAUER[i.dauer]} · {KOSTEN[i.kosten]}{i.auto ? <> · <Icon name="car" size={14} /></> : ''}</span>
 );
 
 function Hearts({ ctx, idea, me, big }) {
@@ -40,7 +40,7 @@ function Hearts({ ctx, idea, me, big }) {
       {voters.map((m) => <span key={m.id} className="wk-dot" style={{ background: m.color }} title={m.name}>{m.name[0]}</span>)}
       <button className={`wk-heart${mine ? ' on' : ''}${big ? ' big' : ''}`} disabled={!me} aria-pressed={mine}
         aria-label={me ? (mine ? 'Herz zurücknehmen' : 'Herz geben') : 'Erst oben antippen, wer du bist'} onClick={() => me && toggleVote(ctx, idea, me)}>
-        {mine ? '❤️' : '🤍'}
+        <Icon name="heart" size={big ? 24 : 20} fill={mine ? 'currentColor' : 'none'} />
       </button>
     </span>
   );
@@ -67,20 +67,20 @@ export function WochenendKarte({ ctx, onOpen, station }) {
           return (
             <div key={d} className="wk-day">
               <b>{WDL[weekday(d)]}</b>
-              <span className="wk-weather">{info ? `${info.icon} ${w.tmax}°` : '…'}{w && w.regen >= 30 ? ` · 💧${w.regen} %` : ''}</span>
+              <span className="wk-weather">{info ? <><Icon name={info.icon} size={22} /> {w.tmax}°</> : '…'}{w && w.regen >= 30 ? <> · <Icon name="drop" size={16} />{w.regen} %</> : ''}</span>
               <span className="small">{busy.length ? `${busy.length} ${busy.length === 1 ? 'Termin' : 'Termine'}` : 'noch frei'}</span>
             </div>
           );
         })}
       </div>
       {plan.length > 0 && (
-        <div className="wk-plan">{plan.map((l) => <div key={l.id}>🎈 {WD[weekday(l.on_date)]}: <b>{l.title}</b></div>)}</div>
+        <div className="wk-plan">{plan.map((l) => <div key={l.id}><Icon name="balloon" size={16} /> {WD[weekday(l.on_date)]}: <b>{l.title}</b></div>)}</div>
       )}
       <div className={station ? 'h3like' : 'label'}>{regen ? 'Passend bei Regen' : 'Eure Lieblinge'}</div>
       {top.map((i) => (
         <button key={i.id} className="wk-top" onClick={onOpen}>
           <span className="wk-title">{i.title}</span>
-          <span className="wk-sub"><Meta i={i} />{i.herzen ? ` · ${'❤️'.repeat(Math.min(i.herzen, 4))}` : ''}</span>
+          <span className="wk-sub"><Meta i={i} />{i.herzen ? <span className="wk-hz"> · <Icon name="heart" size={13} fill="currentColor" /> {i.herzen}</span> : ''}</span>
         </button>
       ))}
     </section>
@@ -130,7 +130,7 @@ export default function Ideenkiste({ ctx, station }) {
       ))}
 
       <div className="wk-actions">
-        <button className="btn" onClick={surprise}>🎲 Überrasch uns!</button>
+        <button className="btn" onClick={surprise}><Icon name="dice" size={20} />Überrasch uns!</button>
         <button className="btn ghost" onClick={() => setAdd(true)}><Icon name="plus" size={18} />Neue Idee</button>
       </div>
       {los && (
@@ -146,8 +146,8 @@ export default function Ideenkiste({ ctx, station }) {
       )}
 
       <div className="chips">
-        {[['alle', 'Alle'], ['drinnen', '🏠 Drinnen'], ['draussen', '🌳 Draußen'], ['kurz', '⏱ Kurz'], ['gratis', 'Kostenlos']].map(([id, l]) => (
-          <button key={id} className={`chip${station ? ' st-chip' : ''}`} style={chip(filter === id)} aria-pressed={filter === id} onClick={() => setFilter(id)}>{l}</button>
+        {[['alle', 'Alle'], ['drinnen', <><Icon name="house" size={15} /> Drinnen</>], ['draussen', <><Icon name="tree" size={15} /> Draußen</>], ['kurz', <><Icon name="clock" size={15} /> Kurz</>], ['gratis', 'Kostenlos']].map(([id, l]) => (
+          <button key={id} className={`chip${station ? ' st-chip' : ''}`} style={{ ...chip(filter === id), display: 'inline-flex', alignItems: 'center', gap: 4 }} aria-pressed={filter === id} onClick={() => setFilter(id)}>{l}</button>
         ))}
       </div>
       {!me && station && <div className="st-empty">Tippe oben auf deinen Namen, dann kannst du Herzen verteilen.</div>}
@@ -196,10 +196,10 @@ function NeueIdee({ ctx, me, station, onClose }) {
       <label className="field"><span>Was wollen wir machen?</span>
         <input className={`input${station ? ' st-input' : ''}`} value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} placeholder="z. B. Drachen steigen lassen" maxLength={120} autoFocus />
       </label>
-      <div className="field"><span>Wo?</span><div className="chips">{Object.entries(WO).map(([k, [ic, l]]) => <button key={k} className={c} style={on(f.wo === k)} onClick={() => setF({ ...f, wo: k })}>{ic} {l}</button>)}</div></div>
+      <div className="field"><span>Wo?</span><div className="chips">{Object.entries(WO).map(([k, [ic, l]]) => <button key={k} className={c} style={{ ...on(f.wo === k), display: 'inline-flex', alignItems: 'center', gap: 4 }} onClick={() => setF({ ...f, wo: k })}>{ic.map((n) => <Icon key={n} name={n} size={16} />)} {l}</button>)}</div></div>
       <div className="field"><span>Wie lange?</span><div className="chips">{Object.entries(DAUER).map(([k, l]) => <button key={k} className={c} style={on(f.dauer === k)} onClick={() => setF({ ...f, dauer: k })}>{l}</button>)}</div></div>
       <div className="field"><span>Was kostet es?</span><div className="chips">{KOSTEN.map((l, k) => <button key={k} className={c} style={on(f.kosten === k)} onClick={() => setF({ ...f, kosten: k })}>{l}</button>)}</div></div>
-      <div className="field"><span>Brauchen wir das Auto?</span><div className="chips">{[[false, 'Nein'], [true, '🚗 Ja']].map(([v, l]) => <button key={l} className={c} style={on(f.auto === v)} onClick={() => setF({ ...f, auto: v })}>{l}</button>)}</div></div>
+      <div className="field"><span>Brauchen wir das Auto?</span><div className="chips">{[[false, 'Nein'], [true, 'Ja']].map(([v, l]) => <button key={l} className={c} style={on(f.auto === v)} onClick={() => setF({ ...f, auto: v })}>{l}</button>)}</div></div>
       <button className={`btn${station ? ' st-big' : ''}`} disabled={!f.title.trim()} onClick={save}>In die Ideenkiste</button>
     </Overlay>
   );
@@ -220,18 +220,18 @@ function MachenWir({ ctx, idea, station, days, wetter, onClose }) {
     }).select('id').single(), ctx.fail);
     if (ev) await run(supabase.from('weekend_log').insert({ idea_id: idea.id, title: idea.title, on_date: day, event_id: ev.id }), ctx.fail);
     setBusy(false);
-    if (ev) { ctx.say(`🎈 ${idea.title} steht am ${WDL[weekday(day)]} im Kalender`); onClose(); }
+    if (ev) { ctx.say(`${idea.title} steht am ${WDL[weekday(day)]} im Kalender`); onClose(); }
   };
   return (
     <Overlay title="Machen wir!" onClose={onClose} station={station}>
       <div className="wk-lostitle">{idea.title}</div>
       <div className="field"><span>Wann?</span>
-        <div className="chips">{days.map((d) => { const w = wetter(d); return <button key={d} className={c} style={on(day === d)} onClick={() => setDay(d)}>{WDL[weekday(d)]}{w ? ` ${wetterInfo(w.code).icon} ${w.tmax}°` : ''}</button>; })}</div>
+        <div className="chips">{days.map((d) => { const w = wetter(d); return <button key={d} className={c} style={on(day === d)} onClick={() => setDay(d)}>{WDL[weekday(d)]}{w ? <> <Icon name={wetterInfo(w.code).icon} size={16} /> {w.tmax}°</> : ''}</button>; })}</div>
       </div>
       <div className="field"><span>Tageszeit</span>
         <div className="chips">{ZEITEN.map(([z, l]) => <button key={l} className={c} style={on(zeit === z)} onClick={() => setZeit(z)}>{l}</button>)}</div>
       </div>
-      {idea.wo === 'draussen' && nass(wetter(day)) && <div className="ci-note">🌧️ Laut Vorhersage wird es an dem Tag nass.</div>}
+      {idea.wo === 'draussen' && nass(wetter(day)) && <div className="ci-note"><Icon name="rain" size={18} /> Laut Vorhersage wird es an dem Tag nass.</div>}
       <button className={`btn${station ? ' st-big' : ''}`} disabled={busy} onClick={save}>In den Kalender</button>
     </Overlay>
   );

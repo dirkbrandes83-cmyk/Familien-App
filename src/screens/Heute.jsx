@@ -48,8 +48,8 @@ function Hinweise({ ctx, onCheckin }) {
   if (!so && !we) return null;
   return (
     <div className="h-hints">
-      {so && <button className="h-hint" onClick={onCheckin}>☀️ Sonntags-Check-in starten<Icon name="chev" size={16} /></button>}
-      {we && <button className="h-hint" onClick={() => ctx.go('zuhause', 'wochenende')}>🎈 Was machen wir am Wochenende?<Icon name="chev" size={16} /></button>}
+      {so && <button className="h-hint" onClick={onCheckin}><span className="h-hint-l"><Icon name="sun" size={18} />Sonntags-Check-in starten</span><Icon name="chev" size={16} /></button>}
+      {we && <button className="h-hint" onClick={() => ctx.go('zuhause', 'wochenende')}><span className="h-hint-l"><Icon name="balloon" size={18} />Was machen wir am Wochenende?</span><Icon name="chev" size={16} /></button>}
     </div>
   );
 }
@@ -74,7 +74,7 @@ function AlsNaechstes({ ctx, now }) {
       <button className="h-next-main" onClick={() => ctx.openEvent(first.ev, { date: first.date })}>
         <span className="h-next-when">Als Nächstes · {when(first)}</span>
         <span className="h-next-title">{hm(first.ev.from_time)} {first.ev.title}</span>
-        <span className="h-next-sub">{first.ev.to_time ? `bis ${hm(first.ev.to_time)} · ` : ''}{wer(first.ev)}{fahrt ? ` · 🚗 ${fahrt}` : ''}</span>
+        <span className="h-next-sub">{first.ev.to_time ? `bis ${hm(first.ev.to_time)} · ` : ''}{wer(first.ev)}{fahrt ? <> · <Icon name="car" size={15} style={{ verticalAlign: '-2px' }} /> {fahrt}</> : ''}</span>
       </button>
       {rest.map((o) => (
         <button key={o.ev.id + o.date} className="h-next-row" onClick={() => ctx.openEvent(o.ev, { date: o.date })}>
@@ -94,7 +94,7 @@ function Fahrt({ ev, ctx }) {
   const part = (v, verb, offen) => (v === NICHT ? null : v ? <span key={verb}>{verb} <b>{v}</b></span> : kidEv ? <span key={verb} className="h-fahrt-open">{offen}</span> : null);
   const parts = [part(ev.bring_by, 'bringt', 'bringen offen'), part(ev.pick_by, 'holt', 'abholen offen')].filter(Boolean);
   if (!parts.length) return null;
-  return <span className="h-fahrt-line">🚗 {parts.reduce((a, x, i) => (i ? [...a, ' · ', x] : [x]), [])}</span>;
+  return <span className="h-fahrt-line"><Icon name="car" size={15} style={{ verticalAlign: '-2px' }} /> {parts.reduce((a, x, i) => (i ? [...a, ' · ', x] : [x]), [])}</span>;
 }
 
 /* ---------- Für dich: alles zum Abhaken ---------- */
@@ -157,14 +157,14 @@ function FuerDich({ ctx, skip }) {
   items.sort((a, b) => String(a.due || '9999').localeCompare(String(b.due || '9999')));
   const visible = items.filter((i) => !hidden.includes(i.key) || i.local);
   if (!visible.length && !chores.length && !fahrten.length && !meine.length) {
-    return <section className="card h-sec"><div className="h-label">Für dich</div><div className="empty">Heute nichts für dich zu tun. 🎉</div></section>;
+    return <section className="card h-sec"><div className="h-label">Für dich</div><div className="empty">Heute nichts für dich zu tun.</div></section>;
   }
   return (
     <section className="card h-sec" aria-labelledby="h-fuerdich">
       <div className="h-label" id="h-fuerdich">Für dich</div>
       {meine.map((f) => (
         <button key={f.key} className="h-item h-drive" onClick={() => ctx.openEvent(f.ev, { date: ctx.day })}>
-          <span className="h-drive-icon" aria-hidden="true">🚗</span>
+          <span className="h-drive-icon" aria-hidden="true"><Icon name="car" size={22} /></span>
           <span className="h-item-text">{f.text}<span className="h-item-sub"> · {f.ev.title}</span></span>
           <span className="h-drive-time">{f.t}</span>
         </button>
@@ -263,11 +263,11 @@ function FamilieHeute({ ctx, now, short, skip }) {
       {shown.length === 0 && <div className="empty">{rows.length ? 'Für heute ist alles vorbei.' : skip.size ? 'Sonst nichts heute.' : 'Heute nichts geplant.'}</div>}
       {shown.map((r) => r.meal ? (
         <button key="essen" className={`h-tl${past(r) ? ' past' : ''}`} onClick={() => ctx.go('zuhause', 'essen')}>
-          <span className="h-tl-time">18:00</span><span className="h-tl-title">🍽 {r.meal}</span>
+          <span className="h-tl-time">18:00</span><span className="h-tl-title">{r.meal}</span>
         </button>
       ) : (
         <button key={r.key} className={`h-tl${past(r) ? ' past' : ''}`} onClick={() => ctx.openEvent(r.o.ev, { date: r.o.date })}>
-          <span className="h-tl-time">{r.o.ev.all_day ? (r.o.ev.kind === 'geburtstag' ? '🎂' : r.o.ev.kind === 'test' ? '📝' : 'ganzt.') : hm(r.o.ev.from_time)}</span>
+          <span className="h-tl-time">{r.o.ev.all_day ? (r.o.ev.kind === 'geburtstag' ? <Icon name="cake" size={18} /> : r.o.ev.kind === 'test' ? <Icon name="pencil" size={18} /> : 'ganzt.') : hm(r.o.ev.from_time)}</span>
           <span className="h-tl-title">{r.o.ev.title}{r.o.ev.to_time && !r.o.ev.all_day ? <span className="h-tl-to"> bis {hm(r.o.ev.to_time)}</span> : null}
             <Fahrt ev={r.o.ev} ctx={ctx} /></span>
           <PersonChips who={r.o.ev.who} members={ctx.members} />
@@ -276,7 +276,7 @@ function FamilieHeute({ ctx, now, short, skip }) {
       <button className="h-tomorrow" onClick={() => ctx.go('kalender')}>
         <b>Morgen:</b>{' '}
         {special.length === 0 && rest === 0 ? 'nichts geplant' : [
-          ...special.map((o) => `${o.ev.kind === 'geburtstag' ? '🎂' : o.ev.kind === 'test' ? '📝' : hm(o.ev.from_time)} ${o.ev.title}${o.ev.kind === 'test' ? ` (${kidOf(o.ev)})` : ''}`),
+          ...special.map((o) => `${o.ev.kind === 'geburtstag' ? 'Geburtstag:' : o.ev.kind === 'test' ? 'Test:' : hm(o.ev.from_time)} ${o.ev.title}${o.ev.kind === 'test' ? ` (${kidOf(o.ev)})` : ''}`),
           rest > 0 ? `${special.length ? '+ ' : ''}${rest} ${rest === 1 ? 'Termin' : 'Termine'}` : null,
         ].filter(Boolean).join(' · ')}
       </button>

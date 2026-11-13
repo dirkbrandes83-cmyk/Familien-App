@@ -524,3 +524,4 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .alle3 .st-meal { font-size: 20px; min-height: 48px; display: flex; align-items: center; border-top: 1px solid var(--line2); }
 .alle3 .st-big { margin-top: 10px; }
 .alle3 .wk-top { align-items: flex-start; justify-content: center; } .alle3 .st-kid > .st-empty { display: flex; }
+.h-hint-l { display: inline-flex; align-items: center; gap: 8px; } .wk-meta svg { vertical-align: -2px; } .wk-weather svg { vertical-align: -4px; } .st-ci, .st-add { display: inline-flex; align-items: center; gap: 8px; } .wk-heart { display: inline-flex; align-items: center; justify-content: center; color: #E11D48; } .wk-hz { color: #E11D48; } .konfetti-msg svg { vertical-align: -6px; color: #F59E0B; }

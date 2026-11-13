@@ -94,7 +94,7 @@ export default function Station({ members, reloadMembers }) {
         </nav>
         {weekday(day) === 6 && (
           <button className="btn st-add st-ci" onClick={() => setCheckin(true)}>
-            {ctx.data.checkins.rows.find((r) => r.sonntag === day)?.fertig ? '✓ Check-in' : '☀️ Check-in'}
+            <Icon name={ctx.data.checkins.rows.find((r) => r.sonntag === day)?.fertig ? 'check' : 'sun'} size={22} />Check-in
           </button>
         )}
         <button className="btn st-add" onClick={() => setSheet({ by: view !== 'alle' ? view : null })}><Icon name="plus" size={24} />Eintragen</button>
@@ -107,7 +107,7 @@ export default function Station({ members, reloadMembers }) {
       {kiste && (
         <div className="sheet-bg" onClick={(e) => { if (e.target === e.currentTarget) setKiste(false); }}>
           <div className="sheet st-sheet wk-sheet" role="dialog" aria-modal="true" aria-label="Ideenkiste">
-            <div className="sheet-head"><h2>🎈 Ideenkiste</h2><button className="icon-btn st-icon" onClick={() => setKiste(false)} aria-label="Schließen"><Icon name="x" /></button></div>
+            <div className="sheet-head"><h2><Icon name="balloon" size={26} /> Ideenkiste</h2><button className="icon-btn st-icon" onClick={() => setKiste(false)} aria-label="Schließen"><Icon name="x" /></button></div>
             <Ideenkiste ctx={ctx} station />
           </div>
         </div>
@@ -120,8 +120,8 @@ export default function Station({ members, reloadMembers }) {
 }
 
 function timeOf(ev) {
-  if (ev.kind === 'test') return ev.all_day ? '📝' : hm(ev.from_time);
-  if (ev.all_day) return ev.kind === 'geburtstag' ? 'Geb.' : ev.kind === 'frist' ? 'Frist' : 'ganzt.';
+  if (ev.kind === 'test') return ev.all_day ? <Icon name="pencil" size={20} /> : hm(ev.from_time);
+  if (ev.all_day) return ev.kind === 'geburtstag' ? <Icon name="cake" size={20} /> : ev.kind === 'frist' ? 'Frist' : 'ganzt.';
   return hm(ev.from_time);
 }
 
@@ -159,7 +159,7 @@ function Konfetti() {
       {Array.from({ length: 70 }, (_, i) => (
         <span key={i} style={{ left: `${Math.random() * 100}%`, background: colors[i % colors.length], animationDelay: `${Math.random() * 0.4}s`, animationDuration: `${1.6 + Math.random() * 1}s`, transform: `rotate(${Math.random() * 360}deg)` }} />
       ))}
-      <div className="konfetti-msg">🎉 {msg.text}</div>
+      <div className="konfetti-msg"><Icon name="party" size={38} /> {msg.text}</div>
     </div>
   );
 }
@@ -360,7 +360,7 @@ function Kind({ ctx, kid }) {
           {(() => {
             const mine = choresToday(ctx, ctx.day).filter((c) => c.who === kid.id);
             const extra = fuerKind(ctx, kid.id);
-            if (!mine.length && !extra.length) return <div className="st-empty">Heute nichts zu tun. 🙂</div>;
+            if (!mine.length && !extra.length) return <div className="st-empty">Heute nichts zu tun.</div>;
             return (
               <>
                 {mine.map((c) => (
@@ -409,7 +409,7 @@ function StundenplanKarte({ ctx, kid, date }) {
                   <span className="st-ttn">{l.n}</span>
                   <span className="st-tttime">{l.von}</span>
                   <span className="st-ttfach" style={l.fach ? { background: bg, color: fg } : undefined}>
-                    {l.fach || 'frei'}{t && <span className="st-tttest">📝 {t.title.replace(l.fach, '').trim() || 'Test'}</span>}
+                    {l.fach || 'frei'}{t && <span className="st-tttest"><Icon name="pencil" size={13} /> {t.title.replace(l.fach, '').trim() || 'Test'}</span>}
                   </span>
                 </div>
               );
@@ -421,7 +421,7 @@ function StundenplanKarte({ ctx, kid, date }) {
         <div className="st-ttsoon">
           {bald.map((o) => (
             <div key={o.ev.id + o.date} className={`st-ttsoonrow ${urgency(ctx.day, o.date)}`}>
-              <span>📝 <b>{o.ev.title}</b></span>
+              <span><Icon name="pencil" size={16} /> <b>{o.ev.title}</b></span>
               <span>{o.date === ctx.day ? 'heute' : o.date === addDays(ctx.day, 1) ? 'morgen' : `${dayChip(ctx.day, o.date).top} ${dayChip(ctx.day, o.date).sub}`}</span>
             </div>
           ))}
@@ -490,9 +490,9 @@ function FuerMich({ ctx, kid }) {
 
 // Kinder tragen selbst ein: erst was, dann wann – alles mit großen Knöpfen
 const TYPEN = [
-  ['test', '📝', 'Test oder Klassenarbeit'],
-  ['feier', '🎉', 'Einladung oder Feier'],
-  ['termin', '📅', 'Anderer Termin'],
+  ['test', 'pencil', 'Test oder Klassenarbeit'],
+  ['feier', 'party', 'Einladung oder Feier'],
+  ['termin', 'cal', 'Anderer Termin'],
 ];
 const STUNDEN = ['8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19'];
 
@@ -539,7 +539,7 @@ function KidTermin({ ctx, by, chip, busy, setBusy, done }) {
           {TYPEN.map(([id, icon, label]) => (
             <button key={id} className={`st-typ${typ === id ? ' on' : ''}`} aria-pressed={typ === id}
               onClick={() => { setTyp(id); setDate(null); if (id === 'test') setH(null); }}>
-              <span className="st-typicon" aria-hidden="true">{icon}</span><span>{label}</span>
+              <span className="st-typicon" aria-hidden="true"><Icon name={icon} size={36} /></span><span>{label}</span>
             </button>
           ))}
         </div>
@@ -598,7 +598,7 @@ function KidTermin({ ctx, by, chip, busy, setBusy, done }) {
 
       {ready && (
         <div className={`st-preview${isTest ? ' test' : ''}`}>
-          <span className="st-typicon" aria-hidden="true">{TYPEN.find((t) => t[0] === typ)[1]}</span>
+          <span className="st-typicon" aria-hidden="true"><Icon name={TYPEN.find((t) => t[0] === typ)[1]} size={32} /></span>
           <span><b>{finalTitle}</b><br />{c.top === 'Heute' || c.top === 'Morgen' ? c.top : weekdayName(date)}, {c.sub.replace(/^\D+ /, '')}{!isTest && h ? ` · ${h}:${min} Uhr` : ''} · {k?.name}</span>
         </div>
       )}

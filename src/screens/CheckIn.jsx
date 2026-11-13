@@ -55,7 +55,7 @@ export default function CheckIn({ ctx, onClose }) {
       <div className="ci">
         <header className="ci-head">
           <div>
-            <div className="ci-kicker">☀️ Sonntags-Check-in · {shortLabel(sonntag)}</div>
+            <div className="ci-kicker"><Icon name="sun" size={15} style={{ verticalAlign: '-2px' }} /> Sonntags-Check-in · {shortLabel(sonntag)}</div>
             <h2>{STEPS[step]}</h2>
           </div>
           <button className="icon-btn st-icon" onClick={onClose} aria-label="Schließen"><Icon name="x" /></button>
@@ -120,14 +120,14 @@ export default function CheckIn({ ctx, onClose }) {
                         const open = kidEv && (!o.ev.bring_by || !o.ev.pick_by);
                         return (
                           <div key={o.ev.id + d} className={`ci-ev${o.ev.kind === 'test' ? ' test' : ''}`}>
-                            <span className="ci-evtime">{o.ev.kind === 'test' ? '📝' : o.ev.kind === 'geburtstag' ? '🎂' : o.ev.all_day ? '' : hm(o.ev.from_time)}</span>
+                            <span className="ci-evtime">{o.ev.kind === 'test' ? <Icon name="pencil" size={18} /> : o.ev.kind === 'geburtstag' ? <Icon name="cake" size={18} /> : o.ev.all_day ? '' : hm(o.ev.from_time)}</span>
                             <span className="ci-evtitle">{o.ev.title}</span>
                             <PersonChips who={o.ev.who} members={ctx.members} />
                             {open && <span className="ci-warn">{!o.ev.bring_by && !o.ev.pick_by ? 'Wer bringt, wer holt?' : !o.ev.bring_by ? 'Wer bringt?' : 'Wer holt?'}</span>}
                           </div>
                         );
                       })}
-                      {st && <div className="ci-ev"><span className="ci-evtime">🗑</span><span className="ci-evtitle">Müll raus: {st.bins.map((b) => BINS[b]?.label).join(' + ')}</span></div>}
+                      {st && <div className="ci-ev"><span className="ci-evtime"><Icon name="trash" size={18} /></span><span className="ci-evtitle">Müll raus: {st.bins.map((b) => BINS[b]?.label).join(' + ')}</span></div>}
                     </div>
                   </div>
                 );
@@ -143,7 +143,7 @@ export default function CheckIn({ ctx, onClose }) {
                 <div className="ci-thanks">
                   {f.danke.map((t, i) => (
                     <div key={i} className="ci-thank">
-                      <span>💛 <b>{ctx.member(t.von)?.name}</b> sagt Danke an <b>{ctx.member(t.an)?.name}</b>{t.text ? ` – ${t.text}` : ''}</span>
+                      <span><Icon name="heart" size={16} fill="currentColor" style={{ verticalAlign: '-2px', color: '#E11D48' }} /> <b>{ctx.member(t.von)?.name}</b> sagt Danke an <b>{ctx.member(t.an)?.name}</b>{t.text ? ` – ${t.text}` : ''}</span>
                       <button className="icon-btn" aria-label="Entfernen" onClick={() => setF({ ...f, danke: f.danke.filter((_, j) => j !== i) })}><Icon name="x" size={18} /></button>
                     </div>
                   ))}
@@ -162,7 +162,7 @@ export default function CheckIn({ ctx, onClose }) {
                   <label className="field"><span>Wofür? (wenn du magst)</span>
                     <input className="input st-input" value={dk.text} onChange={(e) => setDk({ ...dk, text: e.target.value })} maxLength={120} placeholder="z. B. fürs Vorlesen" />
                   </label>
-                  <button className="btn st-big" onClick={() => { setF({ ...f, danke: [...f.danke, dk] }); setDk({ von: null, an: null, text: '' }); }}>💛 Danke eintragen</button>
+                  <button className="btn st-big" onClick={() => { setF({ ...f, danke: [...f.danke, dk] }); setDk({ von: null, an: null, text: '' }); }}><Icon name="heart" size={20} />Danke eintragen</button>
                 </>
               )}
             </>
@@ -191,7 +191,7 @@ export default function CheckIn({ ctx, onClose }) {
                       const on = ctx.data.ideaVotes.rows.some((v) => v.idea_id === i.id && v.member === m.id);
                       return <button key={m.id} className={`ci-vote${on ? ' on' : ''}`} aria-pressed={on} aria-label={`${m.name}: ${i.title}`}
                         style={on ? { background: m.color, borderColor: m.color, color: '#fff' } : { borderColor: m.bg, color: m.color }}
-                        onClick={() => toggleVote(ctx, i, m.id)}>{on ? '❤️' : ''}{m.name}</button>;
+                        onClick={() => toggleVote(ctx, i, m.id)}>{on && <Icon name="heart" size={14} fill="currentColor" style={{ verticalAlign: '-2px', marginRight: 4 }} />}{m.name}</button>;
                     })}
                   </span>
                 </div>
@@ -201,11 +201,11 @@ export default function CheckIn({ ctx, onClose }) {
 
           {step === 8 && (
             <div className="ci-done">
-              <div className="ci-big">🎉 Schöne Woche!</div>
+              <div className="ci-big"><Icon name="party" size={40} /> Schöne Woche!</div>
               <div className="ci-moods">
                 {people.map((m) => <span key={m.id} className="ci-mood"><b style={{ color: m.color }}>{m.name}</b> {FACES.find((x) => x[0] === f.stimmung[m.id])?.[1] ?? '–'}</span>)}
               </div>
-              {f.danke.length > 0 && <div>💛 {f.danke.length} × Danke</div>}
+              {f.danke.length > 0 && <div><Icon name="heart" size={16} fill="currentColor" style={{ verticalAlign: '-2px', color: '#E11D48' }} /> {f.danke.length} × Danke</div>}
               {f.vorhaben && <div>Vorhaben: <b>{f.vorhaben}</b></div>}
             </div>
           )}
@@ -229,16 +229,16 @@ function Anstehend({ ctx, to }) {
   const wishes = ctx.data.wishes.rows.filter((w) => !w.done_at);
   const Block = ({ icon, title, items, empty }) => (
     <section className="ci-block">
-      <h3>{icon} {title}</h3>
+      <h3><Icon name={icon} size={18} style={{ verticalAlign: '-3px' }} /> {title}</h3>
       {items.length === 0 ? <div className="st-empty">{empty}</div>
         : <ul>{items.slice(0, 6).map((x, i) => <li key={i}>{x}</li>)}{items.length > 6 && <li className="st-empty">… und {items.length - 6} weitere</li>}</ul>}
     </section>
   );
   return (
     <div className="ci-blocks">
-      <Block icon="✅" title="Zu erledigen" empty="Nichts offen." items={inbox.map((r) => r.title + (r.due ? ` (bis ${shortLabel(r.due)})` : ''))} />
-      <Block icon="🛍️" title="Diese Woche besorgen" empty="Nichts mit Frist." items={soon.map((r) => (r.typ === 'kleidung' ? `${r.art}${r.size ? ` (${r.size})` : ''}` : r.art) + ` – bis ${shortLabel(r.due)}`)} />
-      <Block icon="🍝" title="Essenswünsche" empty="Keine Wünsche offen." items={wishes.map((w) => `${w.title}${ctx.member(w.who) ? ` (${ctx.member(w.who).name})` : ''}`)} />
+       <Block icon="todo" title="Zu erledigen" empty="Nichts offen." items={inbox.map((r) => r.title + (r.due ? ` (bis ${shortLabel(r.due)})` : ''))} />
+      <Block icon="bag" title="Diese Woche besorgen" empty="Nichts mit Frist." items={soon.map((r) => (r.typ === 'kleidung' ? `${r.art}${r.size ? ` (${r.size})` : ''}` : r.art) + ` – bis ${shortLabel(r.due)}`)} />
+      <Block icon="cart" title="Essenswünsche" empty="Keine Wünsche offen." items={wishes.map((w) => `${w.title}${ctx.member(w.who) ? ` (${ctx.member(w.who).name})` : ''}`)} />
     </div>
   );
 }
