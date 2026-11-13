@@ -6,7 +6,6 @@ import { lessonsFor, schoolDay, fachFarbe } from '../lib/stundenplan.js';
 import { TIERE, begruessung } from '../lib/kinder.js';
 import CheckIn from './CheckIn.jsx';
 import Ideenkiste, { WochenendKarte } from './Wochenende.jsx';
-import { isWeekendSoon } from '../lib/wochenende.js';
 import { muellHeute, muellStatus } from '../lib/home.js';
 import { Icon, Check, Toast, PersonChips } from '../ui.jsx';
 import { addDays, expand, longLabel, shortLabel, today, hm, WDL, weekday } from '../lib/dates.js';
@@ -190,85 +189,93 @@ function Alle({ ctx, openIstAlle, openKiste }) {
   const pd = packDate(ctx);
   const shop = ctx.data.shop.rows.filter((r) => !r.done).sort((a, b) => a.section.localeCompare(b.section) || a.name.localeCompare(b.name, 'de'));
   return (
-    <main className="st-grid">
-      <section className="st-card">
-        <h2>Termine heute</h2>
-        <EvList list={occ.filter((o) => o.date === ctx.day)} ctx={ctx} />
-        <h3>Morgen · {WDL[weekday(tomorrow)]}</h3>
-        <EvList list={occ.filter((o) => o.date === tomorrow)} ctx={ctx} />
-      </section>
-      <section className="st-card">
-        <h2>{pd === ctx.day ? 'Heute mitnehmen' : 'Für morgen einpacken'}</h2>
-        {ctx.kids.map((k) => {
-          const { items, notes } = packList(ctx, k.id, pd);
-          return (
-            <div key={k.id} className="st-kid">
-              <span className="st-kidname" style={{ color: k.color }}>{k.name}</span>
-              {notes.map((n) => <div key={n.id} className="st-note">{n.text}</div>)}
-              {items.length === 0 && <div className="st-empty">Nichts einzupacken.</div>}
-              {items.map((it) => (
-                <button key={it.key} className="st-check" onClick={() => togglePack(ctx, k.id, pd, it, items.filter((x) => !x.done).length === 1)} aria-pressed={it.done}>
-                  <Check on={it.done} /><span className={it.done ? 'done' : ''}>{it.text}</span>
-                </button>
-              ))}
-            </div>
-          );
-        })}
-      </section>
-      <section className="st-card">
-        <div className="st-cardhead"><h2>Einkaufsliste</h2>{shop.length > 0 && <span className="badge">{shop.length}</span>}</div>
-        {shop.length === 0 ? <div className="st-empty">Alles da.</div>
-          : <ul className="st-shop">{shop.slice(0, 14).map((s) => <li key={s.id}>{s.name}</li>)}</ul>}
-        {shop.length > 14 && <div className="st-empty">… und {shop.length - 14} weitere</div>}
-        <button className="btn st-big" onClick={openIstAlle}>Ist alle!</button>
-      </section>
-      <BonusRow ctx={ctx} openKiste={openKiste} />
-    </main>
-  );
-}
-
-function BonusRow({ ctx, openKiste }) {
-  const we = isWeekendSoon(ctx.day);
-  const tomorrow = addDays(ctx.day, 1);
-  const m = muellOf(ctx);
-  const st = muellHeute(m, ctx.day);
-  const chores = choresToday(ctx, ctx.day);
-  return (
-    <>
-      <section className="st-card st-small">
-        <h2>Essen heute</h2>
-        <div className="st-meal">{mealOf(ctx, ctx.day).title}</div>
-        <div className="st-empty">Morgen: {mealOf(ctx, tomorrow).title}</div>
-        {st && (
-          <>
-            <h3>Müll</h3>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontWeight: 700, color: st.today ? '#B45309' : undefined, flex: '1 1 auto' }}>{st.text}</span>
-              {st.bins.map((b) => <Bin key={b} id={b} size={30} />)}
-            </div>
-          </>
-        )}
-      </section>
-      {we && <WochenendKarte ctx={ctx} station onOpen={openKiste} />}
-      <section className={`st-card${we ? '' : ' st-wide'}`}>
-        <h2>Wer macht heute was</h2>
-        <div className="st-who">
-          {ctx.members.map((p) => {
-            const list = chores.filter((c) => c.who === p.id);
+    <main className="st-grid alle3">
+      <div className="st-col">
+        <section className="st-card st-auto">
+          <h2>Termine heute</h2>
+          <EvList list={occ.filter((o) => o.date === ctx.day)} ctx={ctx} />
+          <h3>Morgen · {WDL[weekday(tomorrow)]}</h3>
+          <EvList list={occ.filter((o) => o.date === tomorrow)} ctx={ctx} />
+        </section>
+        <section className="st-card st-grow">
+          <h2>{pd === ctx.day ? 'Heute mitnehmen' : 'Für morgen einpacken'}</h2>
+          {ctx.kids.map((k) => {
+            const { items, notes } = packList(ctx, k.id, pd);
             return (
-              <div key={p.id} className="st-kid">
-                <span className="st-kidname" style={{ color: p.color }}>{p.name}</span>
-                {list.length === 0 ? <span className="st-empty">heute frei</span> : list.map((c) => (
-                  <button key={c.id} className="st-check" onClick={() => toggleChoreFeier(ctx, c)} aria-pressed={c.done}>
-                    <Check on={c.done} /><span className={c.done ? 'done' : ''}>{c.title}</span>
+              <div key={k.id} className="st-kid">
+                <span className="st-kidname" style={{ color: k.color }}>{k.name}</span>
+                {notes.map((n) => <div key={n.id} className="st-note">{n.text}</div>)}
+                {items.length === 0 && <div className="st-empty">Nichts einzupacken.</div>}
+                {items.map((it) => (
+                  <button key={it.key} className="st-check" onClick={() => togglePack(ctx, k.id, pd, it, items.filter((x) => !x.done).length === 1)} aria-pressed={it.done}>
+                    <Check on={it.done} /><span className={it.done ? 'done' : ''}>{it.text}</span>
                   </button>
                 ))}
               </div>
             );
           })}
-        </div>
-      </section>
-    </>
+        </section>
+      </div>
+      <div className="st-col">
+        <WerMacht ctx={ctx} />
+        <EssenKarte ctx={ctx} />
+      </div>
+      <div className="st-col">
+        <WochenendKarte ctx={ctx} station onOpen={openKiste} />
+        <section className="st-card st-grow">
+          <div className="st-cardhead"><h2>Einkaufsliste</h2>{shop.length > 0 && <span className="badge">{shop.length}</span>}</div>
+          {shop.length === 0 ? <div className="st-empty">Alles da.</div>
+            : <ul className="st-shop">{shop.slice(0, 14).map((s) => <li key={s.id}>{s.name}</li>)}</ul>}
+          {shop.length > 14 && <div className="st-empty">… und {shop.length - 14} weitere</div>}
+          <button className="btn st-big" onClick={openIstAlle}>Ist alle!</button>
+        </section>
+      </div>
+    </main>
+  );
+}
+
+function EssenKarte({ ctx }) {
+  const tomorrow = addDays(ctx.day, 1);
+  const st = muellHeute(muellOf(ctx), ctx.day);
+  return (
+    <section className="st-card st-auto">
+      <h2>Essen heute</h2>
+      <div className="st-meal">{mealOf(ctx, ctx.day).title}</div>
+      <div className="st-empty">Morgen: {mealOf(ctx, tomorrow).title}</div>
+      {st && (
+        <>
+          <h3>Müll</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontWeight: 700, color: st.today ? '#B45309' : undefined, flex: '1 1 auto' }}>{st.text}</span>
+            {st.bins.map((b) => <Bin key={b} id={b} size={30} />)}
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
+function WerMacht({ ctx }) {
+  const chores = choresToday(ctx, ctx.day);
+  return (
+    <section className="st-card st-grow">
+      <h2>Wer macht heute was</h2>
+      <div className="st-who1">
+        {ctx.members.map((p) => {
+          const list = chores.filter((c) => c.who === p.id);
+          return (
+            <div key={p.id} className="st-kid">
+              <span className="st-kidname" style={{ color: p.color }}>{p.tier ? `${p.tier} ` : ''}{p.name}</span>
+              {list.length === 0 ? <span className="st-empty">heute frei</span> : list.map((c) => (
+                <button key={c.id} className="st-check" onClick={() => toggleChoreFeier(ctx, c)} aria-pressed={c.done}>
+                  <Check on={c.done} /><span className={c.done ? 'done' : ''}>{c.title}</span>
+                </button>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 

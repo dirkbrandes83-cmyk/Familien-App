@@ -488,3 +488,11 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .st > main.st-grid.kid { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr) minmax(0, 0.85fr); }
 .st-col > .st-ttcard { flex: 1 1 auto; }
 @media (max-width: 1000px) { .st > main.st-grid.kid > .st-col:first-child { grid-row: 1 / span 2; } }
+/* Alle: Termine+Einpacken | Wer macht was+Essen | Wochenende+Einkauf */
+.st > main.st-grid.alle3 { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: minmax(0, 1fr); }
+.st-who1 { display: flex; flex-direction: column; gap: 6px; }
+.st-who1 .st-kid { display: flex; flex-direction: column; gap: 2px; }
+@media (max-width: 1000px) {
+  .st > main.st-grid.alle3 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); }
+  .st > main.st-grid.alle3 > .st-col:first-child { grid-row: 1 / span 2; }
+}
