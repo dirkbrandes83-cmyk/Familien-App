@@ -278,11 +278,11 @@ function Alle({ ctx, openIstAlle, openKiste }) {
       <div className="st-col">
         <WochenendKarte ctx={ctx} station onOpen={openKiste} />
         <section className="st-card st-grow">
-          <div className="st-cardhead"><h2>Einkaufsliste</h2>{shop.length > 0 && <span className="badge">{shop.length}</span>}</div>
+          <div className="st-cardhead"><h2>Einkaufsliste{shop.length > 0 && <span className="badge" style={{ marginLeft: 8, verticalAlign: '3px' }}>{shop.length}</span>}</h2>
+            <button className="st-roundplus" onClick={openIstAlle} aria-label="Ist alle – etwas auf die Einkaufsliste"><Icon name="plus" size={26} stroke={2.6} /></button></div>
           {shop.length === 0 ? <div className="st-empty">Alles da.</div>
             : <ul className="st-shop">{shop.slice(0, 14).map((s) => <li key={s.id}>{s.name}</li>)}</ul>}
           {shop.length > 14 && <div className="st-empty">… und {shop.length - 14} weitere</div>}
-          <button className="btn ghost st-big st-istalle" onClick={openIstAlle}><Icon name="plus" size={20} />Ist alle!</button>
         </section>
       </div>
     </main>

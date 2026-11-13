@@ -581,3 +581,6 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
   .st > main.st-grid.kid > .st-pack { grid-row: 1 / span 2; }
   .st-head .st-hello { display: none; }
 }
+/* „Alle“: alle sechs Kästen gleich hoch (zwei pro Spalte, je die halbe Höhe) */
+.alle3 > .st-col > .st-card { flex: 1 1 0 !important; min-height: 0; overflow-y: auto; }
+.st-roundplus { width: 52px; height: 52px; border-radius: 26px; border: 0; background: var(--teal, #0F766E); color: #fff; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex: 0 0 52px; }
