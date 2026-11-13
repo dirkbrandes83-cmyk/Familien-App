@@ -145,3 +145,14 @@ test('Schultage: Wochenende packt für Montag', async () => {
   assert.equal(tagName('2026-11-13', '2026-11-16'), 'Montag');
   assert.equal(tagName('2026-11-15', '2026-11-16'), 'Morgen');
 });
+
+test('Bremer Ferien und Feiertage', async () => {
+  const { istSchultag, schulfrei, feiertage } = await import('./schulfrei.js');
+  const { naechsterSchultag } = await import('./stundenplan.js');
+  assert.equal(schulfrei('2026-12-28'), 'Weihnachtsferien');
+  assert.equal(istSchultag('2027-01-11'), true);
+  assert.equal(naechsterSchultag('2026-12-22'), '2027-01-11');   // letzter Schultag vor Weihnachten → nach den Ferien
+  assert.equal(feiertage(2027)['2027-03-26'], 'Karfreitag');
+  assert.equal(schulfrei('2027-05-06'), 'Christi Himmelfahrt');
+  assert.equal(schulfrei('2026-11-16'), null);
+});

@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { supabase, run } from '../../data.js';
 import { choresToday } from '../Zuhause.jsx';
 import { upcomingTests, urgency, dayChip } from '../../lib/tests.js';
-import { lessonsFor, schoolDay, fachFarbe, istSchultag, naechsterSchultag, tagName } from '../../lib/stundenplan.js';
+import { lessonsFor, schoolDay, fachFarbe, istSchultag, naechsterSchultag, tagName, schulfrei } from '../../lib/stundenplan.js';
 import { TIERE } from '../../lib/kinder.js';
 import { useWetter } from '../Wochenende.jsx';
 import { anziehen } from '../../lib/wochenende.js';
@@ -57,7 +57,7 @@ export function Kind({ ctx, kid }) {
             <button className={date === ctx.day ? 'on' : ''} aria-pressed={date === ctx.day} onClick={() => setWhich('h')}>Heute</button>
             <button className={date !== ctx.day ? 'on' : ''} aria-pressed={date !== ctx.day} onClick={() => setWhich('m')}>{naechsterName}</button>
           </div>
-        ) : <div className="st-weekend">Wochenende – keine Schule. Hier packst du schon für <b>{naechsterName}</b>.</div>}
+        ) : <div className="st-weekend">{schulfrei(ctx.day) ? `${schulfrei(ctx.day)} – keine Schule.` : 'Wochenende – keine Schule.'} Hier packst du schon für <b>{naechsterName}</b>{naechsterName.endsWith('.') ? '' : '.'}</div>}
         {kleid && (
           <div className="st-wear">
             <Icon name={kleid.icon} size={30} />

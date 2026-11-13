@@ -1,5 +1,6 @@
 // Stundenpläne der Kinder
 import { addDays, weekday } from './dates.js';
+import { istSchultag } from './schulfrei.js';
 
 export const DEFAULT_ZEITEN = [
   { von: '08:00', bis: '08:45' }, { von: '08:50', bis: '09:35' }, { von: '09:55', bis: '10:40' }, { von: '10:45', bis: '11:30' },
@@ -18,10 +19,11 @@ const BLASS = /^(mittag|mittagessen|pause|mensa)/i;
 const BETREUUNG = /betreuung/i;
 export const fachFarbe = (f) => FARBEN[f] || (BLASS.test(f || '') ? ['#FAFAF9', '#A8A29E'] : BETREUUNG.test(f || '') ? ['#E0F2FE', '#0369A1'] : ['#F5F1EA', '#44403C']);
 
-// Schultag für die Anzeige: Wochenende → nächster Montag
+// Schultag für die Anzeige: Wochenende, Ferien, Feiertage → nächster Schultag
 export function schoolDay(date) {
-  const wd = weekday(date);
-  return wd > 4 ? addDays(date, 7 - wd) : date;
+  let d = date;
+  for (let i = 0; i < 60 && !istSchultag(d); i++) d = addDays(d, 1);
+  return d;
 }
 
 // Stunden eines Tages: [{n, von, bis, fach}] – leere Stunden am Ende fallen weg, Lücken bleiben als Freistunde
@@ -34,13 +36,14 @@ export function lessonsFor(tt, date) {
   return list.slice(0, last + 1).map((fach, i) => ({ n: i + 1, von: zeiten[i]?.von || '', bis: zeiten[i]?.bis || '', fach: fach || '' }));
 }
 
-// Schultag? (Mo–Fr; Ferien kennt die App noch nicht)
-export const istSchultag = (date) => weekday(date) <= 4;
+export { istSchultag, schulfrei } from './schulfrei.js';
 // Nächster Schultag nach „date“ (Fr → Mo, Sa → Mo)
 export const naechsterSchultag = (date) => schoolDay(addDays(date, 1));
 // „morgen“ oder Wochentag, je nach Abstand
 export function tagName(heute, date) {
   if (date === heute) return 'Heute';
   if (date === addDays(heute, 1)) return 'Morgen';
-  return ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'][weekday(date)];
+  const wt = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'][weekday(date)];
+  // mehr als eine Woche weg (z. B. nach den Ferien): mit Datum
+  return date > addDays(heute, 6) ? `${wt}, ${Number(date.slice(8))}.${Number(date.slice(5, 7))}.` : wt;
 }

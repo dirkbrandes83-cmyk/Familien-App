@@ -1,5 +1,6 @@
 import { Icon, PersonChips } from '../ui.jsx';
 import { hm, weekday, addDays, expand, WDL } from '../lib/dates.js';
+import { istSchultag, naechsterSchultag } from '../lib/stundenplan.js';
 
 export const SRC = {
   fam: 'Familie',
@@ -46,7 +47,7 @@ export function packList(ctx, kid, date) {
   const wd = weekday(date);
   const checks = new Set(ctx.data.checks.rows.filter((c) => c.kid === kid && c.on_date === date).map((c) => c.item_key));
   const items = [
-    ...ctx.data.rules.rows.filter((r) => r.kid === kid && (r.weekdays || []).includes(wd)).map((r) => ({ key: `r:${r.id}`, text: r.item, rule: r })),
+    ...ctx.data.rules.rows.filter((r) => r.kid === kid && istSchultag(date) && (r.weekdays || []).includes(wd)).map((r) => ({ key: `r:${r.id}`, text: r.item, rule: r })),
     ...ctx.data.packItems.rows.filter((p) => p.kid === kid && p.on_date === date && p.art === 'mit').map((p) => ({ key: `i:${p.id}`, text: p.text, one: p })),
   ].map((x) => ({ ...x, done: checks.has(x.key) }));
   const notes = ctx.data.packItems.rows.filter((p) => p.kid === kid && p.on_date === date && p.art !== 'mit');
@@ -59,8 +60,8 @@ export function packList(ctx, kid, date) {
 }
 
 export function packDay(ctx) {
-  // Bis zum Mittag zählt heute, danach wird für morgen gepackt
-  return new Date().getHours() < 12 ? ctx.day : addDays(ctx.day, 1);
+  // Schultags bis 15 Uhr zählt heute, sonst der nächste Schultag (nach Wochenende, Ferien, Feiertag)
+  return istSchultag(ctx.day) && new Date().getHours() < 15 ? ctx.day : naechsterSchultag(ctx.day);
 }
 
 // „bringt Dirk · holt Catrin“ – offen wird orange angezeigt, wenn nur eins fehlt
