@@ -292,7 +292,7 @@ function Kind({ ctx, kid }) {
       window.speechSynthesis.speak(u);
     } catch { /* kein Vorlesen möglich */ }
   };
-  const cds = countdowns(ctx.data.events.rows, kid.id, ctx.day);
+  const cds = countdowns(ctx.data.events.rows, kid.id, ctx.day, 1);
   return (
     <>
     <div className="st-kidbar">
