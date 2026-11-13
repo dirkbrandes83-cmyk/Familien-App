@@ -463,3 +463,9 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .cal-day { scroll-margin-top: calc(env(safe-area-inset-top) + 175px); }
 .cal-row > .seg:first-child { flex: 1.35 1 0; } .cal-bar .seg button { padding: 0 6px; }
 .cal-chips { flex: 1 1 auto; min-width: 0; } .cal-row > .seg:first-child { flex: 1.15 1 0; }
+.h-fahrt-line { display: block; font-size: 13px; font-weight: 500; color: #44403C; margin-top: 2px; }
+.h-fahrt-line b { font-weight: 700; }
+.h-fahrt-open { color: #B45309; font-weight: 700; }
+.h-next .h-fahrt-line { color: #115E59; }
+.h-drive-icon { width: 26px; height: 26px; flex: 0 0 26px; display: inline-flex; align-items: center; justify-content: center; font-size: 18px; }
+.h-drive-time { font-weight: 800; font-variant-numeric: tabular-nums; color: #0F766E; }
