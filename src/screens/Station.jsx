@@ -25,6 +25,7 @@ export default function Station({ members, reloadMembers }) {
   const [sheet, setSheet] = useState(null);
   const [checkin, setCheckin] = useState(false);
   const [kiste, setKiste] = useState(false);
+  const [tierWahl, setTierWahl] = useState(false);
   const [toast, setToast] = useState(null);
   const [wach, setWach] = useState(false);
   const [online, setOnline] = useState(navigator.onLine);
@@ -117,6 +118,11 @@ export default function Station({ members, reloadMembers }) {
             </button>
           ))}
         </nav>
+        {view !== 'alle' && ctx.member(view) && (
+          <button className="st-hello" onClick={() => setTierWahl(true)} aria-label="Mein Tier wählen">
+            {begruessung(ctx.member(view).name, ctx.member(view).tier)}{!ctx.member(view).tier && <span className="st-hello-hint">Tier wählen</span>}
+          </button>
+        )}
         {weekday(day) === 6 && (
           <button className="btn st-add st-ci" onClick={() => setCheckin(true)}>
             <Icon name={ctx.data.checkins.rows.find((r) => r.sonntag === day)?.fertig ? 'check' : 'sun'} size={22} />Check-in
@@ -139,6 +145,7 @@ export default function Station({ members, reloadMembers }) {
       )}
       {checkin && <CheckIn ctx={ctx} onClose={() => setCheckin(false)} />}
       <Konfetti />
+      {tierWahl && view !== 'alle' && <TierWahl ctx={ctx} kid={ctx.member(view)} onClose={() => setTierWahl(false)} />}
       <Toast toast={toast} onClose={() => setToast(null)} />
     </div>
   );
@@ -330,7 +337,6 @@ function WerMacht({ ctx }) {
 
 function Kind({ ctx, kid }) {
   const [which, setWhich] = useState(() => (new Date().getHours() < 15 ? 'h' : 'm'));
-  const [tierWahl, setTierWahl] = useState(false);
   const date = which === 'h' ? ctx.day : addDays(ctx.day, 1);
   const { items, notes } = packList(ctx, kid.id, date);
   const occ = expand(ctx.data.events.rows, ctx.day, addDays(ctx.day, 1)).filter((o) => o.ev.who.includes(kid.id) || o.ev.who.includes('all'));
@@ -348,36 +354,14 @@ function Kind({ ctx, kid }) {
       window.speechSynthesis.speak(u);
     } catch { /* kein Vorlesen möglich */ }
   };
+  // „Nach der Schule“: heutige Termine nach Uhrzeit, dann Ämtchen und Hinweise
+  const heute = occ.filter((o) => o.date === ctx.day && o.ev.kind !== 'test');
+  const morgen = occ.filter((o) => o.date !== ctx.day && o.ev.kind !== 'test');
+  const mine = choresToday(ctx, ctx.day).filter((c) => c.who === kid.id);
+  const extra = fuerKind(ctx, kid.id);
   return (
-    <>
-    <div className="st-kidbar">
-      <button className="st-hello" onClick={() => setTierWahl(true)} aria-label="Mein Tier wählen">{begruessung(kid.name, kid.tier)}{!kid.tier && <span className="st-hello-hint">Tier wählen</span>}</button>
-    </div>
-    {tierWahl && (
-      <div className="sheet-bg" onClick={(e) => { if (e.target === e.currentTarget) setTierWahl(false); }}>
-        <div className="sheet st-sheet" role="dialog" aria-modal="true" aria-label="Tier wählen">
-          <div className="sheet-head"><h2>{kid.name}, welches Tier bist du?</h2><button className="icon-btn st-icon" onClick={() => setTierWahl(false)} aria-label="Schließen"><Icon name="x" /></button></div>
-          <div className="st-tiere">
-            {TIERE.map((t) => (
-              <button key={t} className={`st-tier${kid.tier === t ? ' on' : ''}`} aria-pressed={kid.tier === t} onClick={async () => {
-                const ok = await run(supabase.rpc('tier_setzen', { kind: kid.id, t }), ctx.fail);
-                if (ok) { ctx.reloadMembers?.(); setTierWahl(false); ctx.say(`Hallo, ${kid.name} ${t}`); }
-              }}>{t}</button>
-            ))}
-          </div>
-        </div>
-      </div>
-    )}
     <main className="st-grid kid">
-      <div className="st-col">
-        <section className="st-card st-auto">
-          <h2>Meine Termine</h2>
-          <h3>Heute</h3>
-          <EvList list={occ.filter((o) => o.date === ctx.day)} ctx={ctx} />
-          <h3>Morgen</h3>
-          <EvList list={occ.filter((o) => o.date !== ctx.day)} ctx={ctx} />
-        </section>
-      <section className={`st-card st-pack${morgens() ? ' st-first' : ''}`}>
+      <section className={`st-card st-pack`}>
         <div className="st-cardhead">
           <h2>Einpacken</h2>
           <button className="icon-btn" onClick={read} aria-label="Vorlesen" style={{ width: 56, height: 56 }}><SpeakIcon /></button>
@@ -400,36 +384,46 @@ function Kind({ ctx, kid }) {
         {items.length > 0 && open.length > 0 && <div className="st-progressbar" aria-label={`${items.length - open.length} von ${items.length} eingepackt`}><span style={{ width: `${((items.length - open.length) / items.length) * 100}%` }} /><b>{items.length - open.length} von {items.length} eingepackt</b></div>}
         {items.length > 0 && open.length === 0 && <div className="st-done">Alles eingepackt!</div>}
       </section>
-      </div>
-      <div className="st-col">
-        <StundenplanKarte ctx={ctx} kid={kid} date={date} />
-      </div>
-      <div className="st-col">
-        <section className="st-card st-grow">
-          <h2>Meine Aufgaben</h2>
-          {(() => {
-            const mine = choresToday(ctx, ctx.day).filter((c) => c.who === kid.id);
-            const extra = fuerKind(ctx, kid.id);
-            if (!mine.length && !extra.length) return <div className="st-empty">Heute nichts zu tun.</div>;
-            return (
-              <>
-                {mine.map((c) => (
-                  <button key={c.id} className="st-check" onClick={() => toggleChoreFeier(ctx, c)} aria-pressed={c.done}>
-                    <Check on={c.done} /><span className={c.done ? 'done' : ''}>{c.title}</span>
-                  </button>
-                ))}
-                {extra.map((x) => (
-                  <div key={x.id} className="st-note big">
-                    {x.text}{x.due ? <span style={{ fontWeight: 500 }}> · bis {shortLabel(x.due)}</span> : null}
-                  </div>
-                ))}
-              </>
-            );
-          })()}
-        </section>
-      </div>
+      <StundenplanKarte ctx={ctx} kid={kid} date={date} />
+      <section className="st-card">
+        <h2>Nach der Schule</h2>
+        {heute.length === 0 && !mine.length && !extra.length && <div className="st-empty">Heute nichts weiter.</div>}
+        <EvList list={heute} ctx={ctx} empty="" />
+        {mine.map((c) => (
+          <button key={c.id} className="st-check" onClick={() => toggleChoreFeier(ctx, c)} aria-pressed={c.done}>
+            <Check on={c.done} /><span className={c.done ? 'done' : ''}>{c.title}</span>
+          </button>
+        ))}
+        {extra.map((x) => (
+          <div key={x.id} className="st-note big">{x.text}{x.due ? <span style={{ fontWeight: 500 }}> · bis {shortLabel(x.due)}</span> : null}</div>
+        ))}
+        {morgen.length > 0 && (
+          <>
+            <h3>Morgen</h3>
+            <EvList list={morgen} ctx={ctx} />
+          </>
+        )}
+      </section>
     </main>
-    </>
+  );
+}
+
+// Tier wählen (öffnet sich über die Begrüßung in der Kopfzeile)
+function TierWahl({ ctx, kid, onClose }) {
+  return (
+    <div className="sheet-bg" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="sheet st-sheet" role="dialog" aria-modal="true" aria-label="Tier wählen">
+        <div className="sheet-head"><h2>{kid.name}, welches Tier bist du?</h2><button className="icon-btn st-icon" onClick={onClose} aria-label="Schließen"><Icon name="x" /></button></div>
+        <div className="st-tiere">
+          {TIERE.map((t) => (
+            <button key={t} className={`st-tier${kid.tier === t ? ' on' : ''}`} aria-pressed={kid.tier === t} onClick={async () => {
+              const ok = await run(supabase.rpc('tier_setzen', { kind: kid.id, t }), ctx.fail);
+              if (ok) { ctx.reloadMembers?.(); onClose(); ctx.say(`Hallo, ${kid.name} ${t}`); }
+            }}>{t}</button>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 

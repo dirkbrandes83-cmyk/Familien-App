@@ -571,3 +571,13 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .alle3 .st-meal { font-size: 19px; font-weight: 600; font-family: inherit; }
 .st-istalle { color: var(--teal-d, #0F766E); border: 2px solid #CCFBF1; background: #fff; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
 .alle3 .st-ttsoonrow, .alle3 .st-cardhead .badge { opacity: 0.9; }
+/* Kinderseite: Einpacken | Stundenplan | Nach der Schule; Begrüßung in der Kopfzeile */
+.st > main.st-grid.kid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
+.st > main.st-grid.kid > .st-card { min-height: 0; overflow-y: auto; }
+.st-head .st-hello { font-size: 22px; margin-left: 8px; flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.st-grid.kid .st-ttcard .st-ttfach { font-size: 18px; }
+@media (max-width: 1000px) {
+  .st > main.st-grid.kid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); }
+  .st > main.st-grid.kid > .st-pack { grid-row: 1 / span 2; }
+  .st-head .st-hello { display: none; }
+}
