@@ -318,6 +318,13 @@ function Kind({ ctx, kid }) {
     )}
     <main className="st-grid kid">
       <div className="st-col">
+        <section className="st-card st-auto">
+          <h2>Meine Termine</h2>
+          <h3>Heute</h3>
+          <EvList list={occ.filter((o) => o.date === ctx.day)} ctx={ctx} />
+          <h3>Morgen</h3>
+          <EvList list={occ.filter((o) => o.date !== ctx.day)} ctx={ctx} />
+        </section>
       <section className="st-card st-pack">
         <div className="st-cardhead">
           <h2 style={{ color: kid.color }}>Einpacken</h2>
@@ -340,20 +347,13 @@ function Kind({ ctx, kid }) {
         ))}
         {items.length > 0 && open.length === 0 && <div className="st-done">Alles eingepackt!</div>}
       </section>
-      <StundenplanKarte ctx={ctx} kid={kid} date={date} />
       </div>
       <div className="st-col">
         <section className="st-card st-auto">
-          <h2>Meine Termine</h2>
-          <h3>Heute</h3>
-          <EvList list={occ.filter((o) => o.date === ctx.day)} ctx={ctx} />
-          <h3>Morgen</h3>
-          <EvList list={occ.filter((o) => o.date !== ctx.day)} ctx={ctx} />
-        </section>
-        <section className="st-card st-grow">
           <MeineTests ctx={ctx} kid={kid} />
           {!upcomingTests(ctx.data.events.rows, ctx.day, 7, kid.id).length && <><h2>Meine Tests</h2><div className="st-empty">Diese Woche keine Tests. 🙂</div></>}
         </section>
+        <StundenplanKarte ctx={ctx} kid={kid} date={date} />
       </div>
       <div className="st-col">
         <section className="st-card st-grow">

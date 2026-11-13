@@ -484,3 +484,7 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .konfetti-msg { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); background: #fff; border-radius: 28px; padding: 22px 36px; font-family: 'Bricolage Grotesque', sans-serif; font-size: 40px; font-weight: 800; box-shadow: 0 12px 40px rgba(0,0,0,0.18); animation: konfetti-pop 0.35s ease-out; white-space: nowrap; }
 @keyframes konfetti-pop { from { transform: translate(-50%, -50%) scale(0.6); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .konfetti span { display: none; } }
+/* Kinderseite: links Termine + Einpacken, Mitte Tests + Stundenplan, rechts Aufgaben */
+.st > main.st-grid.kid { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr) minmax(0, 0.85fr); }
+.st-col > .st-ttcard { flex: 1 1 auto; }
+@media (max-width: 1000px) { .st > main.st-grid.kid > .st-col:first-child { grid-row: 1 / span 2; } }
