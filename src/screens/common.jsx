@@ -53,7 +53,7 @@ export function packList(ctx, kid, date) {
   // Tests: am Tag selbst und am Tag davor als Hinweis
   for (const o of expand(ctx.data.events.rows.filter((e) => e.kind === 'test' && e.who.includes(kid)), date, addDays(date, 1))) {
     notes.push({ id: `test-${o.ev.id}-${o.date}`, art: 'test',
-      text: o.date === date ? `${o.ev.title} – viel Erfolg!` : `Morgen ${o.ev.title} – heute nochmal üben` });
+      text: o.date === date ? `${o.ev.title} – du schaffst das!` : `Morgen ${o.ev.title} – heute nochmal üben` });
   }
   return { items, notes };
 }

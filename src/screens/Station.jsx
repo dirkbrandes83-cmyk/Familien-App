@@ -26,6 +26,9 @@ export default function Station({ members, reloadMembers }) {
   const [checkin, setCheckin] = useState(false);
   const [kiste, setKiste] = useState(false);
   const [toast, setToast] = useState(null);
+  const [wach, setWach] = useState(false);
+  const [online, setOnline] = useState(navigator.onLine);
+  const [stand, setStand] = useState(new Date());
   const idle = useRef(null);
   const hold = useRef(null);
 
@@ -50,6 +53,25 @@ export default function Station({ members, reloadMembers }) {
     return () => clearInterval(t);
   }, []);
 
+  // Verbindung beobachten; „Stand“ = letzte Zeit mit Verbindung
+  useEffect(() => {
+    const on = () => { setOnline(true); setStand(new Date()); };
+    const off = () => setOnline(false);
+    window.addEventListener('online', on); window.addEventListener('offline', off);
+    const t = setInterval(() => { if (navigator.onLine) setStand(new Date()); }, 60000);
+    return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); clearInterval(t); };
+  }, []);
+
+  // Nachts um 3 Uhr einmal neu laden, damit neue App-Versionen ankommen
+  useEffect(() => {
+    const t = setInterval(() => {
+      const d = new Date();
+      const key = `reload-${today()}`;
+      if (d.getHours() === 3 && !sessionStorage.getItem(key)) { sessionStorage.setItem(key, '1'); window.location.reload(); }
+    }, 5 * 60000);
+    return () => clearInterval(t);
+  }, []);
+
   // Bildschirm anlassen (Safari ab iOS 16.4)
   useEffect(() => {
     let lock = null;
@@ -64,7 +86,7 @@ export default function Station({ members, reloadMembers }) {
   useEffect(() => {
     const reset = () => {
       clearTimeout(idle.current);
-      idle.current = setTimeout(() => { setView('alle'); setSheet(null); }, IDLE_MS);
+      idle.current = setTimeout(() => { setView('alle'); setSheet(null); setKiste(false); setWach(false); }, IDLE_MS);
     };
     reset();
     window.addEventListener('pointerdown', reset);
@@ -74,8 +96,11 @@ export default function Station({ members, reloadMembers }) {
   const faces = [{ id: 'alle', name: 'Alle', color: '#0F766E', bg: '#CCFBF1' }, ...kids];
   const clock = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
+  if (nachts(now) && !wach && !checkin) return <Nacht ctx={ctx} clock={clock} onWake={() => setWach(true)} />;
+
   return (
     <div className="st">
+      {!online && <div className="st-offline"><Icon name="x" size={18} />Keine Verbindung – Stand {String(stand.getHours()).padStart(2, '0')}:{String(stand.getMinutes()).padStart(2, '0')} Uhr</div>}
       <header className="st-head">
         <div className="st-clock" onPointerDown={() => { hold.current = setTimeout(() => { if (window.confirm('Station abmelden?')) supabase.auth.signOut(); }, 2500); }}
           onPointerUp={() => clearTimeout(hold.current)} onPointerLeave={() => clearTimeout(hold.current)}>
@@ -125,7 +150,8 @@ function timeOf(ev) {
   return hm(ev.from_time);
 }
 
-function EvList({ list, ctx, empty = 'Nichts geplant.' }) {
+function EvList({ list: all, ctx, empty = 'Nichts geplant.' }) {
+  const list = all.filter((o) => o.ev.kind !== 'test'); // Tests stehen im Stundenplan
   if (!list.length) return <div className="st-empty">{empty}</div>;
   return list.map((o) => (
     <div key={o.ev.id + o.date} className="st-ev">
@@ -179,9 +205,31 @@ async function togglePack(ctx, kid, date, item, last = false) {
   if (!ok) ctx.data.checks.reload();
 }
 
-function packDate(ctx) {
-  return new Date().getHours() < 12 ? ctx.day : addDays(ctx.day, 1);
+// Bis 15 Uhr: heute mitnehmen, danach: für morgen packen
+// Nachtmodus 21–6 Uhr: dunkel, nur Uhr und das Wichtigste für morgen. Antippen weckt für 2 Minuten.
+function Nacht({ ctx, clock, onWake }) {
+  const h = new Date().getHours();
+  const morgen = h >= 21 ? addDays(ctx.day, 1) : ctx.day;
+  const ev = expand(ctx.data.events.rows, morgen, morgen).filter((o) => o.ev.kind !== 'frist').slice(0, 4);
+  const pack = ctx.kids.reduce((n, k) => n + packList(ctx, k.id, morgen).items.filter((i) => !i.done).length, 0);
+  return (
+    <button className="st-night" onClick={onWake} aria-label="Bildschirm aufwecken">
+      <span className="st-night-time">{clock}</span>
+      <span className="st-night-sub">{h >= 21 ? 'Morgen' : 'Heute'} · {WDL[weekday(morgen)]}</span>
+      <span className="st-night-list">
+        {ev.map((o) => <span key={o.ev.id}>{o.ev.all_day ? '' : `${hm(o.ev.from_time)}  `}{o.ev.title}</span>)}
+        {pack > 0 && <span>Noch {pack} {pack === 1 ? 'Sache' : 'Sachen'} einpacken</span>}
+      </span>
+      <span className="st-night-hint">Antippen zum Aufwecken</span>
+    </button>
+  );
 }
+
+function packDate(ctx) {
+  return new Date().getHours() < 15 ? ctx.day : addDays(ctx.day, 1);
+}
+const morgens = () => { const h = new Date().getHours(); return h >= 5 && h < 9; };
+const nachts = (d = new Date()) => d.getHours() >= 21 || d.getHours() < 6;
 
 function Alle({ ctx, openIstAlle, openKiste }) {
   const tomorrow = addDays(ctx.day, 1);
@@ -197,7 +245,7 @@ function Alle({ ctx, openIstAlle, openKiste }) {
           <h3>Morgen · {WDL[weekday(tomorrow)]}</h3>
           <EvList list={occ.filter((o) => o.date === tomorrow)} ctx={ctx} />
         </section>
-        <section className="st-card st-grow">
+        <section className={`st-card st-grow${morgens() ? ' st-first' : ''}`}>
           <h2>{pd === ctx.day ? 'Heute mitnehmen' : 'Für morgen einpacken'}</h2>
           {ctx.kids.map((k) => {
             const { items, notes } = packList(ctx, k.id, pd);
@@ -261,12 +309,13 @@ function WerMacht({ ctx }) {
     <section className="st-card st-grow">
       <h2>Wer macht heute was</h2>
       <div className="st-who1">
-        {ctx.members.map((p) => {
+        {chores.length === 0 && <div className="st-empty">Heute keine Ämtchen.</div>}
+        {ctx.members.filter((p) => chores.some((c) => c.who === p.id)).map((p) => {
           const list = chores.filter((c) => c.who === p.id);
           return (
             <div key={p.id} className="st-kid">
               <span className="st-kidname" style={{ color: p.color }}>{p.tier ? `${p.tier} ` : ''}{p.name}</span>
-              {list.length === 0 ? <span className="st-empty">heute frei</span> : list.map((c) => (
+              {list.map((c) => (
                 <button key={c.id} className="st-check" onClick={() => toggleChoreFeier(ctx, c)} aria-pressed={c.done}>
                   <Check on={c.done} /><span className={c.done ? 'done' : ''}>{c.title}</span>
                 </button>
@@ -280,7 +329,7 @@ function WerMacht({ ctx }) {
 }
 
 function Kind({ ctx, kid }) {
-  const [which, setWhich] = useState(() => (new Date().getHours() < 12 ? 'h' : 'm'));
+  const [which, setWhich] = useState(() => (new Date().getHours() < 15 ? 'h' : 'm'));
   const [tierWahl, setTierWahl] = useState(false);
   const date = which === 'h' ? ctx.day : addDays(ctx.day, 1);
   const { items, notes } = packList(ctx, kid.id, date);
@@ -328,9 +377,9 @@ function Kind({ ctx, kid }) {
           <h3>Morgen</h3>
           <EvList list={occ.filter((o) => o.date !== ctx.day)} ctx={ctx} />
         </section>
-      <section className="st-card st-pack">
+      <section className={`st-card st-pack${morgens() ? ' st-first' : ''}`}>
         <div className="st-cardhead">
-          <h2 style={{ color: kid.color }}>Einpacken</h2>
+          <h2>Einpacken</h2>
           <button className="icon-btn" onClick={read} aria-label="Vorlesen" style={{ width: 56, height: 56 }}><SpeakIcon /></button>
         </div>
         <div className="seg st-seg" role="group" aria-label="Heute oder morgen">
@@ -348,6 +397,7 @@ function Kind({ ctx, kid }) {
             <Check on={it.done} /><span className={it.done ? 'done' : ''}>{it.text}</span>
           </button>
         ))}
+        {items.length > 0 && open.length > 0 && <div className="st-progressbar" aria-label={`${items.length - open.length} von ${items.length} eingepackt`}><span style={{ width: `${((items.length - open.length) / items.length) * 100}%` }} /><b>{items.length - open.length} von {items.length} eingepackt</b></div>}
         {items.length > 0 && open.length === 0 && <div className="st-done">Alles eingepackt!</div>}
       </section>
       </div>
@@ -408,7 +458,7 @@ function StundenplanKarte({ ctx, kid, date }) {
                 <div key={l.n} className={`st-ttrow${l.fach ? '' : ' frei'}`}>
                   <span className="st-ttn">{l.n}</span>
                   <span className="st-tttime">{l.von}</span>
-                  <span className="st-ttfach" style={l.fach ? { background: bg, color: fg } : undefined}>
+                  <span className="st-ttfach" style={l.fach ? { '--fach': fg } : undefined}>
                     {l.fach || 'frei'}{t && <span className="st-tttest"><Icon name="pencil" size={13} /> {t.title.replace(l.fach, '').trim() || 'Test'}</span>}
                   </span>
                 </div>
@@ -448,7 +498,7 @@ function MeineTests({ ctx, kid }) {
                 <span className="st-testtitle">{o.ev.title}</span>
                 {o.ev.note && <span className="st-testnote">{o.ev.note}</span>}
               </div>
-              <span className="st-testcount">{o.date === ctx.day ? 'Viel Erfolg!' : o.date === addDays(ctx.day, 1) ? 'Heute üben!' : countdown(ctx.day, o.date)}</span>
+              <span className="st-testcount">{o.date === ctx.day ? 'Du schaffst das!' : o.date === addDays(ctx.day, 1) ? 'Heute üben!' : countdown(ctx.day, o.date)}</span>
             </div>
           );
         })}

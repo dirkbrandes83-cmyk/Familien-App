@@ -525,3 +525,31 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .alle3 .st-big { margin-top: 10px; }
 .alle3 .wk-top { align-items: flex-start; justify-content: center; } .alle3 .st-kid > .st-empty { display: flex; }
 .h-hint-l { display: inline-flex; align-items: center; gap: 8px; } .wk-meta svg { vertical-align: -2px; } .wk-weather svg { vertical-align: -4px; } .st-ci, .st-add { display: inline-flex; align-items: center; gap: 8px; } .wk-heart { display: inline-flex; align-items: center; justify-content: center; color: #E11D48; } .wk-hz { color: #E11D48; } .konfetti-msg svg { vertical-align: -6px; color: #F59E0B; }
+/* Analyse-Runde: Tageszeit, ruhigere Farben, einheitliche Schrift, Nacht, Offline */
+.st-col > .st-first { order: -1; }
+.st-progress { float: right; font-size: 14px; font-weight: 700; color: var(--muted); text-transform: none; letter-spacing: 0; }
+.st-progressbar { position: relative; height: 34px; border-radius: 17px; background: #F5F1EA; overflow: hidden; margin-top: 8px; }
+.st-progressbar span { position: absolute; inset: 0 auto 0 0; background: #CCFBF1; }
+.st-progressbar b { position: relative; display: flex; height: 100%; align-items: center; justify-content: center; font-size: 16px; color: #0F766E; }
+/* Farbe = Person. Status über Text/Symbol, nicht über Ampelfarben */
+.st-note, .st-note.big { background: #F5F1EA; color: var(--ink); }
+.st-test, .st-test.warm, .st-test.hot { background: #F5F3FF; border-color: #DDD6FE; }
+.st-test .st-testcount, .st-test.warm .st-testcount, .st-test.hot .st-testcount { color: #6D28D9; }
+.st-ttsoonrow, .st-ttsoonrow.warm, .st-ttsoonrow.hot { background: #F5F3FF; color: #5B21B6; }
+.st-ttfach { background: #F5F1EA !important; color: var(--ink) !important; font-weight: 600; }
+.st-ttfach::before { content: ''; width: 8px; height: 8px; border-radius: 4px; background: var(--fach, #A8A29E); margin-right: 8px; flex: 0 0 8px; }
+.st-ttfach { justify-content: flex-start !important; }
+.st-ttfach .st-tttest { margin-left: auto; }
+/* Einheitliche Schrift: Titel 24, Zeilen 19 (Kinder) / 17 (Alle) */
+.st-card h2, .alle3 .st-card h2 { font-size: 24px; color: var(--ink); }
+.st-grid.kid .st-ev .st-evtitle, .st-grid.kid .st-check:not(.big) { font-size: 20px; }
+.st-grid.kid .st-check.big { min-height: 60px; font-size: 22px; }
+/* Nacht */
+.st-night { position: fixed; inset: 0; background: #0C0A09; color: #A8A29E; border: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; font: inherit; cursor: pointer; }
+.st-night-time { font-family: 'Bricolage Grotesque', sans-serif; font-size: 140px; font-weight: 700; color: #57534E; line-height: 1; }
+.st-night-sub { font-size: 24px; font-weight: 700; color: #78716C; }
+.st-night-list { display: flex; flex-direction: column; gap: 8px; font-size: 22px; align-items: center; color: #78716C; }
+.st-night-hint { position: absolute; bottom: 30px; font-size: 15px; color: #44403C; }
+/* Offline */
+.st-offline { display: flex; align-items: center; gap: 8px; justify-content: center; background: #FEE2E2; color: #991B1B; font-weight: 700; border-radius: 14px; padding: 8px 14px; flex: 0 0 auto; }
+.alle3 .st-kidname { display: flex; justify-content: space-between; align-items: baseline; } .st-progress { float: none; }
