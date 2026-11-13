@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Icon, Seg } from '../ui.jsx';
 import { addDays, expand, mondayOf, longLabel, parse, iso, MONTHS, WD, weekday } from '../lib/dates.js';
 import { EventRow } from './common.jsx';
@@ -53,6 +53,12 @@ function Woche({ ctx, events, start, setStart }) {
   const s = parse(start), e = parse(end);
   const range = `${s.getDate()}. ${s.getMonth() !== e.getMonth() ? MONTHS[s.getMonth()] + ' ' : ''}– ${e.getDate()}. ${MONTHS[e.getMonth()]}`;
   const isThis = start === mondayOf(ctx.day);
+  // Beim Öffnen (und bei „zu heute“) bis zum heutigen Tag scrollen
+  useEffect(() => {
+    if (!isThis || ctx.day === start) return;
+    const el = document.getElementById(`tag-${ctx.day}`);
+    if (el) requestAnimationFrame(() => el.scrollIntoView({ block: 'start' }));
+  }, [isThis, start, ctx.day]);
   return (
     <>
       <div className="card-head">
@@ -64,7 +70,7 @@ function Woche({ ctx, events, start, setStart }) {
         const list = occ.filter((o) => o.date === d);
         const isToday = d === ctx.day;
         return (
-          <section key={d} className="card" style={{ padding: list.length ? '12px 16px 4px' : '10px 16px', gap: 2, opacity: d < ctx.day ? 0.6 : 1 }}>
+          <section key={d} id={`tag-${d}`} className="card cal-day" style={{ padding: list.length ? '12px 16px 4px' : '10px 16px', gap: 2, opacity: d < ctx.day ? 0.6 : 1 }}>
             <div className="card-head">
               <span className="label" style={isToday ? { color: '#0F766E' } : undefined}>{isToday ? 'Heute · ' : ''}{longLabel(d)}</span>
               <button className="icon-btn" style={{ width: 36, height: 36, border: 'none' }} aria-label={`Termin am ${longLabel(d)} anlegen`} onClick={() => ctx.openEvent(null, { start_date: d })}><Icon name="plus" size={16} /></button>

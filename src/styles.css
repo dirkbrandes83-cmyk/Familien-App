@@ -392,7 +392,6 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .wk-station .wk-actions .btn { min-height: 60px; font-size: 19px; }
 /* Heute (Eltern-App) */
 .plus-btn { margin-left: auto; width: 44px; height: 44px; border-radius: 22px; background: var(--teal, #0F766E); color: #fff; border: 0; }
-.head { position: relative; }
 .plus-menu { position: absolute; right: 16px; top: 100%; z-index: 30; background: #fff; border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 8px 24px rgba(28,25,23,0.12); padding: 6px; display: flex; flex-direction: column; min-width: 220px; }
 .plus-item { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 12px; border: 0; background: none; font: inherit; font-weight: 600; text-align: left; border-radius: 10px; cursor: pointer; color: inherit; }
 .plus-item:active { background: #F5F1EA; }
@@ -436,3 +435,4 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .h-next-rtime { width: 64px; flex: 0 0 64px; font-weight: 700; font-variant-numeric: tabular-nums; font-size: 14px; }
 .h-next-rtitle { flex: 1 1 auto; font-weight: 600; min-width: 0; }
 .h-next-rwho { font-size: 13px; color: #0F766E; white-space: nowrap; }
+.cal-day { scroll-margin-top: 110px; }
