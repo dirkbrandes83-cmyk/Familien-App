@@ -275,7 +275,7 @@ function Alle({ ctx, openIstAlle, openKiste }) {
           {shop.length === 0 ? <div className="st-empty">Alles da.</div>
             : <ul className="st-shop">{shop.slice(0, 14).map((s) => <li key={s.id}>{s.name}</li>)}</ul>}
           {shop.length > 14 && <div className="st-empty">… und {shop.length - 14} weitere</div>}
-          <button className="btn st-big" onClick={openIstAlle}>Ist alle!</button>
+          <button className="btn ghost st-big st-istalle" onClick={openIstAlle}><Icon name="plus" size={20} />Ist alle!</button>
         </section>
       </div>
     </main>
@@ -289,7 +289,7 @@ function EssenKarte({ ctx }) {
     <section className="st-card st-auto">
       <h2>Essen heute</h2>
       <div className="st-meal">{mealOf(ctx, ctx.day).title}</div>
-      <div className="st-empty">Morgen: {mealOf(ctx, tomorrow).title}</div>
+      {mealOf(ctx, tomorrow).planned && <div className="st-empty">Morgen: {mealOf(ctx, tomorrow).title}</div>}
       {st && (
         <>
           <h3>Müll</h3>

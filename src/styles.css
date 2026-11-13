@@ -553,3 +553,21 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 /* Offline */
 .st-offline { display: flex; align-items: center; gap: 8px; justify-content: center; background: #FEE2E2; color: #991B1B; font-weight: 700; border-radius: 14px; padding: 8px 14px; flex: 0 0 auto; }
 .alle3 .st-kidname { display: flex; justify-content: space-between; align-items: baseline; } .st-progress { float: none; }
+/* „Alle“ ruhiger: weniger Linien, mehr Luft, gedämpfte Nebeninfos */
+.alle3 { gap: 16px; }
+.alle3 .st-card { padding: 18px 20px; border-color: #EFEAE2; box-shadow: none; }
+.alle3 .st-card h2 { font-size: 21px; font-weight: 700; padding-bottom: 8px; }
+.alle3 .st-ev, .alle3 .st-check, .alle3 .st-shop li, .alle3 .wk-top, .alle3 .st-kid > .st-empty, .alle3 .st-meal { border-top-color: transparent; }
+.alle3 .st-card h3 { border-top: 1px solid #F0EBE3; margin-top: 6px; padding-top: 10px; font-size: 12px; color: #A8A29E; }
+.alle3 .st-kidname { font-size: 14px; text-transform: none; letter-spacing: 0; font-weight: 800; padding-top: 8px; }
+.alle3 .st-kid + .st-kid { border-top: 1px solid #F0EBE3; margin-top: 6px; }
+.alle3 .st-progress { font-weight: 600; color: #A8A29E; }
+.alle3 .st-note { background: none; padding: 2px 0; color: #78716C; font-weight: 600; font-size: 15px; }
+.alle3 .st-check .check { border-color: #D6D3D1; }
+.alle3 .wk-day { background: #F8F6F2; }
+.alle3 .wk-day .small { display: none; }
+.alle3 .h3like { font-size: 12px; color: #A8A29E; }
+.alle3 .wk-sub { color: #A8A29E; }
+.alle3 .st-meal { font-size: 19px; font-weight: 600; font-family: inherit; }
+.st-istalle { color: var(--teal-d, #0F766E); border: 2px solid #CCFBF1; background: #fff; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.alle3 .st-ttsoonrow, .alle3 .st-cardhead .badge { opacity: 0.9; }

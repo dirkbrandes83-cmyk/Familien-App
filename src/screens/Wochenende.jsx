@@ -51,7 +51,7 @@ export function WochenendKarte({ ctx, onOpen, station }) {
   const wetter = useWetter(ctx);
   const days = weekendDays(ctx.day);
   const regen = days.every((d) => nass(wetter(d)));
-  const top = rankIdeas(ctx.data.ideas.rows, ctx.data.ideaVotes.rows, { regen }).slice(0, 3);
+  const top = rankIdeas(ctx.data.ideas.rows, ctx.data.ideaVotes.rows, { regen }).slice(0, station ? 2 : 3);
   const plan = ctx.data.weekendLog.rows.filter((l) => days.includes(l.on_date));
   return (
     <section className={station ? 'st-card' : 'card'}>
