@@ -584,3 +584,4 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 /* „Alle“: alle sechs Kästen gleich hoch (zwei pro Spalte, je die halbe Höhe) */
 .alle3 > .st-col > .st-card { flex: 1 1 0 !important; min-height: 0; overflow-y: auto; }
 .st-roundplus { width: 52px; height: 52px; border-radius: 26px; border: 0; background: var(--teal, #0F766E); color: #fff; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex: 0 0 52px; }
+.st-wear { display: flex; align-items: center; gap: 14px; background: #F0F9FF; color: #0C4A6E; border-radius: 16px; padding: 10px 14px; font-size: 19px; } .st-wear b { display: block; font-weight: 700; } .st-wear-sub { display: block; font-size: 14px; color: #0369A1; font-weight: 600; }

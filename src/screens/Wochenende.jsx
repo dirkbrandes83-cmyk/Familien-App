@@ -12,7 +12,7 @@ export function useWetter(ctx) {
   const asked = useRef(false);
   useEffect(() => {
     if (asked.current) return;
-    if (!w?.at || Date.now() - Date.parse(w.at) > 3 * 3600_000) {
+    if (!w?.at || Date.now() - Date.parse(w.at) > 3 * 3600_000 || w.days?.[0]?.tmin === undefined) {
       asked.current = true;
       supabase.functions.invoke('wetter', { body: {} }).then(() => ctx.data.settings.reload?.()).catch(() => {});
     }

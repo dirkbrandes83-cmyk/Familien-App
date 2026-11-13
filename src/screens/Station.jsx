@@ -5,7 +5,8 @@ import { upcomingTests, countdown, urgency, dayChip, pickDays, FAECHER, TEST_ART
 import { lessonsFor, schoolDay, fachFarbe } from '../lib/stundenplan.js';
 import { TIERE, begruessung } from '../lib/kinder.js';
 import CheckIn from './CheckIn.jsx';
-import Ideenkiste, { WochenendKarte } from './Wochenende.jsx';
+import Ideenkiste, { WochenendKarte, useWetter } from './Wochenende.jsx';
+import { anziehen } from '../lib/wochenende.js';
 import { muellHeute, muellStatus } from '../lib/home.js';
 import { Icon, Check, Toast, PersonChips } from '../ui.jsx';
 import { addDays, expand, longLabel, shortLabel, today, hm, WDL, weekday } from '../lib/dates.js';
@@ -342,9 +343,12 @@ function Kind({ ctx, kid }) {
   const { items, notes } = packList(ctx, kid.id, date);
   const occ = expand(ctx.data.events.rows, ctx.day, addDays(ctx.day, 1)).filter((o) => o.ev.who.includes(kid.id) || o.ev.who.includes('all'));
   const open = items.filter((i) => !i.done);
+  const wetter = useWetter(ctx);
+  const kleid = anziehen(wetter(date));
   const read = () => {
     const parts = [
       `${kid.name}, ${which === 'h' ? 'heute' : 'morgen'}:`,
+      ...(kleid ? [`Anziehen: ${kleid.text}.`] : []),
       ...notes.map((n) => n.text),
       open.length ? `Einpacken: ${open.map((i) => i.text).join(', ')}.` : 'Alles eingepackt.',
     ];
@@ -371,6 +375,12 @@ function Kind({ ctx, kid }) {
           <button className={which === 'h' ? 'on' : ''} aria-pressed={which === 'h'} onClick={() => setWhich('h')}>Heute</button>
           <button className={which === 'm' ? 'on' : ''} aria-pressed={which === 'm'} onClick={() => setWhich('m')}>Morgen</button>
         </div>
+        {kleid && (
+          <div className="st-wear">
+            <Icon name={kleid.icon} size={30} />
+            <span><b>{kleid.text}</b><span className="st-wear-sub">{which === 'h' ? 'Heute' : 'Morgen'} {kleid.temp} · {kleid.label}</span></span>
+          </div>
+        )}
         {notes.length > 0 && (
           <div className="st-notes">
             {notes.map((n) => <div key={n.id} className="st-note big">{n.art === 'bes' ? 'Besonders: ' : n.art === 'test' ? '' : 'Steht an: '}{n.text}</div>)}

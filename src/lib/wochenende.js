@@ -43,3 +43,25 @@ export function rankIdeas(ideas, votes, { regen = false } = {}) {
     .map((i) => ({ ...i, herzen: n.get(i.id) || 0 }))
     .sort((a, b) => b.herzen - a.herzen || a.title.localeCompare(b.title, 'de'));
 }
+
+// Anzieh-Empfehlung für den Schulweg (morgens zählt die Tiefsttemperatur)
+export function anziehen(w) {
+  if (!w) return null;
+  const t = w.tmin ?? w.tmax - 5;
+  const regen = nass(w);
+  const schnee = w.code >= 71 && w.code <= 77;
+  const teile = [];
+  if (t <= 0) teile.push('Winterjacke', 'Mütze', 'Handschuhe', 'Schal');
+  else if (t <= 6) teile.push(regen ? 'warme Regenjacke' : 'warme Jacke', 'Mütze');
+  else if (t <= 11) teile.push(regen ? 'Regenjacke' : 'Jacke');
+  else if (t <= 16) teile.push(regen ? 'Regenjacke' : 'leichte Jacke oder Pulli');
+  else if (w.tmax <= 21) teile.push(regen ? 'Regenjacke' : 'Pulli');
+  else teile.push('T-Shirt', ...(regen ? ['Regenjacke'] : []));
+  if (regen && w.regen >= 70 && t > 0) teile.push('Gummistiefel');
+  if (schnee) teile.push('Winterstiefel');
+  if ((w.wind ?? 0) >= 40 && t > 6) teile.push('Mütze');
+  if (w.tmax >= 25 && !regen) teile.push('Sonnencreme', 'Kappe');
+  const liste = [...new Set(teile)];
+  const text = liste.length > 1 ? `${liste.slice(0, -1).join(', ')} und ${liste[liste.length - 1]}` : liste[0];
+  return { icon: wetterInfo(w.code).icon, label: wetterInfo(w.code).label, temp: w.tmin !== undefined ? `${w.tmin}–${w.tmax}°` : `${w.tmax}°`, text: text[0].toUpperCase() + text.slice(1) };
+}

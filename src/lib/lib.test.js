@@ -127,3 +127,11 @@ test('Aufgaben-Modell: Quellen, Zuständige, Fahrten', async () => {
   assert.equal(f.length, 1); assert.equal(f[0].feld, 'pick_by'); assert.equal(f[0].offen, true);   // Bringen „nicht nötig“ fällt weg
   assert.deepEqual(fahrer(ctx, 'Catrin'), { id: 'catrin', name: 'Catrin' });
 });
+
+test('Anzieh-Empfehlung', async () => {
+  const { anziehen } = await import('./wochenende.js');
+  assert.equal(anziehen({ code: 61, tmax: 9, tmin: 4, regen: 80 }).text, 'Warme Regenjacke, Mütze und Gummistiefel');
+  assert.equal(anziehen({ code: 0, tmax: 27, tmin: 17, regen: 0 }).text, 'T-Shirt, Sonnencreme und Kappe');
+  assert.equal(anziehen({ code: 3, tmax: 2, tmin: -3, regen: 10 }).text, 'Winterjacke, Mütze, Handschuhe und Schal');
+  assert.equal(anziehen(null), null);
+});
