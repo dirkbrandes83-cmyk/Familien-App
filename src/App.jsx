@@ -9,7 +9,7 @@ import Einkauf from './screens/Einkauf.jsx';
 import Erinnerungen from './screens/Erinnerungen.jsx';
 import Mehr from './screens/Mehr.jsx';
 import EventSheet from './screens/EventSheet.jsx';
-import Station from './screens/Station.jsx';
+import Station from './screens/station/Station.jsx';
 import Zuhause from './screens/Zuhause.jsx';
 import Scan from './screens/Scan.jsx';
 
@@ -109,7 +109,7 @@ function Shell({ me, members }) {
     openEvent: (ev, preset) => setEventEdit({ ev, preset }),
     openScan: () => setScan(true),
     go: (t, seg) => { setMehr(false); setTab(t); if (seg && t === 'erinn') setErSeg(seg); if (seg && t === 'zuhause') setZhSeg(seg); if (seg && t === 'kalender') setCalSeg(seg); },
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }), [me, members, day, say, fail, ...Object.values(data).map((d) => d.rows)]);
 
   const openShop = data.shop.rows.filter((r) => !r.done).length;

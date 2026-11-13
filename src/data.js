@@ -36,7 +36,7 @@ export function useTable(table, keyOf = null) {
     const onVis = () => { if (document.visibilityState === 'visible') reload(); };
     document.addEventListener('visibilitychange', onVis);
     return () => { supabase.removeChannel(ch); document.removeEventListener('visibilitychange', onVis); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [table, enabled, reload]);
 
   // Sofort lokal anzeigen, dann speichern (bei Fehler neu laden)

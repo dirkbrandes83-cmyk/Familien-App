@@ -120,7 +120,7 @@ test('Aufgaben-Modell: Quellen, Zuständige, Fahrten', async () => {
     },
   };
   const a = aufgaben(ctx);
-  assert.deepEqual(vonPerson(offen(a), 'dirk').map((x) => x.art).sort(), ['erledigen', 'muell']); // Terminvereinbarung → Dirk
+  assert.deepEqual(vonPerson(offen(a), 'dirk').map((x) => x.art).sort(), ['besorgen', 'erledigen', 'muell']); // Terminvereinbarung und Geschenk → Dirk
   assert.equal(fuerPerson(a, 'emil').filter((x) => x.art === 'besorgen').length, 1);                 // Geschenk zum Kindertermin
   assert.equal(a.find((x) => x.art === 'aemtchen').done, true);
   const f = a.filter((x) => x.art === 'fahrt');
@@ -130,8 +130,18 @@ test('Aufgaben-Modell: Quellen, Zuständige, Fahrten', async () => {
 
 test('Anzieh-Empfehlung', async () => {
   const { anziehen } = await import('./wochenende.js');
-  assert.equal(anziehen({ code: 61, tmax: 9, tmin: 4, regen: 80 }).text, 'Warme Regenjacke, Mütze und Gummistiefel');
+  assert.equal(anziehen({ code: 61, tmax: 9, tmin: 4, regen: 80 }).text, 'Warme Regenjacke und Mütze');
   assert.equal(anziehen({ code: 0, tmax: 27, tmin: 17, regen: 0 }).text, 'T-Shirt, Sonnencreme und Kappe');
   assert.equal(anziehen({ code: 3, tmax: 2, tmin: -3, regen: 10 }).text, 'Winterjacke, Mütze, Handschuhe und Schal');
   assert.equal(anziehen(null), null);
+});
+
+test('Schultage: Wochenende packt für Montag', async () => {
+  const { istSchultag, naechsterSchultag, tagName } = await import('./stundenplan.js');
+  assert.equal(istSchultag('2026-11-14'), false);
+  assert.equal(naechsterSchultag('2026-11-13'), '2026-11-16'); // Fr → Mo
+  assert.equal(naechsterSchultag('2026-11-14'), '2026-11-16'); // Sa → Mo
+  assert.equal(naechsterSchultag('2026-11-16'), '2026-11-17');
+  assert.equal(tagName('2026-11-13', '2026-11-16'), 'Montag');
+  assert.equal(tagName('2026-11-15', '2026-11-16'), 'Morgen');
 });

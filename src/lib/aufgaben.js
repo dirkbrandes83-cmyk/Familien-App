@@ -48,7 +48,10 @@ export function aufgaben(ctx, { day = ctx.day, kommend = 3 } = {}) {
     // Geschenk zu einem Kindertermin betrifft das Kind, auch wenn es nicht eingetragen ist
     const kidOfEvent = ev && ev.kind !== 'geburtstag' ? ev.who.find((w) => ctx.members.find((m) => m.id === w)?.kid) : null;
     out.push({
-      key: `b${b.id}`, art: 'besorgen', text: besorgenText(b), due: b.due, owner: null, forWho: b.for_who ?? kidOfEvent ?? null,
+      key: `b${b.id}`, art: 'besorgen', text: besorgenText(b), due: b.due,
+      // Geschenk zu einem Kindertermin: gehört dem Kind und Dirk (kümmert sich ums Besorgen)
+      owner: kidOfEvent || (b.event_id && (b.for_who && ctx.members.find((m) => m.id === b.for_who)?.kid)) ? 'dirk' : null,
+      forWho: b.for_who ?? kidOfEvent ?? null,
       done: !!b.done, eventId: b.event_id ?? null, typ: b.typ,
       erledigen: () => db(ctx, (sb) => sb.from('buy_items').update({ done: true, done_at: now() }).eq('id', b.id)),
       zurueck: () => db(ctx, (sb) => sb.from('buy_items').update({ done: false, done_at: null }).eq('id', b.id)),

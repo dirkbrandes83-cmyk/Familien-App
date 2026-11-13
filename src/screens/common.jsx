@@ -1,5 +1,5 @@
 import { Icon, PersonChips } from '../ui.jsx';
-import { hm, weekday, addDays, expand } from '../lib/dates.js';
+import { hm, weekday, addDays, expand, WDL } from '../lib/dates.js';
 
 export const SRC = {
   fam: 'Familie',
@@ -53,7 +53,7 @@ export function packList(ctx, kid, date) {
   // Tests: am Tag selbst und am Tag davor als Hinweis
   for (const o of expand(ctx.data.events.rows.filter((e) => e.kind === 'test' && e.who.includes(kid)), date, addDays(date, 1))) {
     notes.push({ id: `test-${o.ev.id}-${o.date}`, art: 'test',
-      text: o.date === date ? `${o.ev.title} – du schaffst das!` : `Morgen ${o.ev.title} – heute nochmal üben` });
+      text: o.date === date ? `${o.ev.title} – du schaffst das!` : `${o.ev.title} am ${WDL[weekday(o.date)]} – vorher nochmal üben` });
   }
   return { items, notes };
 }

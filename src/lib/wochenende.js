@@ -57,7 +57,6 @@ export function anziehen(w) {
   else if (t <= 16) teile.push(regen ? 'Regenjacke' : 'leichte Jacke oder Pulli');
   else if (w.tmax <= 21) teile.push(regen ? 'Regenjacke' : 'Pulli');
   else teile.push('T-Shirt', ...(regen ? ['Regenjacke'] : []));
-  if (regen && w.regen >= 70 && t > 0) teile.push('Gummistiefel');
   if (schnee) teile.push('Winterstiefel');
   if ((w.wind ?? 0) >= 40 && t > 6) teile.push('Mütze');
   if (w.tmax >= 25 && !regen) teile.push('Sonnencreme', 'Kappe');

@@ -108,7 +108,7 @@ function FuerDich({ ctx, skip }) {
   // Zum Abhaken: meine Erledigen-Punkte, Besorgen mit Frist (für alle), Müll wenn ich dran bin
   const items = alle.filter((a) =>
     (a.art === 'erledigen' && a.owner === me) ||
-    (a.art === 'besorgen' && a.due && a.due <= bald) ||
+    (a.art === 'besorgen' && (a.owner === me || (a.due && a.due <= bald))) ||
     (a.art === 'muell' && a.owner === me))
     .map((a) => ({
       key: a.key, due: a.due, text: a.text, local: a.art === 'muell',

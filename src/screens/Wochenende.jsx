@@ -16,7 +16,7 @@ export function useWetter(ctx) {
       asked.current = true;
       supabase.functions.invoke('wetter', { body: {} }).then(() => ctx.data.settings.reload?.()).catch(() => {});
     }
-  }, [w?.at]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [w?.at]);  
   return (date) => w?.days?.find((d) => d.date === date) || null;
 }
 

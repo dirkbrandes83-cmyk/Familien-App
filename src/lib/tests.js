@@ -1,6 +1,5 @@
 // Tests und Klassenarbeiten der Kinder
-import { addDays, diffDays, weekday, WD, WDL, parse } from './dates.js';
-import { expand } from './dates.js';
+import { addDays, diffDays, expand, weekday, WD, parse } from './dates.js';
 
 export const FAECHER = ['Deutsch', 'Mathe', 'Englisch', 'Sachunterricht', 'NaWi', 'GuP', 'Französisch', 'Spanisch', 'Musik', 'Kunst', 'Religion', 'Sport'];
 export const TEST_ARTEN = ['Test', 'Klassenarbeit', 'Vokabeltest', 'Lernkontrolle'];
@@ -47,4 +46,3 @@ export function pickDays(day, n = 14, schoolOnly = false) {
   return out;
 }
 
-export const weekdayLong = (date) => WDL[weekday(date)];

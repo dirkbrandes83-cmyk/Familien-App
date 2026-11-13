@@ -33,3 +33,14 @@ export function lessonsFor(tt, date) {
   const zeiten = tt.zeiten?.length ? tt.zeiten : DEFAULT_ZEITEN;
   return list.slice(0, last + 1).map((fach, i) => ({ n: i + 1, von: zeiten[i]?.von || '', bis: zeiten[i]?.bis || '', fach: fach || '' }));
 }
+
+// Schultag? (Mo–Fr; Ferien kennt die App noch nicht)
+export const istSchultag = (date) => weekday(date) <= 4;
+// Nächster Schultag nach „date“ (Fr → Mo, Sa → Mo)
+export const naechsterSchultag = (date) => schoolDay(addDays(date, 1));
+// „morgen“ oder Wochentag, je nach Abstand
+export function tagName(heute, date) {
+  if (date === heute) return 'Heute';
+  if (date === addDays(heute, 1)) return 'Morgen';
+  return ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'][weekday(date)];
+}
