@@ -15,6 +15,7 @@ import { Eintragen } from './Eintragen.jsx';
 // (lesen, eintragen, abhaken – nichts löschen, keine Termine ändern).
 
 const IDLE_MS = 120000;
+const RUHE_MS = 10 * 60000; // tagsüber nach 10 Minuten ohne Berührung: Ruhebildschirm
 
 export default function Station({ members, reloadMembers }) {
   const kids = members.filter((m) => m.kid);
@@ -27,6 +28,8 @@ export default function Station({ members, reloadMembers }) {
   const [tierWahl, setTierWahl] = useState(false);
   const [toast, setToast] = useState(null);
   const [wach, setWach] = useState(false);
+  const [ruhe, setRuhe] = useState(false);
+  const ruheT = useRef(null);
   const [online, setOnline] = useState(navigator.onLine);
   const [stand, setStand] = useState(new Date());
   const idle = useRef(null);
@@ -85,18 +88,20 @@ export default function Station({ members, reloadMembers }) {
   // Nach 2 Minuten ohne Berührung zurück zu „Alle“
   useEffect(() => {
     const reset = () => {
-      clearTimeout(idle.current);
+      clearTimeout(idle.current); clearTimeout(ruheT.current);
+      setRuhe(false);
       idle.current = setTimeout(() => { setView('alle'); setSheet(null); setKiste(false); setWach(false); }, IDLE_MS);
+      ruheT.current = setTimeout(() => setRuhe(true), RUHE_MS);
     };
     reset();
     window.addEventListener('pointerdown', reset);
-    return () => { clearTimeout(idle.current); window.removeEventListener('pointerdown', reset); };
+    return () => { clearTimeout(idle.current); clearTimeout(ruheT.current); window.removeEventListener('pointerdown', reset); };
   }, []);
 
   const faces = [{ id: 'alle', name: 'Alle', color: '#0F766E', bg: '#CCFBF1' }, ...kids];
   const clock = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
-  if (nachts(now) && !wach && !checkin) return <Nacht ctx={ctx} clock={clock} onWake={() => setWach(true)} />;
+  if ((nachts(now) && !wach && !checkin) || (ruhe && !checkin)) return <Nacht ctx={ctx} clock={clock} onWake={() => { setWach(true); setRuhe(false); }} />;
 
   return (
     <div className="st">

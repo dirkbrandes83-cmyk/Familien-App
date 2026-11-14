@@ -69,7 +69,7 @@ export async function togglePack(ctx, kid, date, item, last = false) {
   if (!ok) ctx.data.checks.reload();
 }
 
-// Nachtmodus 21–7 Uhr: dunkel, nur Uhr und das Wichtigste für morgen. Antippen weckt für 2 Minuten.
+// Nachtmodus 21–7 Uhr und Ruhebildschirm tagsüber: schwarz, nur Uhr und das Wichtigste. Antippen weckt.
 export function Nacht({ ctx, clock, onWake }) {
   const h = new Date().getHours();
   const morgen = h >= 21 ? addDays(ctx.day, 1) : ctx.day;

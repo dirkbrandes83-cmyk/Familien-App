@@ -464,8 +464,8 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .st-grid.kid .st-ev .st-evtitle, .st-grid.kid .st-check:not(.big) { font-size: 20px; }
 .st-grid.kid .st-check.big { min-height: 60px; font-size: 22px; }
 /* Nacht */
-.st-night { position: fixed; inset: 0; background: #0C0A09; color: #A8A29E; border: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; font: inherit; cursor: pointer; }
-.st-night-time { font-family: 'Bricolage Grotesque', sans-serif; font-size: 140px; font-weight: 700; color: #57534E; line-height: 1; }
+.st-night { position: fixed; inset: 0; background: #000; color: #A8A29E; border: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; font: inherit; cursor: pointer; }
+.st-night-time { font-family: 'Bricolage Grotesque', sans-serif; font-size: 140px; font-weight: 700; color: #3F3A36; line-height: 1; }
 .st-night-sub { font-size: 24px; font-weight: 700; color: #78716C; }
 .st-night-list { display: flex; flex-direction: column; gap: 8px; font-size: 22px; align-items: center; color: #78716C; }
 .st-night-hint { position: absolute; bottom: 30px; font-size: 15px; color: #44403C; }
