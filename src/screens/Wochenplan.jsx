@@ -18,15 +18,37 @@ export function rahmenOf(ctx) {
 }
 
 // Wer ist dabei? „Alle“ oder farbige Kreise mit Anfangsbuchstaben
-export function Dabei({ ctx, ids, big }) {
-  if (!ids?.length) return null;
-  if (ids.includes('all')) return <span className="wp-alle">Alle</span>;
+export function Dabei({ ctx, ids, big, onEdit }) {
+  const inner = !ids?.length
+    ? (onEdit ? <span className="wp-alle leer">wer?</span> : null)
+    : ids.includes('all') ? <span className="wp-alle">Alle</span>
+      : <span className="wp-dabei">{ids.map((id) => ctx.member(id)).filter(Boolean).map((m) => (
+        <span key={m.id} className={`wp-dot${big ? ' big' : ''}`} style={{ background: m.bg, color: m.color }} title={m.name}>{big ? m.name : m.name[0]}</span>
+      ))}</span>;
+  if (!inner) return null;
+  return onEdit ? <button className="wp-dabeibtn" onClick={onEdit} aria-label="Wer ist dabei? ändern">{inner}</button> : inner;
+}
+
+// Wer ist dabei? – Auswahl „Alle“ oder einzelne Personen
+export function DabeiWahl({ ctx, value, onChange }) {
+  const toggle = (id) => {
+    if (id === 'all') return onChange(['all']);
+    const x = value.filter((v) => v !== 'all');
+    const n = x.includes(id) ? x.filter((v) => v !== id) : [...x, id];
+    return onChange(n.length === 0 || n.length === ctx.members.length ? ['all'] : n);
+  };
   return (
-    <span className="wp-dabei">{ids.map((id) => ctx.member(id)).filter(Boolean).map((m) => (
-      <span key={m.id} className={`wp-dot${big ? ' big' : ''}`} style={{ background: m.bg, color: m.color }} title={m.name}>{big ? m.name : m.name[0]}</span>
-    ))}</span>
+    <div className="field"><span>Wer ist dabei?</span>
+      <div className="chips">
+        <button className="chip" aria-pressed={value.includes('all')} style={value.includes('all') ? { background: '#1C1917', borderColor: '#1C1917', color: '#fff' } : undefined} onClick={() => toggle('all')}>Alle</button>
+        {ctx.members.map((m) => { const an = value.includes(m.id); return <button key={m.id} className="chip" aria-pressed={an} style={an ? { background: m.color, borderColor: m.color, color: '#fff' } : { borderColor: m.bg, color: m.color }} onClick={() => toggle(m.id)}>{m.name}</button>; })}
+      </div>
+    </div>
   );
 }
+
+// Darf „wer ist dabei“ hier geändert werden? (Abo-Termine kommen aus Klender und würden überschrieben)
+const dabeiAenderbar = (i) => !!(i.row || i.rahmen || (i.ev && i.ev.src !== 'abo'));
 
 // kompakt: nur heute, ohne Vergangenes · ohneListen: ohne Ämtchen und Essen (stehen daneben) · nebeneinander: Tage in Spalten
 export default function Wochenplan({ ctx, days, station, onKiste, kompakt, ohneListen, nebeneinander }) {
@@ -51,7 +73,7 @@ export default function Wochenplan({ ctx, days, station, onKiste, kompakt, ohneL
           <button key={d} className={d === zeigen[0] ? 'on' : ''} onClick={() => setTag(d)}>{d === ctx.day ? 'Heute' : WDL[weekday(d)]}</button>
         ))}</div>
       )}
-      {edit && <div className="small">„+“ legt Bausteine, To-dos oder Ideen in einen Abschnitt. Unterstrichenes antippen zum Verschieben.</div>}
+      {edit && <div className="small">„+“ legt Bausteine, To-dos oder Ideen in einen Abschnitt. Unterstrichenes oder die Namen antippen, um zu verschieben oder zu ändern, wer dabei ist.</div>}
       <div className={station && !nebeneinander ? '' : 'wp-days'}>
         {zeigen.map((d) => {
           const p = tagesplan({
@@ -80,16 +102,16 @@ export default function Wochenplan({ ctx, days, station, onKiste, kompakt, ohneL
                               ? <button className="wp-check" aria-pressed={i.done} aria-label={i.done ? 'Wieder offen' : 'Erledigt'} onClick={() => (i.done ? i.aufgabe.zurueck() : i.aufgabe.erledigen())}><Check on={i.done} /></button>
                               : <Icon name={i.aufgabe.art === 'besorgen' ? 'bag' : 'todo'} size={18} />}
                             {edit ? <button className="wp-txt" onClick={() => setMove({ item: i, date: d, slot: a.id })}>{i.text}</button> : <span>{i.text}</span>}
-                            <Dabei ctx={ctx} ids={i.dabei} big={station} />
+                            <Dabei ctx={ctx} ids={i.dabei} big={station} onEdit={edit ? () => setMove({ item: i, date: d, slot: a.id }) : null} />
                             {edit && <button className="wp-x" aria-label={`${i.text} aus dem Plan nehmen`} onClick={() => entfernen(ctx, i.row, i.text)}><Icon name="x" size={14} /></button>}
                           </div>
                         ) : (
                         <div key={n} className={`wp-item ${i.art}${i.idee ? ' idee' : ''}`}>
                           <Icon name={i.idee ? 'balloon' : i.art === 'baustein' ? bausteinIcon(i.text) : ICON[i.art]} size={station ? 18 : 16} />
-                          {edit && (i.row || i.rahmen || i.idee)
+                          {edit && (i.row || i.rahmen || (i.ev && i.ev.src !== 'abo'))
                             ? <button className="wp-txt" onClick={() => setMove({ item: i, date: d, slot: a.id })}>{i.time ? <b>{i.time} </b> : null}{i.text}</button>
                             : <span>{i.time ? <b>{i.time} </b> : null}{i.art === 'essen' ? `Abendessen: ${i.text}` : i.text}{i.art === 'aemtchen' && ctx.member(i.who) ? <span className="wp-who"> · {ctx.member(i.who).name}</span> : null}</span>}
-                          {i.art !== 'aemtchen' && <Dabei ctx={ctx} ids={i.dabei} big={station} />}
+                          {i.art !== 'aemtchen' && <Dabei ctx={ctx} ids={i.dabei} big={station} onEdit={edit && dabeiAenderbar(i) ? () => setMove({ item: i, date: d, slot: a.id }) : null} />}
                           {edit && i.row && <button className="wp-x" aria-label={`${i.text} entfernen`} onClick={() => entfernen(ctx, i.row)}><Icon name="x" size={14} /></button>}
                           {edit && i.rahmen && <button className="wp-x" aria-label={`${i.text} nicht mehr jede Woche`} title="jede Woche – entfernen" onClick={() => rahmenWeg(ctx, i.rahmen)}><Icon name="repeat" size={14} /><Icon name="x" size={14} /></button>}
                         </div>
@@ -125,32 +147,42 @@ async function entfernen(ctx, row, text = row.text) {
 function Verschieben({ ctx, days, item, date, slot, onClose }) {
   const [d, setD] = useState(date);
   const [sl, setSl] = useState(slot);
+  const start = item.dabei?.length ? item.dabei : ['all'];
+  const [dabei, setDabei] = useState(start);
+  const dabeiNeu = [...dabei].sort().join() !== [...start].sort().join();
+  const ort = d !== date || sl !== slot;
+  const zeitFest = item.art === 'termin' && !item.idee; // normale Termine behalten ihre Uhrzeit
   const fest = !!item.rahmen;
   const ziele = fest ? days.filter((x) => weekday(x) >= 5) : days;
   const save = async () => {
     const a = ABSCHNITTE.find((x) => x.id === sl);
     let ok = true;
     if (item.row) {
-      ctx.data.wePlan.local((rows) => rows.map((x) => (x.id === item.row.id ? { ...x, on_date: d, slot: sl } : x)));
-      ok = await run(supabase.from('we_plan').update({ on_date: d, slot: sl }).eq('id', item.row.id), ctx.fail);
+      const upd = { on_date: d, slot: sl, dabei };
+      ctx.data.wePlan.local((rows) => rows.map((x) => (x.id === item.row.id ? { ...x, ...upd } : x)));
+      ok = await run(supabase.from('we_plan').update(upd).eq('id', item.row.id), ctx.fail);
       if (!ok) ctx.data.wePlan.reload();
     } else if (fest) {
-      ok = await rahmenSetzen(ctx, rahmenOf(ctx).map((x) => (x === item.rahmen ? { ...x, tag: weekday(d), slot: sl } : x)));
+      ok = await rahmenSetzen(ctx, rahmenOf(ctx).map((x) => (x === item.rahmen ? { ...x, tag: weekday(d), slot: sl, dabei } : x)));
     } else if (item.ev) {
-      // eingeplante Idee: Termin verlegen (Uhrzeit = Beginn des Abschnitts)
-      const zeit = a.start || (sl === 'morgens' ? '09:00' : '18:00');
-      ok = await run(supabase.from('events').update({ start_date: d, from_time: zeit, all_day: false }).eq('id', item.ev.id), ctx.fail);
+      // eingeplante Idee: Termin verlegen (Uhrzeit = Beginn des Abschnitts); bei allen Terminen: wer ist dabei
+      const upd = { who: dabei };
+      if (ort && !zeitFest) Object.assign(upd, { start_date: d, from_time: a.start || (sl === 'morgens' ? '09:00' : '18:00'), all_day: false });
+      ctx.data.events.local?.((rows) => rows.map((x) => (x.id === item.ev.id ? { ...x, ...upd } : x)));
+      ok = await run(supabase.from('events').update(upd).eq('id', item.ev.id), ctx.fail);
       ctx.data.events.reload?.();
     }
-    if (ok) { ctx.say(`${item.text} → ${WDL[weekday(d)]} ${a.label}`); onClose(); }
+    if (ok) { ctx.say(ort ? `${item.text} → ${WDL[weekday(d)]} ${a.label}` : `${item.text}: gespeichert`); onClose(); }
   };
   const on = (x) => (x ? { background: '#0F766E', borderColor: '#0F766E', color: '#fff' } : undefined);
   return (
-    <Overlay title={`„${item.text}“ verschieben`} onClose={onClose}>
-      {ziele.length > 1 && <div className="field"><span>Tag</span><div className="chips">{ziele.map((x) => <button key={x} className="chip" style={on(d === x)} onClick={() => setD(x)}>{WDL[weekday(x)]}</button>)}</div></div>}
-      <div className="field"><span>Abschnitt</span><div className="chips">{ABSCHNITTE.map((x) => <button key={x.id} className="chip" style={on(sl === x.id)} onClick={() => setSl(x.id)}>{x.label}</button>)}</div></div>
-      {fest && <div className="small" style={{ marginBottom: 10 }}>Das ist ein fester Baustein – er wird für jedes Wochenende verschoben.</div>}
-      <button className="btn" disabled={d === date && sl === slot} onClick={save}>Verschieben</button>
+    <Overlay title={`„${item.text}“`} onClose={onClose}>
+      <DabeiWahl ctx={ctx} value={dabei} onChange={setDabei} />
+      {!zeitFest && ziele.length > 1 && <div className="field"><span>Tag</span><div className="chips">{ziele.map((x) => <button key={x} className="chip" style={on(d === x)} onClick={() => setD(x)}>{WDL[weekday(x)]}</button>)}</div></div>}
+      {!zeitFest && <div className="field"><span>Abschnitt</span><div className="chips">{ABSCHNITTE.map((x) => <button key={x.id} className="chip" style={on(sl === x.id)} onClick={() => setSl(x.id)}>{x.label}</button>)}</div></div>}
+      {fest && <div className="small" style={{ marginBottom: 10 }}>Das ist ein fester Baustein – Änderungen gelten für jedes Wochenende.</div>}
+      {zeitFest && <div className="small" style={{ marginBottom: 10 }}>Uhrzeit und Tag änderst du im Kalender.</div>}
+      <button className="btn" disabled={!ort && !dabeiNeu} onClick={save}>Speichern</button>
     </Overlay>
   );
 }
@@ -173,12 +205,6 @@ function BausteinSheet({ ctx, date, slot, onClose }) {
   const [who, setWho] = useState(null);
   const [immer, setImmer] = useState(false);
   const [dabei, setDabei] = useState(['all']);
-  const toggleDabei = (id) => setDabei((d) => {
-    if (id === 'all') return ['all'];
-    const x = d.filter((v) => v !== 'all');
-    const n = x.includes(id) ? x.filter((v) => v !== id) : [...x, id];
-    return n.length === 0 || n.length === ctx.members.length ? ['all'] : n;
-  });
   const label = ABSCHNITTE.find((a) => a.id === slot).label;
   const wd = weekday(date);
   const geplant = new Set(ctx.data.wePlan.rows.map((r) => r.todo_ref).filter(Boolean));
@@ -188,7 +214,7 @@ function BausteinSheet({ ctx, date, slot, onClose }) {
   const ideen = ['vormittag', 'nachmittag'].includes(slot) ? rankIdeas(ctx.data.ideas.rows, ctx.data.ideaVotes.rows, { regen }).filter((i) => !regen || i.wo !== 'draussen').slice(0, 5) : [];
   const ideeRein = async (i) => { if (await einplanen(ctx, i, date, ABSCHNITTE.find((x) => x.id === slot).start, false)) onClose(); };
   const schieben = async (a) => {
-    const ok = await run(supabase.from('we_plan').insert({ on_date: date, slot, text: a.text.slice(0, 120), todo_ref: a.key, created_by: ctx.me.id }), ctx.fail);
+    const ok = await run(supabase.from('we_plan').insert({ on_date: date, slot, text: a.text.slice(0, 120), todo_ref: a.key, dabei: a.owner ? [a.owner] : ['all'], created_by: ctx.me.id }), ctx.fail);
     if (ok) { ctx.data.wePlan.reload(); ctx.say(`${a.text} liegt jetzt am ${WDL[wd]} ${label}`); onClose(); }
   };
   const t = (b ? b.text : text).trim();
@@ -241,12 +267,7 @@ function BausteinSheet({ ctx, date, slot, onClose }) {
       <label className="field"><span>Oder eigener Text</span>
         <input className="input" value={text} onChange={(e) => { setText(e.target.value); setB(null); setWho(null); }} placeholder="z. B. Oma besuchen" maxLength={80} />
       </label>
-      <div className="field"><span>Wer ist dabei?</span>
-        <div className="chips">
-          <button className="chip" style={dabei.includes('all') ? { background: '#1C1917', borderColor: '#1C1917', color: '#fff' } : undefined} onClick={() => toggleDabei('all')}>Alle</button>
-          {ctx.members.map((m) => { const an = dabei.includes(m.id); return <button key={m.id} className="chip" aria-pressed={an} style={an ? { background: m.color, borderColor: m.color, color: '#fff' } : { borderColor: m.bg, color: m.color }} onClick={() => toggleDabei(m.id)}>{m.name}</button>; })}
-        </div>
-      </div>
+      <DabeiWahl ctx={ctx} value={dabei} onChange={setDabei} />
       {wd >= 5 && (
         <label className="wp-immer"><input type="checkbox" checked={immer} onChange={(e) => setImmer(e.target.checked)} /> Jeden {WDL[wd]} so</label>
       )}

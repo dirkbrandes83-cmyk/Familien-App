@@ -584,3 +584,7 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .st-grid.kid .wp-slot { grid-template-columns: 1fr; gap: 4px; }
 .st-grid.kid .wp-label { flex-direction: row; align-items: baseline; gap: 8px; }
 .wk-head { margin: 8px 0 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 22px; }
+.wp-dabeibtn { margin-left: auto; flex: none; border: none; background: none; padding: 2px; border-radius: 12px; display: inline-flex; cursor: pointer; }
+.wp-dabeibtn > .wp-dabei, .wp-dabeibtn > .wp-alle { margin-left: 0; }
+.wp-dabeibtn:active { background: var(--seg); }
+.wp-alle.leer { background: none; border: 1px dashed #A8A29E; color: var(--muted); }

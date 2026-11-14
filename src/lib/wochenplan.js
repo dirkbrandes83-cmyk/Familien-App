@@ -49,7 +49,7 @@ export function tagesplan({ date, events, plan, rahmen = [], chores = [], meal, 
   for (const p of plan.filter((x) => x.on_date === date)) {
     if (p.todo_ref) {
       const t = todos.get(p.todo_ref);
-      if (t) slots[p.slot].push({ art: 'todo', text: t.text, done: t.done, aufgabe: t, row: p, dabei: t.owner ? [t.owner] : [] });
+      if (t) slots[p.slot].push({ art: 'todo', text: t.text, done: t.done, aufgabe: t, row: p, dabei: p.dabei?.length ? p.dabei : t.owner ? [t.owner] : ['all'] });
       continue;
     }
     slots[p.slot].push({ art: 'baustein', text: p.who ? `${p.text} ${name(p.who) ?? ''}`.trim() : p.text, row: p, dabei: p.dabei ?? ['all'] });
