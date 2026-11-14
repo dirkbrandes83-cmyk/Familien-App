@@ -53,7 +53,8 @@ export function aktion(seite, spiele, s, was, kat, text) {
   return { fehler: 'Unbekannte Aktion' };
 }
 
-// Kosten: Gesamtpreis geteilt durch alle zugewiesenen Spiele; Ticketbörse-Spiele zahlen Eika & Jan
+// Kosten: Gesamtpreis geteilt durch alle Heimspiele der Saison; noch offene Spiele werden extra ausgewiesen.
+// Ticketbörse-Spiele zahlen Eika & Jan.
 export function kosten(spiele, preis) {
   const zahl = { wir: 0, die: 0, boerse: 0, offen: 0 };
   for (const s of spiele) {
@@ -63,8 +64,8 @@ export function kosten(spiele, preis) {
     else zahl.offen++;
   }
   const zugewiesen = zahl.wir + zahl.die;
-  const proSpiel = zugewiesen && preis ? preis / zugewiesen : 0;
-  return { ...zahl, zugewiesen, proSpiel, wir_eur: proSpiel * zahl.wir, die_eur: proSpiel * zahl.die };
+  const proSpiel = spiele.length && preis ? preis / spiele.length : 0;
+  return { ...zahl, zugewiesen, gesamt: spiele.length, proSpiel, wir_eur: proSpiel * zahl.wir, die_eur: proSpiel * zahl.die, offen_eur: proSpiel * zahl.offen };
 }
 
 export const euro = (n) => `${(Math.round(n * 100) / 100).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;

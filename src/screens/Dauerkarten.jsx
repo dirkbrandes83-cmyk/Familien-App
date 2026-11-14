@@ -62,10 +62,11 @@ export function DkListe({ seite, spiele, preis, onAktion, members, onWer, busy }
           <div style={{ color: FARBE.boerse.fg }}><b>{boerseZahl(spiele)}/{BOERSE_MAX}</b><span>Ticketbörse</span></div>
           <div><b>{k.offen}</b><span>offen</span></div>
         </div>
-        {preis > 0 && k.zugewiesen > 0 && (
+        {preis > 0 && k.gesamt > 0 && (
           <div className="dk-geld">
-            <div>{euro(preis)} ÷ {k.zugewiesen} zugeteilte Spiele = <b>{euro(k.proSpiel)}</b> pro Spiel</div>
-            <div>Catrin & Dirk: <b>{euro(k.wir_eur)}</b> · Eika & Jan: <b>{euro(k.die_eur)}</b></div>
+            <div>{euro(preis)} ÷ {k.gesamt} Heimspiele = <b>{euro(k.proSpiel)}</b> pro Spiel</div>
+            <div>Catrin & Dirk: <b>{euro(k.wir_eur)}</b> ({k.wir}) · Eika & Jan: <b>{euro(k.die_eur)}</b> ({k.die})</div>
+            {k.offen > 0 && <div>Noch nicht vergeben: <b>{euro(k.offen_eur)}</b> ({k.offen} Spiele)</div>}
             <div className="small">Weitergegebene Spiele zählen für die Seite, die weitergibt. Ticketbörse-Spiele zählen für Eika & Jan.</div>
           </div>
         )}
