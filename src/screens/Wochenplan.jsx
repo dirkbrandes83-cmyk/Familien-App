@@ -8,7 +8,8 @@ import { aufgaben, offen } from '../lib/aufgaben.js';
 import { WDL, weekday, shortLabel } from '../lib/dates.js';
 import { ABSCHNITTE, BAUSTEINE, bausteinIcon, tagesplan, aktuellerAbschnitt } from '../lib/wochenplan.js';
 import { wetterInfo, nass, rankIdeas } from '../lib/wochenende.js';
-import { useWetter, Overlay, einplanen } from './Wochenende.jsx';
+import { useWetter, Overlay, einplanen, spielEinplanen } from './Wochenende.jsx';
+import { heimspiele, spieleAn, spielTitel, geplant } from '../lib/spiele.js';
 import { mealOf } from './Zuhause.jsx';
 
 const ICON = { termin: 'cal', aemtchen: 'todo', essen: 'clock' };
@@ -60,6 +61,7 @@ export default function Wochenplan({ ctx, days, station, onKiste, kompakt, ohneL
   const edit = !station;
   const zeigen = station && !nebeneinander ? [days.includes(tag) ? tag : days[0]] : days;
   const jetzt = aktuellerAbschnitt(new Date().getHours());
+  const spiele = heimspiele(ctx.data.settings.rows);
   const todos = new Map(aufgaben(ctx).filter((a) => a.art === 'erledigen' || a.art === 'besorgen').map((a) => [a.key, a]));
 
   return (
@@ -116,6 +118,9 @@ export default function Wochenplan({ ctx, days, station, onKiste, kompakt, ohneL
                           {edit && i.rahmen && <button className="wp-x" aria-label={`${i.text} nicht mehr jede Woche`} title="jede Woche – entfernen" onClick={() => rahmenWeg(ctx, i.rahmen)}><Icon name="repeat" size={14} /><Icon name="x" size={14} /></button>}
                         </div>
                         )
+                      ))}
+                      {!vorbei && spieleAn(spiele, [d], a.id).filter((x) => !geplant(ctx.data.events.rows, x)).map((x) => (
+                        <button key={x.id} className="wp-frei wp-spielvorschlag" onClick={() => spielEinplanen(ctx, x, station)}><Icon name="ball" size={station ? 18 : 16} /> {x.zeit} {spielTitel(x)}?</button>
                       ))}
                       {/* ein Knopf pro Abschnitt: Eltern planen alles (Baustein, To-do, Idee), Kinder wählen eine Idee */}
                       {edit
@@ -212,6 +217,8 @@ function BausteinSheet({ ctx, date, slot, onClose }) {
     .sort((a, b) => String(a.due || '9999').localeCompare(String(b.due || '9999')));
   const regen = nass(useWetter(ctx)(date));
   const ideen = ['vormittag', 'nachmittag'].includes(slot) ? rankIdeas(ctx.data.ideas.rows, ctx.data.ideaVotes.rows, { regen }).filter((i) => !regen || i.wo !== 'draussen').slice(0, 5) : [];
+  const spiele = spieleAn(heimspiele(ctx.data.settings.rows), [date], slot).filter((x) => !geplant(ctx.data.events.rows, x));
+  const spielRein = async (x) => { if (await spielEinplanen(ctx, x, false)) onClose(); };
   const ideeRein = async (i) => { if (await einplanen(ctx, i, date, ABSCHNITTE.find((x) => x.id === slot).start, false)) onClose(); };
   const schieben = async (a) => {
     const ok = await run(supabase.from('we_plan').insert({ on_date: date, slot, text: a.text.slice(0, 120), todo_ref: a.key, dabei: a.owner ? [a.owner] : ['all'], created_by: ctx.me.id }), ctx.fail);
@@ -241,6 +248,15 @@ function BausteinSheet({ ctx, date, slot, onClose }) {
       {b?.person && (
         <div className="field"><span>Für wen?</span>
           <div className="chips">{ctx.members.filter((m) => !m.kid).map((m) => <button key={m.id} className="chip" style={who === m.id ? { background: m.color, borderColor: m.color, color: '#fff' } : { borderColor: m.bg, color: m.color }} onClick={() => { setWho(m.id); setDabei([m.id]); }}>{m.name}</button>)}</div>
+        </div>
+      )}
+      {spiele.length > 0 && (
+        <div className="field"><span>Werder spielt zu Hause</span>
+          <div className="wp-todos">{spiele.map((x) => (
+            <button key={x.id} className="wp-todo wp-spiel" onClick={() => spielRein(x)}>
+              <Icon name="ball" size={18} /><span>{spielTitel(x)}</span><span className="small">{x.zeit} Uhr</span>
+            </button>
+          ))}</div>
         </div>
       )}
       {ideen.length > 0 && (
@@ -281,6 +297,8 @@ function IdeeWaehlen({ ctx, station, date, slot, regen, onClose }) {
   const [busy, setBusy] = useState(false);
   const list = rankIdeas(ctx.data.ideas.rows, ctx.data.ideaVotes.rows, { regen }).filter((i) => !regen || i.wo !== 'draussen').slice(0, 8);
   const a = ABSCHNITTE.find((x) => x.id === slot);
+  const spiele = spieleAn(heimspiele(ctx.data.settings.rows), [date], slot).filter((x) => !geplant(ctx.data.events.rows, x));
+  const spielPick = async (x) => { setBusy(true); const ok = await spielEinplanen(ctx, x, station); setBusy(false); if (ok) onClose(); };
   const pick = async (i) => {
     setBusy(true);
     const ok = await einplanen(ctx, i, date, a.start, station);
@@ -292,6 +310,12 @@ function IdeeWaehlen({ ctx, station, date, slot, regen, onClose }) {
       {regen && <div className="ci-note"><Icon name="rain" size={18} /> Es soll nass werden – hier nur Ideen für drinnen.</div>}
       {list.length === 0 && <div className="empty">Die Ideenkiste ist noch leer.</div>}
       <div className="wk-list">
+        {spiele.map((x) => (
+          <button key={x.id} className={`wk-top wk-spielbtn${station ? ' st-big' : ''}`} disabled={busy} onClick={() => spielPick(x)}>
+            <span className="wk-title"><Icon name="ball" size={20} /> {spielTitel(x)}</span>
+            <span className="wk-sub">{x.zeit} Uhr · {x.ort}</span>
+          </button>
+        ))}
         {list.map((i) => (
           <button key={i.id} className={`wk-top${station ? ' st-big' : ''}`} disabled={busy} onClick={() => pick(i)}>
             <span className="wk-title">{i.title}</span>

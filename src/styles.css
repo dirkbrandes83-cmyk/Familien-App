@@ -642,3 +642,19 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .st-grid.kid .wp-item { font-size: 19px; }
 .st-grid.we .wp .st-cardhead h2 { font-size: 26px; }
 .st-card.wp .wp-frei { white-space: nowrap; }
+
+/* Werder-Heimspiele oben in der Ideenkiste */
+.wk-spiele { display: flex; flex-direction: column; gap: 8px; }
+.wk-spiel { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: #ECFDF5; border: 1.5px solid #10B981; color: #065F46; }
+.wk-spiel > svg { flex: none; color: #059669; }
+.wk-spielinfo { flex: 1; min-width: 0; }
+.wk-spiel .wk-title { color: #064E3B; }
+.wk-spiel .wk-sub { color: #047857; }
+.wk-drin { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; font-size: 14px; color: #047857; flex: none; }
+.wk-next { display: flex; align-items: center; gap: 6px; color: #047857; }
+.wp-todo.wp-spiel, .wk-spielbtn { background: #ECFDF5; border-color: #10B981; color: #064E3B; }
+.wk-spielbtn .wk-title { display: inline-flex; align-items: center; gap: 6px; }
+.card.wp .wp-slot { grid-template-columns: 122px 1fr; }
+.wp-frei.wp-spielvorschlag { color: #047857; border-color: #10B981; background: #ECFDF5; white-space: normal; text-align: left; }
+.wp-label { align-content: start; align-self: start; }
+.wp-label .wp-licon { align-self: start; margin-top: 2px; }
