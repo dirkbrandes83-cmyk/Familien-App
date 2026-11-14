@@ -32,6 +32,8 @@ export function DkListe({ seite, spiele, preis, onAktion, members, onWer, busy }
   const k = kosten(spiele, preis);
   const zeigen = alle ? spiele : spiele.filter((s) => s.datum >= heute());
   const fuerMich = spiele.filter((s) => s.wunsch && s.wunsch_von !== seite).length;
+  // Vergangene Spiele ohne Zuteilung – können nachgetragen werden
+  const vorbeiOffen = spiele.filter((s) => s.datum < heute() && !s.zuteilung && !s.wunsch).length;
   return (
     <>
       <section className="card dk-stand">
@@ -53,7 +55,7 @@ export function DkListe({ seite, spiele, preis, onAktion, members, onWer, busy }
 
       <div className="dk-filter">
         <button className={`chip${!alle ? ' on' : ''}`} onClick={() => setAlle(false)}>Kommende</button>
-        <button className={`chip${alle ? ' on' : ''}`} onClick={() => setAlle(true)}>Ganze Saison</button>
+        <button className={`chip${alle ? ' on' : ''}`} onClick={() => setAlle(true)}>Ganze Saison{vorbeiOffen ? ` · ${vorbeiOffen} offen` : ''}</button>
       </div>
 
       {zeigen.map((s) => {
@@ -65,7 +67,7 @@ export function DkListe({ seite, spiele, preis, onAktion, members, onWer, busy }
             <div className="dk-kopf">
               <div>
                 <div className="dk-gegner">Werder – {s.gegner}</div>
-                <div className="sub">{tag(s.datum)}{s.zeit ? ` · ${s.zeit} Uhr` : ''}</div>
+                <div className="sub">{tag(s.datum)}{s.zeit ? ` · ${s.zeit} Uhr` : ''}{vorbei ? ' · gespielt' : ''}</div>
               </div>
               <Kat k={s.zuteilung} />
             </div>
@@ -85,7 +87,7 @@ export function DkListe({ seite, spiele, preis, onAktion, members, onWer, busy }
                 <button className="btn ghost small" disabled={busy} onClick={() => onAktion(s, 'zurueck')}>Zurückziehen</button>
               </div>
             )}
-            {!s.wunsch && !vorbei && (offen === s.id ? (
+            {!s.wunsch && (offen === s.id ? (
               <div className="dk-wahl">
                 {vorschlaege(seite, spiele, s).map((kat) => (
                   <button key={kat} className="chip" style={{ background: FARBE[kat].bg, color: FARBE[kat].fg, borderColor: FARBE[kat].bg }} disabled={busy}
@@ -94,7 +96,7 @@ export function DkListe({ seite, spiele, preis, onAktion, members, onWer, busy }
                 <button className="chip" onClick={() => setOffen(null)}>Abbrechen</button>
               </div>
             ) : (
-              <button className="dk-wunschbtn" onClick={() => setOffen(s.id)}><Icon name="plus" size={15} /> {s.zuteilung ? 'Änderung wünschen' : 'Wunsch eintragen'}</button>
+              <button className="dk-wunschbtn" onClick={() => setOffen(s.id)}><Icon name="plus" size={15} /> {s.zuteilung ? 'Änderung wünschen' : vorbei ? 'Nachtragen' : 'Wunsch eintragen'}</button>
             ))}
 
             {onWer && s.zuteilung === 'wir' && (

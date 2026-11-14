@@ -692,3 +692,4 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .dk-gastkopf { display: flex; align-items: center; gap: 10px; padding: 18px 16px 6px; color: #0F766E; }
 .dk-gastkopf h1 { margin: 0; font-size: 24px; color: var(--ink); font-family: 'Bricolage Grotesque', sans-serif; }
 .dk-gast .content { display: flex; flex-direction: column; gap: 12px; padding: 12px 16px 40px; }
+.dk-spiel.vorbei { opacity: 1; background: #FAFAF9; }
