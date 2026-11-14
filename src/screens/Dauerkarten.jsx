@@ -95,6 +95,14 @@ export function DkListe({ seite, spiele, preis, onAktion, members, onWer, busy }
               <Kat k={s.zuteilung} />
             </div>
 
+            {(s.kann_nicht || []).length > 0 && (
+              <div className="dk-kannnicht">
+                <Icon name="x" size={15} />
+                {s.kann_nicht.length === 2 ? 'Beide können nicht – weitergeben oder Ticketbörse?'
+                  : s.kann_nicht.includes(seite) ? `Ihr könnt nicht – ${SEITE[andere(seite)]} sehen das`
+                    : `${SEITE[s.kann_nicht[0]]} können nicht`}
+              </div>
+            )}
             {fremder && (
               <div className="dk-wunsch">
                 <span><b>{wunschText(s.wunsch_von, s.wunsch)}</b></span>
@@ -129,7 +137,14 @@ export function DkListe({ seite, spiele, preis, onAktion, members, onWer, busy }
                 <div className="small">„Festlegen“, wenn ihr euch schon abgesprochen habt – sonst bestätigt {SEITE[andere(seite)]} den Wunsch.</div>
               </div>
             ) : (
-              <button className="dk-wunschbtn" onClick={() => setOffen({ id: s.id, kat: null })}><Icon name="plus" size={15} /> {s.zuteilung ? 'Ändern' : vorbei ? 'Nachtragen' : 'Eintragen'}</button>
+              <div className="dk-zeile">
+                <button className="dk-wunschbtn" onClick={() => setOffen({ id: s.id, kat: null })}><Icon name="plus" size={15} /> {s.zuteilung ? 'Ändern' : vorbei ? 'Nachtragen' : 'Eintragen'}</button>
+                {!vorbei && (
+                  <button className={`dk-wunschbtn${(s.kann_nicht || []).includes(seite) ? ' an' : ''}`} disabled={busy} aria-pressed={(s.kann_nicht || []).includes(seite)} onClick={() => onAktion(s, 'kannnicht')}>
+                    {(s.kann_nicht || []).includes(seite) ? 'Doch, wir können' : 'Wir können nicht'}
+                  </button>
+                )}
+              </div>
             )}
 
             {(s.notiz || s.zuteilung || s.wunsch) && (

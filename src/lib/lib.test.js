@@ -230,3 +230,10 @@ test('Dauerkarten: direkt festlegen und Notiz', async () => {
   assert.deepEqual(aktion('wir', [s], s, 'festlegen', 'wir_weiter').patch, { zuteilung: 'wir_weiter', wunsch: null, wunsch_von: null });
   assert.deepEqual(aktion('die', [s], s, 'notiz', null, '  an Peter ').patch, { notiz: 'an Peter' });
 });
+
+test('Dauerkarten: wir können nicht', async () => {
+  const { aktion } = await import('./dauerkarten.js');
+  const s = { id: 'x', kann_nicht: ['die'] };
+  assert.deepEqual(aktion('wir', [s], s, 'kannnicht').patch, { kann_nicht: ['die', 'wir'] });
+  assert.deepEqual(aktion('die', [s], s, 'kannnicht').patch, { kann_nicht: [] });
+});

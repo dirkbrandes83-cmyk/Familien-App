@@ -34,6 +34,11 @@ export function aktion(seite, spiele, s, was, kat, text) {
     // festlegen: ohne Rückfrage (z. B. wenn es schon abgesprochen ist)
     return { patch: was === 'festlegen' ? { zuteilung: kat, wunsch: null, wunsch_von: null } : { wunsch: kat, wunsch_von: seite } };
   }
+  if (was === 'kannnicht') {
+    // „Wir können nicht“ an- und ausschalten – Info für die andere Seite
+    const k = s.kann_nicht || [];
+    return { patch: { kann_nicht: k.includes(seite) ? k.filter((x) => x !== seite) : [...k, seite] } };
+  }
   if (was === 'notiz') {
     const n = String(text ?? '').trim().slice(0, 300);
     return { patch: { notiz: n || null } };
