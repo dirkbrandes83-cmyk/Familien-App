@@ -63,12 +63,15 @@ export function DkListe({ seite, spiele, preis, onAktion, members, onWer, busy }
           <div><b>{k.offen}</b><span>offen</span></div>
         </div>
         {preis > 0 && k.gesamt > 0 && (
+          <details className="dk-details">
+            <summary>Kosten anzeigen</summary>
           <div className="dk-geld">
             <div>{euro(preis)} ÷ {k.gesamt} Heimspiele = <b>{euro(k.proSpiel)}</b> pro Spiel</div>
             <div>Catrin & Dirk: <b>{euro(k.wir_eur)}</b> ({k.wir}) · Eika & Jan: <b>{euro(k.die_eur)}</b> ({k.die})</div>
             {k.offen > 0 && <div>Noch nicht vergeben: <b>{euro(k.offen_eur)}</b> ({k.offen} Spiele)</div>}
             <div className="small">Weitergegebene Spiele zählen für die Seite, die weitergibt. Ticketbörse-Spiele zählen für Eika & Jan.</div>
           </div>
+          </details>
         )}
         {fuerMich > 0 && <div className="dk-hinweis"><Icon name="bell" size={16} /> {fuerMich} {fuerMich === 1 ? 'Wunsch wartet' : 'Wünsche warten'} auf eure Bestätigung</div>}
       </section>

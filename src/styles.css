@@ -702,3 +702,6 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .dk-notiz svg { flex: none; color: var(--muted); }
 .dk-notiz.edit { gap: 8px; }
 .dk-notiz.edit .input { flex: 1; }
+.dk-details { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 8px; }
+.dk-details summary { cursor: pointer; font-weight: 600; font-size: 14px; color: var(--muted); }
+.dk-details .dk-geld { border-top: 0; margin-top: 6px; padding-top: 0; }
