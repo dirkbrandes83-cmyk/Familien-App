@@ -10,8 +10,8 @@ export const KAT = {
 };
 export const SEITE = { wir: 'Catrin & Dirk', die: 'Eika & Jan' };
 export const andere = (seite) => (seite === 'wir' ? 'die' : 'wir');
-// Wem wird das Spiel angerechnet (Kosten)? Ticketbörse: niemandem.
-export const partei = (k) => (k === 'wir' || k === 'wir_weiter' ? 'wir' : k === 'die' || k === 'die_weiter' ? 'die' : null);
+// Wem wird das Spiel angerechnet (Kosten)? Ticketbörse-Spiele zählen für Eika & Jan.
+export const partei = (k) => (k === 'wir' || k === 'wir_weiter' ? 'wir' : k === 'die' || k === 'die_weiter' || k === 'boerse' ? 'die' : null);
 // Werder-Regel (ATGB 2026/27): höchstens 5 Spiele pro Saison in die Ticketbörse
 export const BOERSE_MAX = 5;
 
@@ -48,13 +48,13 @@ export function aktion(seite, spiele, s, was, kat) {
   return { fehler: 'Unbekannte Aktion' };
 }
 
-// Kosten: Gesamtpreis geteilt durch die zugewiesenen Spiele (ohne Ticketbörse)
+// Kosten: Gesamtpreis geteilt durch alle zugewiesenen Spiele; Ticketbörse-Spiele zahlen Eika & Jan
 export function kosten(spiele, preis) {
   const zahl = { wir: 0, die: 0, boerse: 0, offen: 0 };
   for (const s of spiele) {
+    if (s.zuteilung === 'boerse') zahl.boerse++;
     const p = partei(s.zuteilung);
     if (p) zahl[p]++;
-    else if (s.zuteilung === 'boerse') zahl.boerse++;
     else zahl.offen++;
   }
   const zugewiesen = zahl.wir + zahl.die;

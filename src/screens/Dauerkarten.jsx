@@ -37,7 +37,7 @@ export function DkListe({ seite, spiele, preis, onAktion, members, onWer, busy }
       <section className="card dk-stand">
         <div className="dk-zahlen">
           <div style={{ color: FARBE.wir.fg }}><b>{k.wir}</b><span>Catrin & Dirk</span></div>
-          <div style={{ color: FARBE.die.fg }}><b>{k.die}</b><span>Eika & Jan</span></div>
+          <div style={{ color: FARBE.die.fg }}><b>{k.die - k.boerse}</b><span>Eika & Jan</span></div>
           <div style={{ color: FARBE.boerse.fg }}><b>{boerseZahl(spiele)}/{BOERSE_MAX}</b><span>Ticketbörse</span></div>
           <div><b>{k.offen}</b><span>offen</span></div>
         </div>
@@ -45,7 +45,7 @@ export function DkListe({ seite, spiele, preis, onAktion, members, onWer, busy }
           <div className="dk-geld">
             <div>{euro(preis)} ÷ {k.zugewiesen} zugeteilte Spiele = <b>{euro(k.proSpiel)}</b> pro Spiel</div>
             <div>Catrin & Dirk: <b>{euro(k.wir_eur)}</b> · Eika & Jan: <b>{euro(k.die_eur)}</b></div>
-            <div className="small">Weitergegebene Spiele zählen für die Seite, die weitergibt. Ticketbörse zählt für niemanden.</div>
+            <div className="small">Weitergegebene Spiele zählen für die Seite, die weitergibt. Ticketbörse-Spiele zählen für Eika & Jan.</div>
           </div>
         )}
         {fuerMich > 0 && <div className="dk-hinweis"><Icon name="bell" size={16} /> {fuerMich} {fuerMich === 1 ? 'Wunsch wartet' : 'Wünsche warten'} auf eure Bestätigung</div>}

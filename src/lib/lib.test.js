@@ -218,6 +218,6 @@ test('Dauerkarten: Wunsch, Bestätigen, Börse-Limit, Kosten', async () => {
   assert.ok(aktion('die', sp, sp[6], 'wunsch', 'boerse').fehler);
   Object.assign(sp[0], { zuteilung: 'wir' }); sp[6].zuteilung = 'die_weiter'; sp[7].zuteilung = 'die';
   const k = kosten(sp, 810);
-  assert.equal(k.zugewiesen, 3); assert.equal(k.wir, 1); assert.equal(k.die, 2);
-  assert.equal(k.proSpiel, 270); assert.equal(k.die_eur, 540);
+  assert.equal(k.zugewiesen, 8); assert.equal(k.wir, 1); assert.equal(k.die, 7); assert.equal(k.boerse, 5);
+  assert.equal(k.proSpiel, 101.25); assert.equal(k.die_eur, 708.75);
 });
