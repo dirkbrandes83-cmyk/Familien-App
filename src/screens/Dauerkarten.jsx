@@ -25,6 +25,25 @@ function Kat({ k }) {
   return <span className="dk-kat" style={{ background: f.bg, color: f.fg }}>{KAT[k]}</span>;
 }
 
+// Notiz, z. B. an wen weitergegeben
+function Notiz({ s, busy, onSave }) {
+  const [edit, setEdit] = useState(null);
+  if (edit !== null) {
+    return (
+      <div className="dk-notiz edit">
+        <input className="input" value={edit} onChange={(e) => setEdit(e.target.value)} placeholder="z. B. an Kollegen Peter weitergegeben" maxLength={300} autoFocus
+          onKeyDown={(e) => { if (e.key === 'Enter') { onSave(edit); setEdit(null); } }} />
+        <button className="btn small" style={{ width: 'auto' }} disabled={busy} onClick={() => { onSave(edit); setEdit(null); }}>OK</button>
+      </div>
+    );
+  }
+  return (
+    <button className="dk-notiz" onClick={() => setEdit(s.notiz || '')}>
+      <Icon name="pencil" size={15} /> {s.notiz ? <span>{s.notiz}</span> : <span className="small">Notiz hinzufügen (z. B. an wen)</span>}
+    </button>
+  );
+}
+
 // Die Liste – für beide Seiten gleich. onAktion(spiel, was, kat) · onWer nur in der Eltern-App
 export function DkListe({ seite, spiele, preis, onAktion, members, onWer, busy }) {
   const [alle, setAlle] = useState(false);
@@ -84,20 +103,34 @@ export function DkListe({ seite, spiele, preis, onAktion, members, onWer, busy }
             {eigener && (
               <div className="dk-wunsch eigen">
                 <span>{wunschText(seite, s.wunsch)} – wartet auf die Bestätigung von {SEITE[andere(seite)]}</span>
-                <button className="btn ghost small" disabled={busy} onClick={() => onAktion(s, 'zurueck')}>Zurückziehen</button>
+                <div className="dk-knoepfe">
+                  <button className="btn ghost small" disabled={busy} onClick={() => onAktion(s, 'festlegen', s.wunsch)}>Direkt festlegen</button>
+                  <button className="btn ghost small" disabled={busy} onClick={() => onAktion(s, 'zurueck')}>Zurückziehen</button>
+                </div>
               </div>
             )}
-            {!s.wunsch && (offen === s.id ? (
-              <div className="dk-wahl">
-                {vorschlaege(seite, spiele, s).map((kat) => (
-                  <button key={kat} className="chip" style={{ background: FARBE[kat].bg, color: FARBE[kat].fg, borderColor: FARBE[kat].bg }} disabled={busy}
-                    onClick={() => { onAktion(s, 'wunsch', kat); setOffen(null); }}>{KURZ[kat]}</button>
-                ))}
-                <button className="chip" onClick={() => setOffen(null)}>Abbrechen</button>
+            {fremder || eigener ? null : offen?.id === s.id ? (
+              <div className="dk-wahlbox">
+                <div className="dk-wahl">
+                  {vorschlaege(seite, spiele, s).map((kat) => (
+                    <button key={kat} className={`chip${offen.kat === kat ? ' gewaehlt' : ''}`} style={{ background: FARBE[kat].bg, color: FARBE[kat].fg, borderColor: offen.kat === kat ? FARBE[kat].fg : FARBE[kat].bg }}
+                      aria-pressed={offen.kat === kat} onClick={() => setOffen({ id: s.id, kat })}>{KURZ[kat]}</button>
+                  ))}
+                </div>
+                <div className="dk-knoepfe">
+                  <button className="btn small" disabled={busy || !offen.kat} onClick={() => { onAktion(s, 'festlegen', offen.kat); setOffen(null); }}><Icon name="check" size={16} /> Festlegen</button>
+                  <button className="btn ghost small" disabled={busy || !offen.kat} onClick={() => { onAktion(s, 'wunsch', offen.kat); setOffen(null); }}>Als Wunsch senden</button>
+                  <button className="btn ghost small" onClick={() => setOffen(null)}>Abbrechen</button>
+                </div>
+                <div className="small">„Festlegen“, wenn ihr euch schon abgesprochen habt – sonst bestätigt {SEITE[andere(seite)]} den Wunsch.</div>
               </div>
             ) : (
-              <button className="dk-wunschbtn" onClick={() => setOffen(s.id)}><Icon name="plus" size={15} /> {s.zuteilung ? 'Änderung wünschen' : vorbei ? 'Nachtragen' : 'Wunsch eintragen'}</button>
-            ))}
+              <button className="dk-wunschbtn" onClick={() => setOffen({ id: s.id, kat: null })}><Icon name="plus" size={15} /> {s.zuteilung ? 'Ändern' : vorbei ? 'Nachtragen' : 'Eintragen'}</button>
+            )}
+
+            {(s.notiz || s.zuteilung?.endsWith('_weiter') || s.wunsch?.endsWith('_weiter')) && (
+              <Notiz s={s} busy={busy} onSave={(text) => onAktion(s, 'notiz', null, text)} />
+            )}
 
             {onWer && s.zuteilung === 'wir' && (
               <div className="dk-wer">
@@ -133,8 +166,8 @@ export default function Dauerkarten({ ctx, onBack }) {
   }, []);
   const url = link ? `${location.origin}${location.pathname}?dk=${link}` : null;
 
-  const onAktion = async (s, was, kat) => {
-    const r = aktion('wir', spiele, s, was, kat);
+  const onAktion = async (s, was, kat, text) => {
+    const r = aktion('wir', spiele, s, was, kat, text);
     if (r.fehler) { ctx.say(r.fehler); return; }
     setBusy(true);
     dk.local((rows) => rows.map((x) => (x.id === s.id ? { ...x, ...r.patch } : x)));
@@ -204,7 +237,7 @@ export function DauerkartenGast({ token }) {
     } catch (e) { setFehler(e.message); }
   };
   useEffect(() => { laden(); const t = setInterval(() => laden(), 60000); return () => clearInterval(t); }, []);
-  const onAktion = async (s, was, kat) => { setBusy(true); await laden({ id: s.id, was, kat }); setBusy(false); };
+  const onAktion = async (s, was, kat, text) => { setBusy(true); await laden({ id: s.id, was, kat, text }); setBusy(false); };
   return (
     <div className="app dk-gast">
       <header className="dk-gastkopf"><Icon name="ball" size={26} /><div><h1>Werder-Dauerkarten</h1><div className="sub">Eika & Jan · mit Catrin & Dirk</div></div></header>

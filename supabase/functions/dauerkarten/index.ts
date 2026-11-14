@@ -1,5 +1,5 @@
 // Dauerkarten für Eika & Jan: eigener Link ohne Anmeldung (?t=<Schlüssel>, scope „dauerkarten“).
-// GET: Heimspiele der Saison mit Zuteilung und Wünschen · POST { id, was, kat }: Wunsch / Bestätigen / Ablehnen / Zurückziehen
+// GET: Heimspiele der Saison mit Zuteilung und Wünschen · POST { id, was, kat, text }: Wunsch / Festlegen / Bestätigen / Ablehnen / Zurückziehen / Notiz
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { aktion } from "./dauerkarten.js";
 
@@ -17,14 +17,14 @@ Deno.serve(async (req) => {
 
   const jetzt = new Date();
   const saison = jetzt.getMonth() >= 6 ? jetzt.getFullYear() : jetzt.getFullYear() - 1;
-  const laden = async () => (await db.from("dk_spiele").select("id, datum, zeit, gegner, wett, zuteilung, wunsch, wunsch_von").eq("saison", saison).order("datum")).data ?? [];
+  const laden = async () => (await db.from("dk_spiele").select("id, datum, zeit, gegner, wett, zuteilung, wunsch, wunsch_von, notiz").eq("saison", saison).order("datum")).data ?? [];
   let spiele = await laden();
 
   if (req.method === "POST") {
     const b = await req.json().catch(() => ({}));
     const s = spiele.find((x: any) => x.id === b.id);
     if (!s) return json({ error: "Spiel nicht gefunden." }, 404);
-    const r = aktion("die", spiele, s, String(b.was ?? ""), b.kat ?? null);
+    const r = aktion("die", spiele, s, String(b.was ?? ""), b.kat ?? null, b.text ?? null);
     if (r.fehler) return json({ error: r.fehler }, 400);
     const { error } = await db.from("dk_spiele").update({ ...r.patch, updated_at: new Date().toISOString() }).eq("id", s.id);
     if (error) return json({ error: error.message }, 500);

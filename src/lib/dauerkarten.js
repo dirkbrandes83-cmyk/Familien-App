@@ -27,11 +27,16 @@ export function vorschlaege(seite, spiele, s) {
 }
 
 // Änderung für eine Aktion. Gibt { patch } oder { fehler } zurück.
-export function aktion(seite, spiele, s, was, kat) {
-  if (was === 'wunsch') {
+export function aktion(seite, spiele, s, was, kat, text) {
+  if (was === 'wunsch' || was === 'festlegen') {
     if (!KAT[kat]) return { fehler: 'Unbekannte Kategorie' };
     if (kat === 'boerse' && s.zuteilung !== 'boerse' && boerseZahl(spiele.filter((x) => x.id !== s.id)) >= BOERSE_MAX) return { fehler: `Ticketbörse ist nur ${BOERSE_MAX}× pro Saison erlaubt` };
-    return { patch: { wunsch: kat, wunsch_von: seite } };
+    // festlegen: ohne Rückfrage (z. B. wenn es schon abgesprochen ist)
+    return { patch: was === 'festlegen' ? { zuteilung: kat, wunsch: null, wunsch_von: null } : { wunsch: kat, wunsch_von: seite } };
+  }
+  if (was === 'notiz') {
+    const n = String(text ?? '').trim().slice(0, 300);
+    return { patch: { notiz: n || null } };
   }
   if (was === 'zurueck') {
     if (s.wunsch_von !== seite) return { fehler: 'Nur der eigene Wunsch kann zurückgezogen werden' };

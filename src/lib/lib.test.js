@@ -221,3 +221,10 @@ test('Dauerkarten: Wunsch, Bestätigen, Börse-Limit, Kosten', async () => {
   assert.equal(k.zugewiesen, 8); assert.equal(k.wir, 1); assert.equal(k.die, 7); assert.equal(k.boerse, 5);
   assert.equal(k.proSpiel, 101.25); assert.equal(k.die_eur, 708.75);
 });
+
+test('Dauerkarten: direkt festlegen und Notiz', async () => {
+  const { aktion } = await import('./dauerkarten.js');
+  const s = { id: 'x', zuteilung: null, wunsch: 'die', wunsch_von: 'die' };
+  assert.deepEqual(aktion('wir', [s], s, 'festlegen', 'wir_weiter').patch, { zuteilung: 'wir_weiter', wunsch: null, wunsch_von: null });
+  assert.deepEqual(aktion('die', [s], s, 'notiz', null, '  an Peter ').patch, { notiz: 'an Peter' });
+});
