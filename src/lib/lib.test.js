@@ -156,3 +156,13 @@ test('Bremer Ferien und Feiertage', async () => {
   assert.equal(schulfrei('2027-05-06'), 'Christi Himmelfahrt');
   assert.equal(schulfrei('2026-11-16'), null);
 });
+
+test('Kinderseite: Stundenplan am Wochenende erst Sonntag ab 17 Uhr', async () => {
+  const { istSchultag } = await import('./schulfrei.js');
+  const { addDays } = await import('./dates.js');
+  const frei = (h, s) => !istSchultag(h) && !(istSchultag(addDays(h, 1)) && s >= 17);
+  assert.equal(frei('2026-11-14', 20), true);   // Samstag abends
+  assert.equal(frei('2026-11-15', 16), true);   // Sonntag 16 Uhr
+  assert.equal(frei('2026-11-15', 17), false);  // Sonntag 17 Uhr → Stundenplan
+  assert.equal(frei('2026-11-16', 9), false);   // Montag
+});

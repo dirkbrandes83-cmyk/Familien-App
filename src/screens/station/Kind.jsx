@@ -5,7 +5,7 @@ import { choresToday } from '../Zuhause.jsx';
 import { upcomingTests, urgency, dayChip } from '../../lib/tests.js';
 import { lessonsFor, schoolDay, fachFarbe, istSchultag, naechsterSchultag, tagName, schulfrei } from '../../lib/stundenplan.js';
 import { TIERE } from '../../lib/kinder.js';
-import { useWetter } from '../Wochenende.jsx';
+import { useWetter, WochenendKarte } from '../Wochenende.jsx';
 import { anziehen } from '../../lib/wochenende.js';
 import { Icon, Check } from '../../ui.jsx';
 import { addDays, expand, shortLabel } from '../../lib/dates.js';
@@ -14,7 +14,12 @@ import { aufgaben, offen } from '../../lib/aufgaben.js';
 
 import { EvList, toggleChoreFeier, togglePack, SpeakIcon } from './teile.jsx';
 
-export function Kind({ ctx, kid }) {
+// Schulfrei (Wochenende, Ferien, Feiertag): Stundenplan erst am Vorabend des nächsten Schultags ab 17 Uhr
+export function freieZeit(heute, stunde) {
+  return !istSchultag(heute) && !(istSchultag(addDays(heute, 1)) && stunde >= 17);
+}
+
+export function Kind({ ctx, kid, openKiste }) {
   // Einpacken: heute (nur an Schultagen) oder nächster Schultag (Fr → Montag, Wochenende → Montag)
   const schule = istSchultag(ctx.day);
   const naechster = naechsterSchultag(ctx.day);
@@ -78,7 +83,9 @@ export function Kind({ ctx, kid }) {
         {items.length > 0 && open.length > 0 && <div className="st-progressbar" aria-label={`${items.length - open.length} von ${items.length} eingepackt`}><span style={{ width: `${((items.length - open.length) / items.length) * 100}%` }} /><b>{items.length - open.length} von {items.length} eingepackt</b></div>}
         {items.length > 0 && open.length === 0 && <div className="st-done">Alles eingepackt!</div>}
       </section>
-      <StundenplanKarte ctx={ctx} kid={kid} date={date} />
+      {freieZeit(ctx.day, new Date().getHours())
+        ? <WochenendKarte ctx={ctx} station onOpen={openKiste} />
+        : <StundenplanKarte ctx={ctx} kid={kid} date={date} />}
       <section className="st-card">
         <h2>{schule ? 'Nach der Schule' : 'Heute'}</h2>
         {heute.length === 0 && !mine.length && !extra.length && <div className="st-empty">Heute nichts weiter.</div>}

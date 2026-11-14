@@ -117,7 +117,8 @@ export default function Station({ members, reloadMembers }) {
             </button>
           ))}
         </nav>
-        {view !== 'alle' && ctx.member(view) && (
+        {/* sonntags braucht der Check-in den Platz */}
+        {view !== 'alle' && ctx.member(view) && weekday(day) !== 6 && (
           <button className="st-hello" onClick={() => setTierWahl(true)} aria-label="Mein Tier wählen">
             {begruessung(ctx.member(view).name, ctx.member(view).tier)}{!ctx.member(view).tier && <span className="st-hello-hint">Tier?</span>}
           </button>
@@ -131,7 +132,7 @@ export default function Station({ members, reloadMembers }) {
       </header>
 
       {view === 'alle' ? <Alle ctx={ctx} openIstAlle={() => setSheet({ step: 'shop' })} openKiste={() => setKiste(true)} />
-        : <Kind ctx={ctx} kid={ctx.member(view)} />}
+        : <Kind ctx={ctx} kid={ctx.member(view)} openKiste={() => setKiste(true)} />}
 
       {sheet && <Eintragen ctx={ctx} init={sheet} onClose={() => setSheet(null)} openKiste={() => { setSheet(null); setKiste(true); }} />}
       {kiste && (
