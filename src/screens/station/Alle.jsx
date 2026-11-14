@@ -1,6 +1,8 @@
 // Familien-Station: Ansicht „Alle“ – Termine+Einpacken | Wer macht was+Essen | Wochenende+Einkauf
 import { mealOf, muellOf, Bin, choresToday } from '../Zuhause.jsx';
 import { WochenendKarte } from '../Wochenende.jsx';
+import Wochenplan from '../Wochenplan.jsx';
+import { freieZeit } from './Kind.jsx';
 import { muellHeute } from '../../lib/home.js';
 import { Icon, Check } from '../../ui.jsx';
 import { addDays, expand, WDL, weekday } from '../../lib/dates.js';
@@ -47,7 +49,9 @@ export function Alle({ ctx, openIstAlle, openKiste }) {
         <EssenKarte ctx={ctx} />
       </div>
       <div className="st-col">
-        <WochenendKarte ctx={ctx} station onOpen={openKiste} />
+        {freieZeit(ctx.day, new Date().getHours())
+          ? <Wochenplan ctx={ctx} station kompakt days={[ctx.day]} onKiste={openKiste} />
+          : <WochenendKarte ctx={ctx} station onOpen={openKiste} />}
         <section className="st-card st-grow">
           <div className="st-cardhead"><h2>Einkaufsliste{shop.length > 0 && <span className="badge" style={{ marginLeft: 8, verticalAlign: '3px' }}>{shop.length}</span>}</h2>
             <button className="st-roundplus" onClick={openIstAlle} aria-label="Ist alle – etwas auf die Einkaufsliste"><Icon name="plus" size={26} stroke={2.6} /></button></div>

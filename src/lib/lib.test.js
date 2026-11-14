@@ -181,3 +181,25 @@ test('Geburtstag mit Alter', async () => {
   assert.equal(titelAm({ kind: 'geburtstag', title: 'Pina', start_date: '2026-01-24' }, '2026-01-24'), 'Pina');
   assert.equal(titelAm({ kind: 'termin', title: 'Zahnarzt', start_date: '2020-01-01' }, '2026-01-01'), 'Zahnarzt');
 });
+
+test('Wochenplan: Abschnitte, Bausteine, freie Zeit', async () => {
+  const { tagesplan, slotOf, aktuellerAbschnitt } = await import('./wochenplan.js');
+  assert.equal(slotOf('09:30'), 'morgens');
+  assert.equal(slotOf('15:00'), 'nachmittag');
+  assert.equal(aktuellerAbschnitt(19), 'abend');
+  const sa = '2026-11-14';
+  const p = tagesplan({
+    date: sa,
+    events: [{ id: 'e', title: 'Fußball', kind: 'termin', start_date: sa, from_time: '11:00', all_day: false, rep: 'keine', exdates: [] },
+      { id: 'g', title: 'Rosa', kind: 'geburtstag', start_date: '1985-11-14', all_day: true, rep: 'jährlich', exdates: [] }],
+    plan: [{ id: 'p', on_date: sa, slot: 'nachmittag', text: 'Auszeit für', who: 'catrin' }],
+    rahmen: [{ tag: 5, slot: 'morgens', text: 'Marktbesuch' }],
+    members: [{ id: 'catrin', name: 'Catrin' }], meal: 'Pizza',
+  });
+  assert.deepEqual(p.geburtstage, ['Rosa wird 41']);
+  assert.equal(p.slots.vormittag[0].text, 'Fußball');
+  assert.equal(p.slots.nachmittag[0].text, 'Auszeit für Catrin');
+  assert.equal(p.slots.morgens[0].text, 'Marktbesuch');
+  assert.deepEqual(p.frei, []);
+  assert.equal(p.slots.abend[0].text, 'Pizza');
+});

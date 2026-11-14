@@ -5,7 +5,8 @@ import { choresToday } from '../Zuhause.jsx';
 import { upcomingTests, urgency, dayChip } from '../../lib/tests.js';
 import { lessonsFor, schoolDay, fachFarbe, istSchultag, naechsterSchultag, tagName, schulfrei } from '../../lib/stundenplan.js';
 import { TIERE } from '../../lib/kinder.js';
-import { useWetter, WochenendKarte } from '../Wochenende.jsx';
+import { useWetter } from '../Wochenende.jsx';
+import Wochenplan from '../Wochenplan.jsx';
 import { anziehen } from '../../lib/wochenende.js';
 import { Icon, Check } from '../../ui.jsx';
 import { addDays, expand, shortLabel } from '../../lib/dates.js';
@@ -15,6 +16,9 @@ import { aufgaben, offen } from '../../lib/aufgaben.js';
 import { EvList, toggleChoreFeier, togglePack, SpeakIcon } from './teile.jsx';
 
 // Schulfrei (Wochenende, Ferien, Feiertag): Stundenplan erst am Vorabend des nächsten Schultags ab 17 Uhr
+// Der heutige freie Tag und – falls auch frei – der nächste (Sa → So)
+export const freieTage = (heute) => (istSchultag(addDays(heute, 1)) ? [heute] : [heute, addDays(heute, 1)]);
+
 export function freieZeit(heute, stunde) {
   return !istSchultag(heute) && !(istSchultag(addDays(heute, 1)) && stunde >= 17);
 }
@@ -84,7 +88,7 @@ export function Kind({ ctx, kid, openKiste }) {
         {items.length > 0 && open.length === 0 && <div className="st-done">Alles eingepackt!</div>}
       </section>
       {freieZeit(ctx.day, new Date().getHours())
-        ? <WochenendKarte ctx={ctx} station onOpen={openKiste} />
+        ? <Wochenplan ctx={ctx} station days={freieTage(ctx.day)} onKiste={openKiste} />
         : <StundenplanKarte ctx={ctx} kid={kid} date={date} />}
       <section className="st-card">
         <h2>{schule ? 'Nach der Schule' : 'Heute'}</h2>

@@ -171,7 +171,7 @@ export default function Ideenkiste({ ctx, station }) {
   );
 }
 
-function Overlay({ title, onClose, children, station }) {
+export function Overlay({ title, onClose, children, station }) {
   return (
     <div className="sheet-bg" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className={`sheet${station ? ' st-sheet' : ''}`} role="dialog" aria-modal="true" aria-label={title}>
@@ -205,6 +205,19 @@ function NeueIdee({ ctx, me, station, onClose }) {
   );
 }
 
+// Idee als Termin eintragen und fürs spätere Bewerten merken
+export async function einplanen(ctx, idea, day, zeit, station) {
+  const ev = await run(supabase.from('events').insert({
+    title: `🎈 ${idea.title}`, kind: 'termin', who: ['all'], start_date: day, all_day: !zeit, from_time: zeit || null,
+    note: idea.note || '', src: station ? 'station' : 'fam', created_by: station ? null : ctx.me?.id,
+  }).select('id').single(), ctx.fail);
+  if (!ev) return false;
+  await run(supabase.from('weekend_log').insert({ idea_id: idea.id, title: idea.title, on_date: day, event_id: ev.id }), ctx.fail);
+  ctx.data.events.reload?.(); ctx.data.weekendLog.reload?.();
+  ctx.say(`${idea.title} steht am ${WDL[weekday(day)]} im Kalender`);
+  return true;
+}
+
 const ZEITEN = [['', 'Ganzer Tag / offen'], ['10:00', 'Vormittag (10 Uhr)'], ['14:00', 'Nachmittag (14 Uhr)'], ['18:00', 'Abend (18 Uhr)']];
 function MachenWir({ ctx, idea, station, days, wetter, onClose }) {
   const [day, setDay] = useState(days[0]);
@@ -214,13 +227,9 @@ function MachenWir({ ctx, idea, station, days, wetter, onClose }) {
   const on = (x) => (x ? { background: '#0F766E', borderColor: '#0F766E', color: '#fff' } : undefined);
   const save = async () => {
     setBusy(true);
-    const ev = await run(supabase.from('events').insert({
-      title: `🎈 ${idea.title}`, kind: 'termin', who: ['all'], start_date: day, all_day: !zeit, from_time: zeit || null,
-      note: idea.note || '', src: station ? 'station' : 'fam', created_by: station ? null : ctx.me?.id,
-    }).select('id').single(), ctx.fail);
-    if (ev) await run(supabase.from('weekend_log').insert({ idea_id: idea.id, title: idea.title, on_date: day, event_id: ev.id }), ctx.fail);
+    const ok = await einplanen(ctx, idea, day, zeit, station);
     setBusy(false);
-    if (ev) { ctx.say(`${idea.title} steht am ${WDL[weekday(day)]} im Kalender`); onClose(); }
+    if (ok) onClose();
   };
   return (
     <Overlay title="Machen wir!" onClose={onClose} station={station}>

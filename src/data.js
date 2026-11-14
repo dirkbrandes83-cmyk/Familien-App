@@ -76,6 +76,7 @@ export function useHomeTables() {
     ideas: useTable('ideas'),
     ideaVotes: useTable('idea_votes', (r) => `${r.idea_id}|${r.member}`),
     weekendLog: useTable('weekend_log'),
+    wePlan: useTable('we_plan'),
   };
 }
 
