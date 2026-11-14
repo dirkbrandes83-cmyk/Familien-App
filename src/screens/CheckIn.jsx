@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase, run } from '../data.js';
 import { Icon, PersonChips } from '../ui.jsx';
-import { addDays, expand, weekday, WDL, hm, shortLabel } from '../lib/dates.js';
+import { addDays, expand, weekday, WDL, hm, shortLabel, titelAm } from '../lib/dates.js';
 import { muellStatus, BINS } from '../lib/home.js';
 import { rankIdeas } from '../lib/wochenende.js';
 import { aufgaben, offen } from '../lib/aufgaben.js';
@@ -122,7 +122,7 @@ export default function CheckIn({ ctx, onClose }) {
                         return (
                           <div key={o.ev.id + d} className={`ci-ev${o.ev.kind === 'test' ? ' test' : ''}`}>
                             <span className="ci-evtime">{o.ev.kind === 'test' ? <Icon name="pencil" size={18} /> : o.ev.kind === 'geburtstag' ? <Icon name="cake" size={18} /> : o.ev.all_day ? '' : hm(o.ev.from_time)}</span>
-                            <span className="ci-evtitle">{o.ev.title}</span>
+                            <span className="ci-evtitle">{titelAm(o.ev, o.date)}</span>
                             <PersonChips who={o.ev.who} members={ctx.members} />
                             {open && <span className="ci-warn">{!o.ev.bring_by && !o.ev.pick_by ? 'Wer bringt, wer holt?' : !o.ev.bring_by ? 'Wer bringt?' : 'Wer holt?'}</span>}
                           </div>

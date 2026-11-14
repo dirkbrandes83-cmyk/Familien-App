@@ -4,7 +4,7 @@ import { supabase, run } from '../../data.js';
 import { choresToday, toggleChore } from '../Zuhause.jsx';
 import { Icon, PersonChips } from '../../ui.jsx';
 import { istSchultag, naechsterSchultag } from '../../lib/stundenplan.js';
-import { addDays, expand, hm, WDL, weekday } from '../../lib/dates.js';
+import { addDays, expand, hm, WDL, weekday, titelAm } from '../../lib/dates.js';
 import { packList, BringPick } from '../common.jsx';
 
 
@@ -21,7 +21,7 @@ export function EvList({ list: all, ctx, empty = 'Nichts geplant.' }) {
     <div key={o.ev.id + o.date} className="st-ev">
       <span className="st-evtime">{timeOf(o.ev)}{!o.ev.all_day && o.ev.to_time && <span className="st-evend">bis {hm(o.ev.to_time)}</span>}</span>
       <span className="st-evmain">
-        <span className="st-evtitle">{o.ev.kind === 'test' && <span className="test-tag">Test</span>}{o.ev.title}</span>
+        <span className="st-evtitle">{o.ev.kind === 'test' && <span className="test-tag">Test</span>}{titelAm(o.ev, o.date)}</span>
         <PersonChips who={o.ev.who} members={ctx.members} />
         <BringPick ev={o.ev} big />
       </span>
@@ -80,7 +80,7 @@ export function Nacht({ ctx, clock, onWake }) {
       <span className="st-night-time">{clock}</span>
       <span className="st-night-sub">{h >= 21 ? 'Morgen' : 'Heute'} · {WDL[weekday(morgen)]}</span>
       <span className="st-night-list">
-        {ev.map((o) => <span key={o.ev.id}>{o.ev.all_day ? '' : `${hm(o.ev.from_time)}  `}{o.ev.title}</span>)}
+        {ev.map((o) => <span key={o.ev.id}>{o.ev.all_day ? '' : `${hm(o.ev.from_time)}  `}{titelAm(o.ev, o.date)}</span>)}
         {pack > 0 && <span>Noch {pack} {pack === 1 ? 'Sache' : 'Sachen'} einpacken</span>}
       </span>
       <span className="st-night-hint">Antippen zum Aufwecken</span>

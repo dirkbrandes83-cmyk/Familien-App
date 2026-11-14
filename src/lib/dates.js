@@ -96,3 +96,10 @@ export function expand(events, from, to) {
   out.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0) || (a.ev.all_day === b.ev.all_day ? 0 : a.ev.all_day ? -1 : 1) || String(a.ev.from_time || '').localeCompare(String(b.ev.from_time || '')));
   return out;
 }
+
+// Anzeige-Titel an einem Tag: Geburtstage mit Alter („Rosa wird 41“), wenn das Geburtsjahr bekannt ist
+export function titelAm(ev, date) {
+  if (ev.kind !== 'geburtstag') return ev.title;
+  const alter = Number(date.slice(0, 4)) - Number(ev.start_date.slice(0, 4));
+  return alter > 0 && alter < 120 && !/geburtstag/i.test(ev.title) ? `${ev.title} wird ${alter}` : ev.title;
+}

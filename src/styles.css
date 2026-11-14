@@ -508,3 +508,8 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .st-weekend { background: #F0FDFA; color: #134E4A; border-radius: 14px; padding: 10px 14px; font-size: 17px; }
 @media (min-width: 1001px) { .st-head { flex-wrap: nowrap; } .st-head .st-faces, .st-head .st-clock, .st-head .st-add { flex-shrink: 0; } }
 .st-head .st-hello { font-size: 20px; }
+
+/* Besorgen: Zeile mit Notiz-Knopf */
+.row-line { display: flex; align-items: center; gap: 4px; }
+.row-line .row { flex: 1; min-width: 0; }
+.row-note { flex: none; color: var(--muted, #78716C); }

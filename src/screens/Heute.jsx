@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase, run } from '../data.js';
 import { Icon, Check, PersonChips } from '../ui.jsx';
 import CheckIn from './CheckIn.jsx';
-import { addDays, expand, shortLabel, weekday, WDL, hm } from '../lib/dates.js';
+import { addDays, expand, shortLabel, weekday, WDL, hm, titelAm } from '../lib/dates.js';
 import { packList, packDay, fahrtText } from './common.jsx';
 import { aufgaben, offen, fahrtSetzen, NICHT } from '../lib/aufgaben.js';
 import { upcomingTests } from '../lib/tests.js';
@@ -73,13 +73,13 @@ function AlsNaechstes({ ctx, now }) {
     <section className="h-next" aria-label="Als Nächstes">
       <button className="h-next-main" onClick={() => ctx.openEvent(first.ev, { date: first.date })}>
         <span className="h-next-when">Als Nächstes · {when(first)}</span>
-        <span className="h-next-title">{hm(first.ev.from_time)} {first.ev.title}</span>
+        <span className="h-next-title">{hm(first.ev.from_time)} {titelAm(first.ev, first.date)}</span>
         <span className="h-next-sub">{first.ev.to_time ? `bis ${hm(first.ev.to_time)} · ` : ''}{wer(first.ev)}{fahrt ? <> · <Icon name="car" size={15} style={{ verticalAlign: '-2px' }} /> {fahrt}</> : ''}</span>
       </button>
       {rest.map((o) => (
         <button key={o.ev.id + o.date} className="h-next-row" onClick={() => ctx.openEvent(o.ev, { date: o.date })}>
           <span className="h-next-rtime">{o.date === ctx.day ? hm(o.ev.from_time) : `${WDL[weekday(tomorrow)].slice(0, 2)} ${hm(o.ev.from_time)}`}</span>
-          <span className="h-next-rtitle">{o.ev.title}<Fahrt ev={o.ev} ctx={ctx} /></span>
+          <span className="h-next-rtitle">{titelAm(o.ev, o.date)}<Fahrt ev={o.ev} ctx={ctx} /></span>
           <span className="h-next-rwho">{wer(o.ev)}</span>
         </button>
       ))}
@@ -112,7 +112,7 @@ function FuerDich({ ctx, skip }) {
     (a.art === 'muell' && a.owner === me))
     .map((a) => ({
       key: a.key, due: a.due, text: a.text, local: a.art === 'muell',
-      sub: a.art === 'muell' ? 'heute Abend' : a.due ? `bis ${shortLabel(a.due)}` : null,
+      sub: a.art === 'muell' ? 'heute Abend' : [a.due ? `bis ${shortLabel(a.due)}` : null, a.note].filter(Boolean).join(' · ') || null,
       warn: a.art !== 'muell' && a.due && a.due <= addDays(ctx.day, 1),
       done: a.erledigen, undo: a.zurueck,
     }));
@@ -248,7 +248,7 @@ function FamilieHeute({ ctx, now, short, skip }) {
       ) : (
         <button key={r.key} className={`h-tl${past(r) ? ' past' : ''}`} onClick={() => ctx.openEvent(r.o.ev, { date: r.o.date })}>
           <span className="h-tl-time">{r.o.ev.all_day ? (r.o.ev.kind === 'geburtstag' ? <Icon name="cake" size={18} /> : r.o.ev.kind === 'test' ? <Icon name="pencil" size={18} /> : 'ganzt.') : hm(r.o.ev.from_time)}</span>
-          <span className="h-tl-title">{r.o.ev.title}{r.o.ev.to_time && !r.o.ev.all_day ? <span className="h-tl-to"> bis {hm(r.o.ev.to_time)}</span> : null}
+          <span className="h-tl-title">{titelAm(r.o.ev, r.o.date)}{r.o.ev.to_time && !r.o.ev.all_day ? <span className="h-tl-to"> bis {hm(r.o.ev.to_time)}</span> : null}
             <Fahrt ev={r.o.ev} ctx={ctx} /></span>
           <PersonChips who={r.o.ev.who} members={ctx.members} />
         </button>
@@ -256,7 +256,7 @@ function FamilieHeute({ ctx, now, short, skip }) {
       <button className="h-tomorrow" onClick={() => ctx.go('kalender')}>
         <b>Morgen:</b>{' '}
         {special.length === 0 && rest === 0 ? 'nichts geplant' : [
-          ...special.map((o) => `${o.ev.kind === 'geburtstag' ? 'Geburtstag:' : o.ev.kind === 'test' ? 'Test:' : hm(o.ev.from_time)} ${o.ev.title}${o.ev.kind === 'test' ? ` (${kidOf(o.ev)})` : ''}`),
+          ...special.map((o) => `${o.ev.kind === 'geburtstag' ? 'Geburtstag:' : o.ev.kind === 'test' ? 'Test:' : hm(o.ev.from_time)} ${titelAm(o.ev, o.date)}${o.ev.kind === 'test' ? ` (${kidOf(o.ev)})` : ''}`),
           rest > 0 ? `${special.length ? '+ ' : ''}${rest} ${rest === 1 ? 'Termin' : 'Termine'}` : null,
         ].filter(Boolean).join(' · ')}
       </button>

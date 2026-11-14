@@ -174,3 +174,10 @@ test('Klender-Geburtstage: ganztägig + jährlich', async () => {
   assert.equal(ev[0].kind, 'geburtstag');
   assert.notEqual(ev[1].kind, 'geburtstag');
 });
+
+test('Geburtstag mit Alter', async () => {
+  const { titelAm } = await import('./dates.js');
+  assert.equal(titelAm({ kind: 'geburtstag', title: 'Rosa', start_date: '1985-11-26' }, '2026-11-26'), 'Rosa wird 41');
+  assert.equal(titelAm({ kind: 'geburtstag', title: 'Pina', start_date: '2026-01-24' }, '2026-01-24'), 'Pina');
+  assert.equal(titelAm({ kind: 'termin', title: 'Zahnarzt', start_date: '2020-01-01' }, '2026-01-01'), 'Zahnarzt');
+});

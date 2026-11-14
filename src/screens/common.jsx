@@ -1,5 +1,5 @@
 import { Icon, PersonChips } from '../ui.jsx';
-import { hm, weekday, addDays, expand, WDL } from '../lib/dates.js';
+import { hm, weekday, addDays, expand, WDL, titelAm } from '../lib/dates.js';
 import { istSchultag, naechsterSchultag } from '../lib/stundenplan.js';
 
 export const SRC = {
@@ -32,7 +32,7 @@ export function EventRow({ ev, date, ctx, showDate }) {
     <button className="row" onClick={() => ctx.openEvent(ev, { date })}>
       <span className="time" style={ev.all_day ? { fontSize: 12, color: '#57534E' } : undefined}>{showDate || timeLabel(ev, date)}</span>
       <span className="row-main">
-        <span className="row-title">{ev.kind === 'test' ? <span className="test-tag">Test</span> : null}{ev.title}</span>
+        <span className="row-title">{ev.kind === 'test' ? <span className="test-tag">Test</span> : null}{date ? titelAm(ev, date) : ev.title}</span>
         <PersonChips who={ev.who} members={ctx.members} />
         <BringPick ev={ev} />
         {sub && <span className="small">{sub}</span>}

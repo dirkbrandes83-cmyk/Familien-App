@@ -285,6 +285,7 @@ const ADULT_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 
 function Besorgen({ ctx }) {
   const [sheet, setSheet] = useState(null);
+  const [notiz, setNotiz] = useState(null);
   const open = ctx.data.buy.rows.filter((r) => !r.done).sort((a, b) => String(a.due || '9999').localeCompare(String(b.due || '9999')) || a.created_at.localeCompare(b.created_at));
   const done = async (r) => {
     ctx.data.buy.local((rows) => rows.map((x) => (x.id === r.id ? { ...x, done: true } : x)));
@@ -317,6 +318,7 @@ function Besorgen({ ctx }) {
           const by = ctx.member(r.by_who);
           return (
             <Swipe key={r.id} onRight={() => done(r)} onLeft={() => del(r)}>
+              <div className="row-line">
               <button className="row" style={{ minHeight: 56 }} onClick={() => done(r)}>
                 <Check on={false} />
                 <span className="row-main">
@@ -325,13 +327,35 @@ function Besorgen({ ctx }) {
                 </span>
                 {w && <span className="pchip" style={{ background: w.bg, color: w.color }}>{w.name}</span>}
               </button>
+              <button className="icon-btn row-note" onClick={() => setNotiz(r)} aria-label={r.note ? 'Notiz bearbeiten' : 'Notiz hinzufügen'}><Icon name="pencil" size={18} /></button>
+              </div>
             </Swipe>
           );
         })}
       </section>
       {open.length > 0 && <div className="small">Antippen = besorgt. Nach links wischen = löschen.</div>}
+      {notiz && <NotizSheet ctx={ctx} item={notiz} onClose={() => setNotiz(null)} />}
       {sheet && (sheet.typ === 'sonstiges' ? <OtherSheet ctx={ctx} onClose={() => setSheet(null)} /> : <BuySheet ctx={ctx} preset={sheet} onClose={() => setSheet(null)} />)}
     </>
+  );
+}
+
+// Notiz zu einem Besorgen-Eintrag, z. B. Geschenkideen, Größe, Preis, wo kaufen
+function NotizSheet({ ctx, item, onClose }) {
+  const [note, setNote] = useState(item.note || '');
+  const save = async () => {
+    const v = note.trim();
+    ctx.data.buy.local((rows) => rows.map((x) => (x.id === item.id ? { ...x, note: v } : x)));
+    const ok = await run(supabase.from('buy_items').update({ note: v }).eq('id', item.id), ctx.fail);
+    if (!ok) ctx.data.buy.reload();
+    onClose();
+  };
+  return (
+    <Sheet title={item.art} onClose={onClose} actions={<button className="btn" onClick={save}>Speichern</button>}>
+      <label className="field"><span>Notiz</span>
+        <textarea className="input" rows={4} value={note} onChange={(e) => setNote(e.target.value)} placeholder="z. B. wünscht sich Lego Technik, ca. 20 €, bei Thalia reserviert" maxLength={500} autoFocus />
+      </label>
+    </Sheet>
   );
 }
 
