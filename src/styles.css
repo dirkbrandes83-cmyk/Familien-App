@@ -583,3 +583,4 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 /* schmale Spalte auf der Kinderseite: Abschnittsname über den Einträgen */
 .st-grid.kid .wp-slot { grid-template-columns: 1fr; gap: 4px; }
 .st-grid.kid .wp-label { flex-direction: row; align-items: baseline; gap: 8px; }
+.wk-head { margin: 8px 0 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 22px; }

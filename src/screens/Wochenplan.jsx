@@ -51,7 +51,7 @@ export default function Wochenplan({ ctx, days, station, onKiste, kompakt, ohneL
           <button key={d} className={d === zeigen[0] ? 'on' : ''} onClick={() => setTag(d)}>{d === ctx.day ? 'Heute' : WDL[weekday(d)]}</button>
         ))}</div>
       )}
-      {edit && <div className="small">Unterstrichenes antippen zum Verschieben. Mit „+ Baustein“ kommen auch To-dos in einen Abschnitt.</div>}
+      {edit && <div className="small">„+“ legt Bausteine, To-dos oder Ideen in einen Abschnitt. Unterstrichenes antippen zum Verschieben.</div>}
       <div className={station && !nebeneinander ? '' : 'wp-days'}>
         {zeigen.map((d) => {
           const p = tagesplan({
@@ -95,10 +95,10 @@ export default function Wochenplan({ ctx, days, station, onKiste, kompakt, ohneL
                         </div>
                         )
                       ))}
-                      {p.frei.includes(a.id) && !vorbei && (
-                        <button className="wp-frei" onClick={() => setIdee({ date: d, slot: a.id })}><Icon name="dice" size={16} /> frei – Idee wählen</button>
-                      )}
-                      {edit && <button className="wp-add" onClick={() => setAdd({ date: d, slot: a.id })} aria-label={`Baustein zu ${a.label} hinzufügen`}><Icon name="plus" size={14} /> Baustein</button>}
+                      {/* ein Knopf pro Abschnitt: Eltern planen alles (Baustein, To-do, Idee), Kinder wählen eine Idee */}
+                      {edit
+                        ? <button className={p.frei.includes(a.id) && !vorbei ? 'wp-frei' : 'wp-add'} onClick={() => setAdd({ date: d, slot: a.id })} aria-label={`${a.label} planen`}><Icon name="plus" size={14} /> {p.frei.includes(a.id) && !vorbei ? 'frei – planen' : 'Hinzufügen'}</button>
+                        : p.frei.includes(a.id) && !vorbei && <button className="wp-frei" onClick={() => setIdee({ date: d, slot: a.id })}><Icon name="dice" size={16} /> frei – Idee wählen</button>}
                     </div>
                   </div>
                 );
@@ -184,6 +184,9 @@ function BausteinSheet({ ctx, date, slot, onClose }) {
   const geplant = new Set(ctx.data.wePlan.rows.map((r) => r.todo_ref).filter(Boolean));
   const todos = offen(aufgaben(ctx)).filter((a) => (a.art === 'erledigen' || a.art === 'besorgen') && !geplant.has(a.key))
     .sort((a, b) => String(a.due || '9999').localeCompare(String(b.due || '9999')));
+  const regen = nass(useWetter(ctx)(date));
+  const ideen = ['vormittag', 'nachmittag'].includes(slot) ? rankIdeas(ctx.data.ideas.rows, ctx.data.ideaVotes.rows, { regen }).filter((i) => !regen || i.wo !== 'draussen').slice(0, 5) : [];
+  const ideeRein = async (i) => { if (await einplanen(ctx, i, date, ABSCHNITTE.find((x) => x.id === slot).start, false)) onClose(); };
   const schieben = async (a) => {
     const ok = await run(supabase.from('we_plan').insert({ on_date: date, slot, text: a.text.slice(0, 120), todo_ref: a.key, created_by: ctx.me.id }), ctx.fail);
     if (ok) { ctx.data.wePlan.reload(); ctx.say(`${a.text} liegt jetzt am ${WDL[wd]} ${label}`); onClose(); }
@@ -212,6 +215,16 @@ function BausteinSheet({ ctx, date, slot, onClose }) {
       {b?.person && (
         <div className="field"><span>Für wen?</span>
           <div className="chips">{ctx.members.filter((m) => !m.kid).map((m) => <button key={m.id} className="chip" style={who === m.id ? { background: m.color, borderColor: m.color, color: '#fff' } : { borderColor: m.bg, color: m.color }} onClick={() => { setWho(m.id); setDabei([m.id]); }}>{m.name}</button>)}</div>
+        </div>
+      )}
+      {ideen.length > 0 && (
+        <div className="field"><span>Oder eine Idee aus der Kiste{regen ? ' (bei Regen: drinnen)' : ''}</span>
+          <div className="wp-todos">{ideen.map((i) => (
+            <button key={i.id} className="wp-todo" onClick={() => ideeRein(i)}>
+              <Icon name="balloon" size={16} /><span>{i.title}</span>
+              {i.herzen ? <span className="small"><Icon name="heart" size={12} fill="currentColor" /> {i.herzen}</span> : null}
+            </button>
+          ))}</div>
         </div>
       )}
       {todos.length > 0 && (

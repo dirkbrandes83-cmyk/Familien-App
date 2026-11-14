@@ -3,7 +3,7 @@ import { supabase, run, learnedSections } from '../data.js';
 import { Icon, Check, Sheet, Seg, ChipPick, Swipe } from '../ui.jsx';
 import Wochenplan from './Wochenplan.jsx';
 import { weekendDays } from '../lib/wochenende.js';
-import Ideenkiste, { WochenendKarte } from './Wochenende.jsx';
+import Ideenkiste from './Wochenende.jsx';
 import { addDays, mondayOf, longLabel, parse, WD, weekday, MONTHS, shortLabel } from '../lib/dates.js';
 import { sectionOf, splitNames } from '../lib/shop.js';
 import { BINS, WASH, muellStatus, binsForWeek, nextCleaning, agoLabel, weekdaysLabel } from '../lib/home.js';
@@ -38,7 +38,7 @@ export default function Zuhause({ ctx, seg, setSeg }) {
   return (
     <>
       <Seg label="Bereich" value={seg} onPick={setSeg} options={[['essen', 'Essen'], ['aemtchen', 'Ämtchen'], ['haushalt', 'Haushalt'], ['wochenende', 'Freizeit']]} />
-      {seg === 'essen' ? <Essen ctx={ctx} /> : seg === 'aemtchen' ? <Aemtchen ctx={ctx} /> : seg === 'wochenende' ? <><Wochenplan ctx={ctx} days={weekendDays(ctx.day)} onKiste={() => document.querySelector('.wk')?.scrollIntoView({ behavior: 'smooth' })} /><WochenendKarte ctx={ctx} onOpen={() => document.querySelector('.wk')?.scrollIntoView({ behavior: 'smooth' })} /><Ideenkiste ctx={ctx} /></> : <Haushalt ctx={ctx} />}
+      {seg === 'essen' ? <Essen ctx={ctx} /> : seg === 'aemtchen' ? <Aemtchen ctx={ctx} /> : seg === 'wochenende' ? <><Wochenplan ctx={ctx} days={weekendDays(ctx.day)} onKiste={() => document.querySelector('.wk')?.scrollIntoView({ behavior: 'smooth' })} /><Ideenkiste ctx={ctx} /></> : <Haushalt ctx={ctx} />}
     </>
   );
 }

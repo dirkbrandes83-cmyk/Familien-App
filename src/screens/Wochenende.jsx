@@ -116,6 +116,7 @@ export default function Ideenkiste({ ctx, station }) {
   const chip = (on, m) => (on ? { background: m?.color || '#1C1917', borderColor: m?.color || '#1C1917', color: '#fff' } : m ? { borderColor: m.bg, color: m.color } : undefined);
   return (
     <div className={`wk${station ? ' wk-station' : ''}`}>
+      {!station && <h2 className="wk-head">Ideenkiste</h2>}
       {station && (
         <div className="field"><span>Wer bist du?</span>
           <div className="chips">{ctx.members.map((m) => <button key={m.id} className="chip st-chip" style={chip(me === m.id, m)} aria-pressed={me === m.id} onClick={() => setMe(m.id)}>{m.name}</button>)}</div>
