@@ -2,7 +2,7 @@
 import { mealOf, muellOf, Bin, choresToday } from '../Zuhause.jsx';
 import { WochenendKarte } from '../Wochenende.jsx';
 import Wochenplan from '../Wochenplan.jsx';
-import { freieZeit } from './Kind.jsx';
+import { freieZeit, freieTage } from './Kind.jsx';
 import { muellHeute } from '../../lib/home.js';
 import { Icon, Check } from '../../ui.jsx';
 import { addDays, expand, WDL, weekday } from '../../lib/dates.js';
@@ -16,6 +16,28 @@ export function Alle({ ctx, openIstAlle, openKiste }) {
   const occ = expand(ctx.data.events.rows, ctx.day, tomorrow);
   const pd = packDate(ctx);
   const shop = ctx.data.shop.rows.filter((r) => !r.done).sort((a, b) => a.section.localeCompare(b.section) || a.name.localeCompare(b.name, 'de'));
+  const einkauf = (
+    <section className="st-card st-grow">
+      <div className="st-cardhead"><h2>Einkaufsliste{shop.length > 0 && <span className="badge" style={{ marginLeft: 8, verticalAlign: '3px' }}>{shop.length}</span>}</h2>
+        <button className="st-roundplus" onClick={openIstAlle} aria-label="Ist alle – etwas auf die Einkaufsliste"><Icon name="plus" size={26} stroke={2.6} /></button></div>
+      {shop.length === 0 ? <div className="st-empty">Alles da.</div>
+        : <ul className="st-shop">{shop.slice(0, 14).map((s) => <li key={s.id}>{s.name}</li>)}</ul>}
+      {shop.length > 14 && <div className="st-empty">… und {shop.length - 14} weitere</div>}
+    </section>
+  );
+  // Wochenende (bis Sonntag 17 Uhr): der Plan groß, daneben klein Ämtchen, Essen, Einkauf. Einpacken kommt Sonntagabend wieder.
+  if (freieZeit(ctx.day, new Date().getHours())) {
+    return (
+      <main className="st-grid two we">
+        <Wochenplan ctx={ctx} station nebeneinander ohneListen days={freieTage(ctx.day)} onKiste={openKiste} />
+        <div className="st-col">
+          <WerMacht ctx={ctx} />
+          <EssenKarte ctx={ctx} />
+          {einkauf}
+        </div>
+      </main>
+    );
+  }
   return (
     <main className="st-grid alle3">
       <div className="st-col">
@@ -49,16 +71,8 @@ export function Alle({ ctx, openIstAlle, openKiste }) {
         <EssenKarte ctx={ctx} />
       </div>
       <div className="st-col">
-        {freieZeit(ctx.day, new Date().getHours())
-          ? <Wochenplan ctx={ctx} station kompakt days={[ctx.day]} onKiste={openKiste} />
-          : <WochenendKarte ctx={ctx} station onOpen={openKiste} />}
-        <section className="st-card st-grow">
-          <div className="st-cardhead"><h2>Einkaufsliste{shop.length > 0 && <span className="badge" style={{ marginLeft: 8, verticalAlign: '3px' }}>{shop.length}</span>}</h2>
-            <button className="st-roundplus" onClick={openIstAlle} aria-label="Ist alle – etwas auf die Einkaufsliste"><Icon name="plus" size={26} stroke={2.6} /></button></div>
-          {shop.length === 0 ? <div className="st-empty">Alles da.</div>
-            : <ul className="st-shop">{shop.slice(0, 14).map((s) => <li key={s.id}>{s.name}</li>)}</ul>}
-          {shop.length > 14 && <div className="st-empty">… und {shop.length - 14} weitere</div>}
-        </section>
+        <WochenendKarte ctx={ctx} station onOpen={openKiste} />
+        {einkauf}
       </div>
     </main>
   );

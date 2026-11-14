@@ -554,3 +554,32 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .wp-todo span:first-of-type { flex: 1; min-width: 0; }
 .wp-todo .small { font-weight: 400; }
 .wp-txt { border: none; background: none; padding: 0; text-align: left; font: inherit; color: inherit; text-decoration: underline dotted #A8A29E; text-underline-offset: 3px; cursor: pointer; }
+
+.wp-dabei { display: inline-flex; gap: 3px; margin-left: auto; flex: none; }
+.wp-dot { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; border-radius: 11px; padding: 0 6px; font-size: 12px; font-weight: 700; }
+.wp-dot.big { height: 26px; border-radius: 13px; font-size: 14px; padding: 0 9px; }
+.wp-alle { margin-left: auto; flex: none; font-size: 12px; font-weight: 700; color: #0F766E; background: #CCFBF1; border-radius: 11px; padding: 2px 8px; }
+.st-card .wp-alle { font-size: 14px; padding: 3px 10px; }
+.wp-item > span:not(.wp-dabei):not(.wp-alle), .wp-item > .wp-txt { flex: 0 1 auto; min-width: 0; }
+.wp-item .wp-x { margin-left: 4px; }
+.wp-item .wp-dabei + .wp-x, .wp-item .wp-alle + .wp-x { margin-left: 4px; }
+.wp-allday { flex-wrap: wrap; }
+
+/* iPad „Alle“ am Wochenende: Plan groß (2/3), rechts klein Ämtchen, Essen, Einkauf */
+.st-grid.we { grid-template-columns: minmax(0, 2.1fr) minmax(0, 1fr); }
+.st-grid.we > .wp { overflow-y: auto; }
+.st-grid.we .wp-days { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.st-grid.we .wp-dayhead { font-size: 22px; }
+.st-grid.we .wp-slot { grid-template-columns: 112px 1fr; }
+.st-grid.we .wp-item { font-size: 19px; }
+.st-grid.we .st-col > .st-card h2 { font-size: 22px; }
+.st-grid.we .st-meal { font-size: 18px; }
+.st-grid.we .st-shop li { font-size: 16px; padding: 4px 0; }
+.wp-item > span:not(.wp-dabei):not(.wp-alle), .wp-item > .wp-txt { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.st-grid.we .wp-slot { min-height: 64px; align-items: start; }
+/* lange Titel umbrechen statt Buchstaben zerhacken; Personen notfalls in die nächste Zeile */
+.wp-item { flex-wrap: wrap; row-gap: 2px; }
+.wp-item > span:not(.wp-dabei):not(.wp-alle), .wp-item > .wp-txt { flex: 1 1 120px; overflow-wrap: break-word; }
+/* schmale Spalte auf der Kinderseite: Abschnittsname über den Einträgen */
+.st-grid.kid .wp-slot { grid-template-columns: 1fr; gap: 4px; }
+.st-grid.kid .wp-label { flex-direction: row; align-items: baseline; gap: 8px; }

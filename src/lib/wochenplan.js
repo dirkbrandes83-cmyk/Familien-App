@@ -39,23 +39,23 @@ export function tagesplan({ date, events, plan, rahmen = [], chores = [], meal, 
   const ganztags = [];
   for (const o of expand(events, date, date)) {
     if (o.ev.kind === 'geburtstag') geburtstage.push(titelAm(o.ev, date));
-    else if (o.ev.all_day || !o.ev.from_time) ganztags.push({ art: 'termin', text: o.ev.title.replace(/^🎈\s*/, ''), ev: o.ev });
-    else slots[slotOf(o.ev.from_time)].push({ art: 'termin', text: o.ev.title.replace(/^🎈\s*/, ''), time: hm(o.ev.from_time), ev: o.ev, idee: o.ev.title.startsWith('🎈') });
+    else if (o.ev.all_day || !o.ev.from_time) ganztags.push({ art: 'termin', text: o.ev.title.replace(/^🎈\s*/, ''), ev: o.ev, dabei: o.ev.who });
+    else slots[slotOf(o.ev.from_time)].push({ art: 'termin', text: o.ev.title.replace(/^🎈\s*/, ''), time: hm(o.ev.from_time), ev: o.ev, idee: o.ev.title.startsWith('🎈'), dabei: o.ev.who });
   }
   const wd = weekday(date);
   for (const r of rahmen.filter((x) => x.tag === wd)) {
-    slots[r.slot].push({ art: 'baustein', text: r.who ? `${r.text} ${name(r.who) ?? ''}`.trim() : r.text, fest: true, rahmen: r });
+    slots[r.slot].push({ art: 'baustein', text: r.who ? `${r.text} ${name(r.who) ?? ''}`.trim() : r.text, fest: true, rahmen: r, dabei: r.dabei ?? (r.who ? [r.who] : ['all']) });
   }
   for (const p of plan.filter((x) => x.on_date === date)) {
     if (p.todo_ref) {
       const t = todos.get(p.todo_ref);
-      if (t) slots[p.slot].push({ art: 'todo', text: t.text, done: t.done, aufgabe: t, row: p });
+      if (t) slots[p.slot].push({ art: 'todo', text: t.text, done: t.done, aufgabe: t, row: p, dabei: t.owner ? [t.owner] : [] });
       continue;
     }
-    slots[p.slot].push({ art: 'baustein', text: p.who ? `${p.text} ${name(p.who) ?? ''}`.trim() : p.text, row: p });
+    slots[p.slot].push({ art: 'baustein', text: p.who ? `${p.text} ${name(p.who) ?? ''}`.trim() : p.text, row: p, dabei: p.dabei ?? ['all'] });
   }
   for (const c of chores.filter((x) => (x.weekdays || []).includes(wd))) {
-    slots.morgens.push({ art: 'aemtchen', text: c.title, who: c.who });
+    slots.morgens.push({ art: 'aemtchen', text: c.title, who: c.who, dabei: [c.who] });
   }
   if (meal) slots.abend.push({ art: 'essen', text: meal });
   for (const a of ABSCHNITTE) slots[a.id].sort((x, y) => String(x.time ?? '').localeCompare(String(y.time ?? '')));
