@@ -31,7 +31,8 @@ export const aktuellerAbschnitt = (stunde) => ABSCHNITTE.find((a) => stunde < a.
 
 // Was steht an einem Tag in welchem Abschnitt?
 // rahmen: feste Bausteine jedes Wochenende [{ tag: 5|6, slot, text, who }]
-export function tagesplan({ date, events, plan, rahmen = [], chores = [], meal, members = [] }) {
+// todos: Map Aufgaben-Schlüssel → { text, done } (für ins Wochenende geschobene To-dos)
+export function tagesplan({ date, events, plan, rahmen = [], chores = [], meal, members = [], todos = new Map() }) {
   const name = (id) => members.find((m) => m.id === id)?.name;
   const slots = Object.fromEntries(ABSCHNITTE.map((a) => [a.id, []]));
   const geburtstage = [];
@@ -46,6 +47,11 @@ export function tagesplan({ date, events, plan, rahmen = [], chores = [], meal, 
     slots[r.slot].push({ art: 'baustein', text: r.who ? `${r.text} ${name(r.who) ?? ''}`.trim() : r.text, fest: true, rahmen: r });
   }
   for (const p of plan.filter((x) => x.on_date === date)) {
+    if (p.todo_ref) {
+      const t = todos.get(p.todo_ref);
+      if (t) slots[p.slot].push({ art: 'todo', text: t.text, done: t.done, aufgabe: t, row: p });
+      continue;
+    }
     slots[p.slot].push({ art: 'baustein', text: p.who ? `${p.text} ${name(p.who) ?? ''}`.trim() : p.text, row: p });
   }
   for (const c of chores.filter((x) => (x.weekdays || []).includes(wd))) {

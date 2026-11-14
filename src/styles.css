@@ -544,3 +544,13 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .st-card.wp .wp-label { font-size: 17px; }
 .st-card.wp .wp-label span { font-size: 13px; }
 .st-card.wp .wp-frei { font-size: 16px; padding: 8px 12px; }
+
+.wp-item.todo { font-weight: 600; }
+.wp-item.todo.done span { text-decoration: line-through; color: var(--muted); font-weight: 400; }
+.wp-check { border: none; background: none; padding: 0; display: inline-flex; flex: none; }
+.wp-check .check { width: 22px; height: 22px; }
+.wp-todos { display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow-y: auto; }
+.wp-todo { display: flex; align-items: center; gap: 8px; text-align: left; border: 1px solid var(--line); background: var(--card); border-radius: 12px; padding: 10px 12px; font-size: 15px; font-weight: 600; color: var(--ink); }
+.wp-todo span:first-of-type { flex: 1; min-width: 0; }
+.wp-todo .small { font-weight: 400; }
+.wp-txt { border: none; background: none; padding: 0; text-align: left; font: inherit; color: inherit; text-decoration: underline dotted #A8A29E; text-underline-offset: 3px; cursor: pointer; }

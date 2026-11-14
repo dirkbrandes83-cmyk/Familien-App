@@ -3,8 +3,9 @@
 // Auf dem iPad sehen die Kinder, was jetzt dran ist und was danach kommt.
 import { useState } from 'react';
 import { supabase, run } from '../data.js';
-import { Icon } from '../ui.jsx';
-import { WDL, weekday } from '../lib/dates.js';
+import { Icon, Check } from '../ui.jsx';
+import { aufgaben, offen } from '../lib/aufgaben.js';
+import { WDL, weekday, shortLabel } from '../lib/dates.js';
 import { ABSCHNITTE, BAUSTEINE, bausteinIcon, tagesplan, aktuellerAbschnitt } from '../lib/wochenplan.js';
 import { wetterInfo, nass, rankIdeas } from '../lib/wochenende.js';
 import { useWetter, Overlay, einplanen } from './Wochenende.jsx';
@@ -21,10 +22,12 @@ export default function Wochenplan({ ctx, days, station, onKiste, kompakt }) {
   const [tag, setTag] = useState(days[0]);
   const [add, setAdd] = useState(null);   // { date, slot }
   const [idee, setIdee] = useState(null); // { date, slot }
+  const [move, setMove] = useState(null); // { item, date, slot }
   const wetter = useWetter(ctx);
   const edit = !station;
   const zeigen = station ? [days.includes(tag) ? tag : days[0]] : days;
   const jetzt = aktuellerAbschnitt(new Date().getHours());
+  const todos = new Map(aufgaben(ctx).filter((a) => a.art === 'erledigen' || a.art === 'besorgen').map((a) => [a.key, a]));
 
   return (
     <section className={`${station ? 'st-card' : 'card'} wp`}>
@@ -37,11 +40,12 @@ export default function Wochenplan({ ctx, days, station, onKiste, kompakt }) {
           <button key={d} className={d === zeigen[0] ? 'on' : ''} onClick={() => setTag(d)}>{d === ctx.day ? 'Heute' : WDL[weekday(d)]}</button>
         ))}</div>
       )}
+      {edit && <div className="small">Unterstrichenes antippen zum Verschieben. Mit „+ Baustein“ kommen auch To-dos in einen Abschnitt.</div>}
       <div className={station ? '' : 'wp-days'}>
         {zeigen.map((d) => {
           const p = tagesplan({
             date: d, events: ctx.data.events.rows, plan: ctx.data.wePlan.rows, rahmen: rahmenOf(ctx),
-            chores: ctx.data.chores.rows, meal: mealOf(ctx, d).title, members: ctx.members,
+            chores: ctx.data.chores.rows, meal: mealOf(ctx, d).title, members: ctx.members, todos,
           });
           const w = wetter(d);
           return (
@@ -59,12 +63,24 @@ export default function Wochenplan({ ctx, days, station, onKiste, kompakt }) {
                     <div className="wp-label"><b>{a.label}</b><span>{now ? 'jetzt' : a.zeit}</span></div>
                     <div className="wp-items">
                       {items.map((i, n) => (
+                        i.art === 'todo' ? (
+                          <div key={n} className={`wp-item todo${i.done ? ' done' : ''}`}>
+                            {edit
+                              ? <button className="wp-check" aria-pressed={i.done} aria-label={i.done ? 'Wieder offen' : 'Erledigt'} onClick={() => (i.done ? i.aufgabe.zurueck() : i.aufgabe.erledigen())}><Check on={i.done} /></button>
+                              : <Icon name={i.aufgabe.art === 'besorgen' ? 'bag' : 'todo'} size={18} />}
+                            {edit ? <button className="wp-txt" onClick={() => setMove({ item: i, date: d, slot: a.id })}>{i.text}</button> : <span>{i.text}</span>}
+                            {edit && <button className="wp-x" aria-label={`${i.text} aus dem Plan nehmen`} onClick={() => entfernen(ctx, i.row, i.text)}><Icon name="x" size={14} /></button>}
+                          </div>
+                        ) : (
                         <div key={n} className={`wp-item ${i.art}${i.idee ? ' idee' : ''}`}>
                           <Icon name={i.idee ? 'balloon' : i.art === 'baustein' ? bausteinIcon(i.text) : ICON[i.art]} size={station ? 18 : 16} />
-                          <span>{i.time ? <b>{i.time} </b> : null}{i.art === 'essen' ? `Abendessen: ${i.text}` : i.text}{i.art === 'aemtchen' && ctx.member(i.who) ? <span className="wp-who"> · {ctx.member(i.who).name}</span> : null}</span>
+                          {edit && (i.row || i.rahmen || i.idee)
+                            ? <button className="wp-txt" onClick={() => setMove({ item: i, date: d, slot: a.id })}>{i.time ? <b>{i.time} </b> : null}{i.text}</button>
+                            : <span>{i.time ? <b>{i.time} </b> : null}{i.art === 'essen' ? `Abendessen: ${i.text}` : i.text}{i.art === 'aemtchen' && ctx.member(i.who) ? <span className="wp-who"> · {ctx.member(i.who).name}</span> : null}</span>}
                           {edit && i.row && <button className="wp-x" aria-label={`${i.text} entfernen`} onClick={() => entfernen(ctx, i.row)}><Icon name="x" size={14} /></button>}
                           {edit && i.rahmen && <button className="wp-x" aria-label={`${i.text} nicht mehr jede Woche`} title="jede Woche – entfernen" onClick={() => rahmenWeg(ctx, i.rahmen)}><Icon name="repeat" size={14} /><Icon name="x" size={14} /></button>}
                         </div>
+                        )
                       ))}
                       {p.frei.includes(a.id) && !vorbei && (
                         <button className="wp-frei" onClick={() => setIdee({ date: d, slot: a.id })}><Icon name="dice" size={16} /> frei – Idee wählen</button>
@@ -78,17 +94,52 @@ export default function Wochenplan({ ctx, days, station, onKiste, kompakt }) {
           );
         })}
       </div>
+      {move && <Verschieben ctx={ctx} days={days} {...move} onClose={() => setMove(null)} />}
       {add && <BausteinSheet ctx={ctx} {...add} onClose={() => setAdd(null)} />}
       {idee && <IdeeWaehlen ctx={ctx} station={station} {...idee} regen={nass(wetter(idee.date))} onClose={() => setIdee(null)} />}
     </section>
   );
 }
 
-async function entfernen(ctx, row) {
+async function entfernen(ctx, row, text = row.text) {
   ctx.data.wePlan.local((rows) => rows.filter((x) => x.id !== row.id));
   const ok = await run(supabase.from('we_plan').delete().eq('id', row.id), ctx.fail);
-  if (ok) ctx.say(`${row.text} entfernt`, () => run(supabase.from('we_plan').insert(row), ctx.fail).then(() => ctx.data.wePlan.reload()));
+  if (ok) ctx.say(`${text} entfernt`, () => run(supabase.from('we_plan').insert(row), ctx.fail).then(() => ctx.data.wePlan.reload()));
   else ctx.data.wePlan.reload();
+}
+
+// Baustein, To-do, feste Bausteine und eingeplante Ideen in einen anderen Abschnitt oder Tag schieben
+function Verschieben({ ctx, days, item, date, slot, onClose }) {
+  const [d, setD] = useState(date);
+  const [sl, setSl] = useState(slot);
+  const fest = !!item.rahmen;
+  const ziele = fest ? days.filter((x) => weekday(x) >= 5) : days;
+  const save = async () => {
+    const a = ABSCHNITTE.find((x) => x.id === sl);
+    let ok = true;
+    if (item.row) {
+      ctx.data.wePlan.local((rows) => rows.map((x) => (x.id === item.row.id ? { ...x, on_date: d, slot: sl } : x)));
+      ok = await run(supabase.from('we_plan').update({ on_date: d, slot: sl }).eq('id', item.row.id), ctx.fail);
+      if (!ok) ctx.data.wePlan.reload();
+    } else if (fest) {
+      ok = await rahmenSetzen(ctx, rahmenOf(ctx).map((x) => (x === item.rahmen ? { ...x, tag: weekday(d), slot: sl } : x)));
+    } else if (item.ev) {
+      // eingeplante Idee: Termin verlegen (Uhrzeit = Beginn des Abschnitts)
+      const zeit = a.start || (sl === 'morgens' ? '09:00' : '18:00');
+      ok = await run(supabase.from('events').update({ start_date: d, from_time: zeit, all_day: false }).eq('id', item.ev.id), ctx.fail);
+      ctx.data.events.reload?.();
+    }
+    if (ok) { ctx.say(`${item.text} → ${WDL[weekday(d)]} ${a.label}`); onClose(); }
+  };
+  const on = (x) => (x ? { background: '#0F766E', borderColor: '#0F766E', color: '#fff' } : undefined);
+  return (
+    <Overlay title={`„${item.text}“ verschieben`} onClose={onClose}>
+      {ziele.length > 1 && <div className="field"><span>Tag</span><div className="chips">{ziele.map((x) => <button key={x} className="chip" style={on(d === x)} onClick={() => setD(x)}>{WDL[weekday(x)]}</button>)}</div></div>}
+      <div className="field"><span>Abschnitt</span><div className="chips">{ABSCHNITTE.map((x) => <button key={x.id} className="chip" style={on(sl === x.id)} onClick={() => setSl(x.id)}>{x.label}</button>)}</div></div>
+      {fest && <div className="small" style={{ marginBottom: 10 }}>Das ist ein fester Baustein – er wird für jedes Wochenende verschoben.</div>}
+      <button className="btn" disabled={d === date && sl === slot} onClick={save}>Verschieben</button>
+    </Overlay>
+  );
 }
 
 async function rahmenSetzen(ctx, rahmen) {
@@ -110,6 +161,13 @@ function BausteinSheet({ ctx, date, slot, onClose }) {
   const [immer, setImmer] = useState(false);
   const label = ABSCHNITTE.find((a) => a.id === slot).label;
   const wd = weekday(date);
+  const geplant = new Set(ctx.data.wePlan.rows.map((r) => r.todo_ref).filter(Boolean));
+  const todos = offen(aufgaben(ctx)).filter((a) => (a.art === 'erledigen' || a.art === 'besorgen') && !geplant.has(a.key))
+    .sort((a, b) => String(a.due || '9999').localeCompare(String(b.due || '9999')));
+  const schieben = async (a) => {
+    const ok = await run(supabase.from('we_plan').insert({ on_date: date, slot, text: a.text.slice(0, 120), todo_ref: a.key, created_by: ctx.me.id }), ctx.fail);
+    if (ok) { ctx.data.wePlan.reload(); ctx.say(`${a.text} liegt jetzt am ${WDL[wd]} ${label}`); onClose(); }
+  };
   const t = (b ? b.text : text).trim();
   const ok = t && (!b?.person || who);
   const save = async () => {
@@ -134,6 +192,17 @@ function BausteinSheet({ ctx, date, slot, onClose }) {
       {b?.person && (
         <div className="field"><span>Für wen?</span>
           <div className="chips">{ctx.members.filter((m) => !m.kid).map((m) => <button key={m.id} className="chip" style={who === m.id ? { background: m.color, borderColor: m.color, color: '#fff' } : { borderColor: m.bg, color: m.color }} onClick={() => setWho(m.id)}>{m.name}</button>)}</div>
+        </div>
+      )}
+      {todos.length > 0 && (
+        <div className="field"><span>Oder ein To-do hineinschieben</span>
+          <div className="wp-todos">{todos.map((a) => (
+            <button key={a.key} className="wp-todo" onClick={() => schieben(a)}>
+              <Icon name={a.art === 'besorgen' ? 'bag' : 'todo'} size={16} />
+              <span>{a.text}</span>
+              {a.due && <span className="small">bis {shortLabel(a.due)}</span>}
+            </button>
+          ))}</div>
         </div>
       )}
       <label className="field"><span>Oder eigener Text</span>
