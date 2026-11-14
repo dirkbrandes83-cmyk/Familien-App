@@ -31,7 +31,7 @@ function Notiz({ s, busy, onSave }) {
   if (edit !== null) {
     return (
       <div className="dk-notiz edit">
-        <input className="input" value={edit} onChange={(e) => setEdit(e.target.value)} placeholder="z. B. an Kollegen Peter weitergegeben" maxLength={300} autoFocus
+        <input className="input" value={edit} onChange={(e) => setEdit(e.target.value)} placeholder="z. B. Weitergabe an …" maxLength={300} autoFocus
           onKeyDown={(e) => { if (e.key === 'Enter') { onSave(edit); setEdit(null); } }} />
         <button className="btn small" style={{ width: 'auto' }} disabled={busy} onClick={() => { onSave(edit); setEdit(null); }}>OK</button>
       </div>
@@ -39,7 +39,7 @@ function Notiz({ s, busy, onSave }) {
   }
   return (
     <button className="dk-notiz" onClick={() => setEdit(s.notiz || '')}>
-      <Icon name="pencil" size={15} /> {s.notiz ? <span>{s.notiz}</span> : <span className="small">Notiz hinzufügen (z. B. an wen)</span>}
+      <Icon name="pencil" size={15} /> {s.notiz ? <span>{s.notiz}</span> : <span className="small">Notiz hinzufügen (z. B. Weitergabe an …)</span>}
     </button>
   );
 }
@@ -128,7 +128,7 @@ export function DkListe({ seite, spiele, preis, onAktion, members, onWer, busy }
               <button className="dk-wunschbtn" onClick={() => setOffen({ id: s.id, kat: null })}><Icon name="plus" size={15} /> {s.zuteilung ? 'Ändern' : vorbei ? 'Nachtragen' : 'Eintragen'}</button>
             )}
 
-            {(s.notiz || s.zuteilung?.endsWith('_weiter') || s.wunsch?.endsWith('_weiter')) && (
+            {(s.notiz || s.zuteilung || s.wunsch) && (
               <Notiz s={s} busy={busy} onSave={(text) => onAktion(s, 'notiz', null, text)} />
             )}
 
