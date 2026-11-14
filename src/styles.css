@@ -708,3 +708,7 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .dk-zeile { display: flex; flex-wrap: wrap; gap: 8px; }
 .dk-wunschbtn.an { border-style: solid; border-color: #B91C1C; color: #B91C1C; background: #FEF2F2; }
 .dk-kannnicht { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: #B91C1C; background: #FEF2F2; border-radius: 10px; padding: 6px 10px; }
+.dk-termine { display: flex; flex-direction: column; gap: 4px; border-top: 1px solid var(--line); padding-top: 8px; }
+.dk-termin { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.dk-tzeit { flex: none; min-width: 58px; font-weight: 700; color: var(--muted); display: inline-flex; }
+.dk-ttitel { flex: 1; min-width: 0; }

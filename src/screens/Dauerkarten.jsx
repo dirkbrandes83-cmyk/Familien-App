@@ -2,8 +2,8 @@
 // Eltern-App: Mehr → Dauerkarten. Eika & Jan nutzen dieselbe Liste über einen eigenen Link (?dk=<Schlüssel>).
 import { useEffect, useState } from 'react';
 import { supabase, run, useTable } from '../data.js';
-import { Icon } from '../ui.jsx';
-import { WD } from '../lib/dates.js';
+import { Icon, PersonChips } from '../ui.jsx';
+import { WD, hm, expand, titelAm } from '../lib/dates.js';
 import { KAT, SEITE, BOERSE_MAX, andere, aktion, vorschlaege, kosten, boerseZahl, euro, wunschText } from '../lib/dauerkarten.js';
 
 const FARBE = {
@@ -45,7 +45,8 @@ function Notiz({ s, busy, onSave }) {
 }
 
 // Die Liste – für beide Seiten gleich. onAktion(spiel, was, kat) · onWer nur in der Eltern-App
-export function DkListe({ seite, spiele, preis, onAktion, members, onWer, busy }) {
+// termineAm(datum): bestehende Kalendereinträge an diesem Tag (nur Eltern-App)
+export function DkListe({ seite, spiele, preis, onAktion, members, onWer, busy, termineAm }) {
   const [alle, setAlle] = useState(false);
   const [offen, setOffen] = useState(null); // Spiel, für das gerade ein Wunsch gewählt wird
   const k = kosten(spiele, preis);
@@ -151,6 +152,19 @@ export function DkListe({ seite, spiele, preis, onAktion, members, onWer, busy }
               <Notiz s={s} busy={busy} onSave={(text) => onAktion(s, 'notiz', null, text)} />
             )}
 
+            {termineAm && !vorbei && termineAm(s.datum).length > 0 && (
+              <div className="dk-termine">
+                <span className="small">Außerdem an diesem Tag:</span>
+                {termineAm(s.datum).map((o) => (
+                  <div key={o.ev.id} className="dk-termin">
+                    <span className="dk-tzeit">{o.ev.kind === 'geburtstag' ? <Icon name="cake" size={15} /> : o.ev.all_day ? 'ganztags' : hm(o.ev.from_time)}</span>
+                    <span className="dk-ttitel">{titelAm(o.ev, o.date)}</span>
+                    <PersonChips who={o.ev.who} members={members} />
+                  </div>
+                ))}
+              </div>
+            )}
+
             {onWer && s.zuteilung === 'wir' && (
               <div className="dk-wer">
                 <span className="small">Wer geht? (2 Plätze)</span>
@@ -236,7 +250,8 @@ export default function Dauerkarten({ ctx, onBack }) {
       </section>
       {!dk.loaded ? <div className="empty">Lädt …</div>
         : spiele.length === 0 ? <div className="empty">Die Heimspiele werden morgens um 6 Uhr geholt.</div>
-          : <DkListe seite="wir" spiele={spiele} preis={st.preis} onAktion={onAktion} members={ctx.members} onWer={onWer} busy={busy} />}
+          : <DkListe seite="wir" spiele={spiele} preis={st.preis} onAktion={onAktion} members={ctx.members} onWer={onWer} busy={busy}
+            termineAm={(d) => expand(ctx.data.events.rows.filter((e) => !String(e.ext_uid || '').startsWith('dk:')), d, d)} />}
     </>
   );
 }
