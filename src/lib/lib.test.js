@@ -203,3 +203,21 @@ test('Wochenplan: Abschnitte, Bausteine, freie Zeit', async () => {
   assert.deepEqual(p.frei, []);
   assert.equal(p.slots.abend[0].text, 'Pizza');
 });
+
+test('Dauerkarten: Wunsch, Bestätigen, Börse-Limit, Kosten', async () => {
+  const { aktion, kosten, boerseZahl } = await import('./dauerkarten.js');
+  const sp = Array.from({ length: 8 }, (_, i) => ({ id: `s${i}`, zuteilung: null, wunsch: null, wunsch_von: null }));
+  let r = aktion('wir', sp, sp[0], 'wunsch', 'wir');
+  assert.deepEqual(r.patch, { wunsch: 'wir', wunsch_von: 'wir' });
+  Object.assign(sp[0], r.patch);
+  assert.ok(aktion('wir', sp, sp[0], 'bestaetigen').fehler); // eigener Wunsch nicht selbst bestätigen
+  r = aktion('die', sp, sp[0], 'bestaetigen');
+  assert.deepEqual(r.patch, { zuteilung: 'wir', wunsch: null, wunsch_von: null });
+  for (let i = 1; i <= 5; i++) sp[i].zuteilung = 'boerse';
+  assert.equal(boerseZahl(sp), 5);
+  assert.ok(aktion('die', sp, sp[6], 'wunsch', 'boerse').fehler);
+  Object.assign(sp[0], { zuteilung: 'wir' }); sp[6].zuteilung = 'die_weiter'; sp[7].zuteilung = 'die';
+  const k = kosten(sp, 810);
+  assert.equal(k.zugewiesen, 3); assert.equal(k.wir, 1); assert.equal(k.die, 2);
+  assert.equal(k.proSpiel, 270); assert.equal(k.die_eur, 540);
+});

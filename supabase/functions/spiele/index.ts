@@ -31,6 +31,17 @@ Deno.serve(async () => {
       }
     } catch (e) { fehler.push(`${q.liga}: ${(e as Error).message}`); }
   }
+  // Herren-Bundesliga: alle Heimspiele der Saison für die Dauerkarten (Zuteilung bleibt unangetastet)
+  try {
+    const r = await fetch(`https://api.openligadb.de/getmatchdata/bl1/${saison}`, { signal: AbortSignal.timeout(20000) });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const rows = (await r.json()).filter((m: any) => /werder bremen/i.test(m.team1?.teamName ?? "")).map((m: any) => {
+      const [datum, zeit] = String(m.matchDateTime).split("T");
+      return { id: `bl1-${m.matchID}`, saison, datum, zeit: zeit.slice(0, 5), gegner: m.team2?.teamName ?? "", wett: "Bundesliga" };
+    });
+    if (rows.length) await db.from("dk_spiele").upsert(rows, { onConflict: "id" });
+  } catch (e) { fehler.push(`bl1: ${(e as Error).message}`); }
+
   spiele.sort((a, b) => (a.datum + a.zeit).localeCompare(b.datum + b.zeit));
   // Bei Ausfall der Quelle die alte Liste behalten
   if (spiele.length || !fehler.length) await db.from("settings").upsert({ key: "spiele", value: { stand: jetzt.toISOString(), spiele: spiele.slice(0, 40) } });

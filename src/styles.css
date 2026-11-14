@@ -658,3 +658,37 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .wp-frei.wp-spielvorschlag { color: #047857; border-color: #10B981; background: #ECFDF5; white-space: normal; text-align: left; }
 .wp-label { align-content: start; align-self: start; }
 .wp-label .wp-licon { align-self: start; margin-top: 2px; }
+
+/* Werder-Dauerkarten */
+.dk-setup .dk-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--line); }
+.dk-setup .dk-row:first-of-type { border-top: 0; }
+.dk-preis { display: flex; gap: 6px; align-items: center; }
+.dk-preis .input { width: 110px; }
+.dk-zahlen { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; text-align: center; }
+.dk-zahlen > div { display: flex; flex-direction: column; }
+.dk-zahlen b { font-size: 26px; font-family: 'Bricolage Grotesque', sans-serif; line-height: 1.1; }
+.dk-zahlen span { font-size: 12px; font-weight: 600; }
+.dk-geld { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 3px; font-size: 14px; }
+.dk-hinweis { margin-top: 10px; display: flex; align-items: center; gap: 6px; background: #FEF3C7; color: #92400E; border-radius: 10px; padding: 8px 10px; font-weight: 600; font-size: 14px; }
+.dk-filter { display: flex; gap: 8px; margin: 2px 0; }
+.dk-filter .chip.on { background: #1C1917; color: #fff; border-color: #1C1917; }
+.dk-spiel { display: flex; flex-direction: column; gap: 8px; }
+.dk-spiel.vorbei { opacity: 0.6; }
+.dk-spiel.frage { border: 2px solid #F59E0B; }
+.dk-kopf { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.dk-gegner { font-weight: 700; font-size: 17px; }
+.dk-kat { flex: none; font-size: 12px; font-weight: 700; border-radius: 10px; padding: 4px 9px; text-align: center; max-width: 150px; }
+.dk-kat.offen { border: 1px dashed #A8A29E; color: var(--muted); }
+.dk-wunsch { display: flex; flex-direction: column; gap: 8px; background: #FFFBEB; border-radius: 12px; padding: 10px 12px; font-size: 14px; }
+.dk-wunsch.eigen { background: #F5F5F4; flex-direction: row; align-items: center; justify-content: space-between; }
+.dk-wunsch.eigen .btn { width: auto; flex: none; }
+.dk-knoepfe { display: flex; gap: 8px; }
+.dk-knoepfe .btn { width: auto; }
+.dk-wahl { display: flex; flex-wrap: wrap; gap: 6px; }
+.dk-wahl .chip { font-weight: 700; }
+.dk-wunschbtn { align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; border: 1px dashed #A8A29E; background: none; border-radius: 10px; padding: 6px 12px; font-size: 14px; font-weight: 600; color: var(--muted); }
+.dk-wer { display: flex; flex-direction: column; gap: 4px; border-top: 1px solid var(--line); padding-top: 8px; }
+.dk-gast { max-width: 640px; margin: 0 auto; }
+.dk-gastkopf { display: flex; align-items: center; gap: 10px; padding: 18px 16px 6px; color: #0F766E; }
+.dk-gastkopf h1 { margin: 0; font-size: 24px; color: var(--ink); font-family: 'Bricolage Grotesque', sans-serif; }
+.dk-gast .content { display: flex; flex-direction: column; gap: 12px; padding: 12px 16px 40px; }

@@ -1,3 +1,4 @@
+import { DauerkartenGast } from './screens/Dauerkarten.jsx';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase, useTable, useHomeTables } from './data.js';
 import { Icon, Toast } from './ui.jsx';
@@ -21,7 +22,14 @@ const TABS = [
   ['zuhause', 'Zuhause', 'house'],
 ];
 
+const DK_TOKEN = new URLSearchParams(location.search).get('dk');
+
 export default function App() {
+  if (DK_TOKEN) return <DauerkartenGast token={DK_TOKEN} />;
+  return <AppMitLogin />;
+}
+
+function AppMitLogin() {
   const [session, setSession] = useState(undefined);
   const [recovery, setRecovery] = useState(false);
 

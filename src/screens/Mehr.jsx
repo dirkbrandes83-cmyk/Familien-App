@@ -6,6 +6,7 @@ import { shortLabel, hm } from '../lib/dates.js';
 import Mitteilungen from './Mitteilungen.jsx';
 import Widget from './Widget.jsx';
 import Stundenplan from './Stundenplan.jsx';
+import Dauerkarten from './Dauerkarten.jsx';
 import CheckIn, { checkinSunday } from './CheckIn.jsx';
 import { shortLabel as sl } from '../lib/dates.js';
 
@@ -15,6 +16,7 @@ export default function Mehr({ ctx }) {
   if (page === 'abos') return <Abos ctx={ctx} onBack={() => setPage(null)} />;
   if (page === 'push') return <Mitteilungen ctx={ctx} onBack={() => setPage(null)} />;
   if (page === 'widget') return <Widget ctx={ctx} onBack={() => setPage(null)} />;
+  if (page === 'dauerkarten') return <Dauerkarten ctx={ctx} onBack={() => setPage(null)} />;
   if (page === 'stundenplan') return <Stundenplan ctx={ctx} onBack={() => setPage(null)} />;
   if (page === 'checkins') return <CheckinVerlauf ctx={ctx} onBack={() => setPage(null)} />;
   const backup = async () => {
@@ -33,6 +35,10 @@ export default function Mehr({ ctx }) {
       <section className="card tight">
         <button className="row" style={{ minHeight: 60 }} onClick={() => setPage('checkins')}>
           <span className="row-main"><span style={{ fontWeight: 700 }}>☀️ Sonntags-Check-in</span><span className="sub">Starten und frühere Wochen ansehen</span></span>
+          <Icon name="chev" size={18} />
+        </button>
+        <button className="row" style={{ minHeight: 60 }} onClick={() => setPage('dauerkarten')}>
+          <span className="row-main"><span style={{ fontWeight: 700 }}>⚽ Werder-Dauerkarten</span><span className="sub">Mit Eika & Jan absprechen, wer wann geht</span></span>
           <Icon name="chev" size={18} />
         </button>
         <button className="row" style={{ minHeight: 60 }} onClick={() => setPage('stundenplan')}>
