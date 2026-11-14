@@ -30,6 +30,8 @@ const PATHS = {
   cancel: <>{DOC}<path d="m9.5 12 5 5m0-5-5 5" /></>,
   euro: <><circle cx="12" cy="12" r="8.5" /><path d="M15.2 8.8a4 4 0 1 0 0 6.4M7.5 11h6M7.5 13.3h6" /></>,
   dots: <><circle cx="6" cy="12" r="1.2" /><circle cx="12" cy="12" r="1.2" /><circle cx="18" cy="12" r="1.2" /></>,
+  moon: <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" />,
+  sunrise: <><path d="M12 3v3M4.9 8.9l1.4 1.4M19.1 8.9l-1.4 1.4M3 17h2M19 17h2M3 21h18" /><path d="M7 17a5 5 0 0 1 10 0" /></>,
   star: <path d="m12 3.5 2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.8l-5.2 2.8 1-5.8-4.3-4.1 5.9-.8z" />,
   home: <><path d="M3.5 11 12 4l8.5 7" /><path d="M5.5 9.5V20h13V9.5" /></>,
   cal: <><rect x="3.5" y="5" width="17" height="15" rx="2" /><path d="M3.5 10h17M8 3v4M16 3v4" /></>,

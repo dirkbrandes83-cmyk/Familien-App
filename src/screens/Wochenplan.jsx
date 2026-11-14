@@ -66,7 +66,7 @@ export default function Wochenplan({ ctx, days, station, onKiste, kompakt, ohneL
     <section className={`${station ? 'st-card' : 'card'} wp`}>
       <div className={station ? 'st-cardhead' : 'card-head'}>
         {station ? <h2>Unser Wochenende</h2> : <div className="card-title">So sieht unser Wochenende aus</div>}
-        {onKiste && <button className={station ? 'btn ghost' : 'btn ghost small'} style={{ width: 'auto' }} onClick={onKiste}>Ideenkiste</button>}
+        {onKiste && <button className={station ? 'btn ghost wp-kiste' : 'btn ghost small'} style={{ width: 'auto' }} onClick={onKiste}>{station && <Icon name="balloon" size={20} />}Ideenkiste</button>}
       </div>
       {station && !kompakt && !nebeneinander && days.length > 1 && (
         <div className="seg st-seg">{days.map((d) => (
@@ -83,7 +83,7 @@ export default function Wochenplan({ ctx, days, station, onKiste, kompakt, ohneL
           const w = wetter(d);
           return (
             <div key={d} className="wp-day">
-              {(!station || nebeneinander) && <div className="wp-dayhead"><b>{d === ctx.day ? `Heute · ${WDL[weekday(d)]}` : WDL[weekday(d)]}</b>{w && <span className="small"><Icon name={wetterInfo(w.code).icon} size={18} /> {w.tmax}°</span>}</div>}
+              {(!station || nebeneinander) && <div className="wp-dayhead"><b>{d === ctx.day ? `Heute · ${WDL[weekday(d)]}` : WDL[weekday(d)]}</b>{w && <span className="wp-wetter"><Icon name={wetterInfo(w.code).icon} size={station ? 26 : 18} /> {w.tmax}°{w.regen >= 40 ? <span className="wp-regen"><Icon name="drop" size={station ? 16 : 13} />{w.regen} %</span> : null}</span>}</div>}
               {p.geburtstage.map((g) => <div key={g} className="wp-bday"><Icon name="cake" size={18} /> {g}</div>)}
               {p.ganztags.map((i) => <div key={i.ev.id} className="wp-allday"><Icon name="cal" size={16} /> {i.text} <Dabei ctx={ctx} ids={i.dabei} big={station} /></div>)}
               {ABSCHNITTE.map((a) => {
@@ -92,9 +92,9 @@ export default function Wochenplan({ ctx, days, station, onKiste, kompakt, ohneL
                 const items = kompakt || ohneListen ? p.slots[a.id].filter((i) => i.art !== 'aemtchen' && i.art !== 'essen') : p.slots[a.id];
                 if (kompakt && vorbei) return null;
                 return (
-                  <div key={a.id} className={`wp-slot${now ? ' now' : ''}${vorbei ? ' past' : ''}`}>
-                    <div className="wp-label"><b>{a.label}</b><span>{now ? 'jetzt' : a.zeit}</span></div>
-                    <div className="wp-items">
+                  <div key={a.id} className={`wp-slot s-${a.id}${now ? ' now' : ''}${vorbei ? ' past' : ''}${station && vorbei ? ' zu' : ''}`}>
+                    <div className="wp-label"><Icon name={a.icon} size={station ? 22 : 18} className="wp-licon" /><b>{a.label}</b><span>{now ? 'jetzt' : vorbei ? 'vorbei' : a.zeit}</span></div>
+                    {!(station && vorbei) && <div className="wp-items">
                       {items.map((i, n) => (
                         i.art === 'todo' ? (
                           <div key={n} className={`wp-item todo${i.done ? ' done' : ''}`}>
@@ -120,8 +120,8 @@ export default function Wochenplan({ ctx, days, station, onKiste, kompakt, ohneL
                       {/* ein Knopf pro Abschnitt: Eltern planen alles (Baustein, To-do, Idee), Kinder wählen eine Idee */}
                       {edit
                         ? <button className={p.frei.includes(a.id) && !vorbei ? 'wp-frei' : 'wp-add'} onClick={() => setAdd({ date: d, slot: a.id })} aria-label={`${a.label} planen`}><Icon name="plus" size={14} /> {p.frei.includes(a.id) && !vorbei ? 'frei – planen' : 'Hinzufügen'}</button>
-                        : p.frei.includes(a.id) && !vorbei && <button className="wp-frei" onClick={() => setIdee({ date: d, slot: a.id })}><Icon name="dice" size={16} /> frei – Idee wählen</button>}
-                    </div>
+                        : p.frei.includes(a.id) && !vorbei && <button className="wp-frei" onClick={() => setIdee({ date: d, slot: a.id })}><Icon name="dice" size={18} /> frei – Idee wählen</button>}
+                    </div>}
                   </div>
                 );
               })}

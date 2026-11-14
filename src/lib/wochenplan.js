@@ -3,10 +3,10 @@
 import { expand, hm, weekday, titelAm } from './dates.js';
 
 export const ABSCHNITTE = [
-  { id: 'morgens', label: 'Morgens', zeit: 'bis 10 Uhr', bis: 10 },
-  { id: 'vormittag', label: 'Vormittag', zeit: '10–13 Uhr', bis: 13, start: '10:00' },
-  { id: 'nachmittag', label: 'Nachmittag', zeit: '13–18 Uhr', bis: 18, start: '14:00' },
-  { id: 'abend', label: 'Abend', zeit: 'ab 18 Uhr', bis: 24 },
+  { id: 'morgens', label: 'Morgens', zeit: 'bis 10 Uhr', bis: 10, icon: 'sunrise' },
+  { id: 'vormittag', label: 'Vormittag', zeit: '10–13 Uhr', bis: 13, start: '10:00', icon: 'sun' },
+  { id: 'nachmittag', label: 'Nachmittag', zeit: '13–18 Uhr', bis: 18, start: '14:00', icon: 'partsun' },
+  { id: 'abend', label: 'Abend', zeit: 'ab 18 Uhr', bis: 24, icon: 'moon' },
 ];
 
 // Bausteine, die Eltern in einen Abschnitt legen können. „Auszeit für“ braucht eine Person.

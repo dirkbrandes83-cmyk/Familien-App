@@ -28,7 +28,7 @@ export function Alle({ ctx, openIstAlle, openKiste }) {
   // Wochenende (bis Sonntag 17 Uhr): der Plan groß, daneben klein Ämtchen, Essen, Einkauf. Einpacken kommt Sonntagabend wieder.
   if (freieZeit(ctx.day, new Date().getHours())) {
     return (
-      <main className="st-grid two we">
+      <main className="st-grid alle3 we">
         <Wochenplan ctx={ctx} station nebeneinander ohneListen days={freieTage(ctx.day)} onKiste={openKiste} />
         <div className="st-col">
           <WerMacht ctx={ctx} />
