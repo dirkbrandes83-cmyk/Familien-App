@@ -124,8 +124,6 @@ export default function Ideenkiste({ ctx, station }) {
         </div>
       )}
 
-      <Heimspiele ctx={ctx} days={days} station={station} />
-
       {toRate.map((l) => (
         <div key={l.id} className="wk-rate">
           <span>Wie war <b>{l.title}</b> am {shortLabel(l.on_date)}?</span>
@@ -157,6 +155,8 @@ export default function Ideenkiste({ ctx, station }) {
       {!me && station && <div className="st-empty">Tippe oben auf deinen Namen, dann kannst du Herzen verteilen.</div>}
 
       <div className="wk-list">
+        {/* Werder-Heimspiel am Wochenende: hervorgehoben als erster Vorschlag */}
+        <Heimspiele ctx={ctx} days={days} station={station} />
         {list.map((i) => (
           <div key={i.id} className="wk-row">
             <div className="wk-main">
