@@ -140,7 +140,8 @@ export function parseIcs(text) {
         warnings.push(`„${e.title}“: Wiederholung (${e.rrule.FREQ || '?'}) nicht übernommen – nur der erste Termin.`);
       } else {
         base.rep = rep;
-        if (rep === 'jährlich' && /geburtstag/i.test(e.title)) base.kind = 'geburtstag';
+        // Geburtstag: ganztägig und jährlich (Klender trägt nur den Namen ein) oder „Geburtstag“ im Titel
+        if (rep === 'jährlich' && (/geburtstag/i.test(e.title) || (base.all_day && !/(hochzeit|jahrestag|todestag|weihnacht|silvester|feiertag)/i.test(e.title)))) base.kind = 'geburtstag';
         if (e.rrule.UNTIL) base.rep_until = parseDate(e.rrule.UNTIL)?.date ?? null;
         if (e.rrule.COUNT) {
           const c = Number(e.rrule.COUNT) - 1;

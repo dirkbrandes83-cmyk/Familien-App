@@ -166,3 +166,11 @@ test('Kinderseite: Stundenplan am Wochenende erst Sonntag ab 17 Uhr', async () =
   assert.equal(frei('2026-11-15', 17), false);  // Sonntag 17 Uhr → Stundenplan
   assert.equal(frei('2026-11-16', 9), false);   // Montag
 });
+
+test('Klender-Geburtstage: ganztägig + jährlich', async () => {
+  const { parseIcs } = await import('./ics.js');
+  const ics = 'BEGIN:VCALENDAR\nBEGIN:VEVENT\nUID:a\nSUMMARY:Rosa\nDTSTART;VALUE=DATE:19851126\nRRULE:FREQ=YEARLY\nEND:VEVENT\nBEGIN:VEVENT\nUID:b\nSUMMARY:Hochzeitstag\nDTSTART;VALUE=DATE:20101010\nRRULE:FREQ=YEARLY\nEND:VEVENT\nEND:VCALENDAR';
+  const ev = parseIcs(ics).events;
+  assert.equal(ev[0].kind, 'geburtstag');
+  assert.notEqual(ev[1].kind, 'geburtstag');
+});
