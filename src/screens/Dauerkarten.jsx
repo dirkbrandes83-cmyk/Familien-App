@@ -22,6 +22,16 @@ function Kat({ k }) {
   return <span className="dk-kat" style={{ background: f.bg, color: f.fg }}>{KAT[k]}</span>;
 }
 
+// Kurzer Kommentar zur eigenen Einschätzung (speichert beim Verlassen des Felds)
+function PraefText({ wert, busy, onSave }) {
+  const [t, setT] = useState(wert);
+  const save = () => { if (t.trim() !== wert) onSave(t); };
+  return (
+    <input className="input dk-ptextin" value={t} maxLength={80} disabled={busy} placeholder="Kommentar (optional), z. B. „nur wenn Emil mitkann“"
+      onChange={(e) => setT(e.target.value)} onBlur={save} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} />
+  );
+}
+
 // Notiz, z. B. an wen weitergegeben
 function Notiz({ s, busy, onSave }) {
   const [edit, setEdit] = useState(null);
@@ -79,8 +89,8 @@ export function DkListe({ seite, spiele, preis, onAktion, members, onWer, busy, 
           <li><b>Option:</b> wir hätten Zeit und würden gehen.</li>
           <li><b>Absage:</b> wir können oder wollen nicht.</li>
           <li>{seite === 'die'
-            ? 'Catrin & Dirk bekommen jede Eintragung als Mitteilung in ihrer App – ihr müsst nicht extra schreiben.'
-            : 'Eintragungen von Eika & Jan kommen bei euch als Mitteilung an. Eika & Jan sehen eure auf ihrer Seite; per WhatsApp könnt ihr ihnen zusätzlich Bescheid geben.'}</li>
+            ? 'Catrin & Dirk bekommen jede Eintragung als Mitteilung in ihrer App – ihr müsst nicht extra schreiben. Über Eintragungen von Catrin & Dirk werdet ihr per WhatsApp informiert.'
+            : 'Eintragungen von Eika & Jan kommen bei euch als Mitteilung an. Eika & Jan werden per WhatsApp über eure Eintragungen informiert – nach jeder Eintragung erscheint dafür ein Knopf.'}</li>
         </ul>
       </details>
       <section className="card dk-stand">
@@ -145,11 +155,13 @@ export function DkListe({ seite, spiele, preis, onAktion, members, onWer, busy, 
                     );
                   })}
                 </div>
+                {s.praef?.[seite] && <PraefText key={`${s.id}-${s.praef[`${seite}_text`] || ''}`} wert={s.praef[`${seite}_text`] || ''} busy={busy} onSave={(t) => onAktion(s, 'praeftext', null, t)} />}
                 <div className="dk-praefzeile">
                   <span className="dk-praefwer">{SEITE[andere(seite)]}:</span>
                   {s.praef?.[andere(seite)]
                     ? <span className={`dk-pchip p-${s.praef[andere(seite)]} an`}><Icon name={PRAEF[s.praef[andere(seite)]].icon} size={14} /> {PRAEF[s.praef[andere(seite)]].label}</span>
                     : <span className="small">noch keine Angabe</span>}
+                  {s.praef?.[`${andere(seite)}_text`] && <span className="dk-ptext">„{s.praef[`${andere(seite)}_text`]}“</span>}
                 </div>
                 {praefHinweis(s.praef) && !s.zuteilung && <div className="dk-praefhinweis">{praefHinweis(s.praef)}</div>}
               </div>

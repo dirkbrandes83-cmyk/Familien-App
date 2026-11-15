@@ -755,3 +755,5 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .dk-hilfe ul { margin: 8px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 14px; line-height: 1.4; }
 .dk-praefzeile.eigen { flex-wrap: nowrap; }
 .dk-praefzeile.eigen .dk-pchip { flex: 1 1 0; justify-content: center; min-width: 0; padding: 6px 6px; white-space: nowrap; }
+.dk-ptextin { font-size: 14px; padding: 7px 10px; min-height: 0; }
+.dk-ptext { font-size: 14px; font-style: italic; color: var(--ink2); }

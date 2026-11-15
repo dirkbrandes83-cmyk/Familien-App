@@ -56,6 +56,7 @@ Deno.serve(async (req) => {
     else if (was === "bestaetigen") text = `Eika & Jan haben euren Wunsch bestätigt: ${KAT[s.wunsch]}`;
     else if (was === "ablehnen") text = "Eika & Jan haben euren Wunsch abgelehnt";
     else if (was === "praef" && r.patch?.praef?.die) text = `Eika & Jan: ${PRAEF[r.patch.praef.die].label} (${PRAEF[r.patch.praef.die].text})`;
+    else if (was === "praeftext" && r.patch?.praef?.die_text) text = `Eika & Jan: „${r.patch.praef.die_text}“`;
     if (text) await benachrichtigen(db, `⚽ ${spiel}`, text, `dk-${s.id}`);
     spiele = await laden();
   }

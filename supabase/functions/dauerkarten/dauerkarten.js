@@ -56,7 +56,14 @@ export function aktion(seite, spiele, s, was, kat, text) {
     // Eigene Einschätzung: Favorit / Option / Absage – nochmal tippen nimmt sie zurück
     if (kat && !PRAEF[kat]) return { fehler: 'Unbekannte Einschätzung' };
     const p = { ...(s.praef || {}) };
-    if (!kat || p[seite] === kat) delete p[seite]; else p[seite] = kat;
+    if (!kat || p[seite] === kat) { delete p[seite]; delete p[`${seite}_text`]; } else p[seite] = kat;
+    return { patch: { praef: p } };
+  }
+  if (was === 'praeftext') {
+    // kurzer Kommentar zur eigenen Einschätzung, z. B. „nur wenn Emil mitkann“
+    const p = { ...(s.praef || {}) };
+    const n = String(text ?? '').trim().slice(0, 80);
+    if (n) p[`${seite}_text`] = n; else delete p[`${seite}_text`];
     return { patch: { praef: p } };
   }
   if (was === 'notiz') {

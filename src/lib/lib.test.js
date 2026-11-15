@@ -239,3 +239,11 @@ test('Dauerkarten: Favorit / Option / Absage', async () => {
   assert.equal(praefHinweis({ wir: 'favorit', die: 'favorit' }), 'Beide haben es als Favorit – bitte absprechen');
   assert.equal(praefHinweis({ wir: 'absage', die: 'option' }), 'Vorschlag: Eika & Jan gehen');
 });
+
+test('Dauerkarten: Kommentar zur Einschätzung', async () => {
+  const { aktion } = await import('./dauerkarten.js');
+  const s = { id: 'x', praef: { wir: 'option' } };
+  assert.deepEqual(aktion('wir', [s], s, 'praeftext', null, ' nur bis 18 Uhr ').patch, { praef: { wir: 'option', wir_text: 'nur bis 18 Uhr' } });
+  const s2 = { id: 'y', praef: { wir: 'option', wir_text: 'x' } };
+  assert.deepEqual(aktion('wir', [s2], s2, 'praef', 'option').patch, { praef: {} });
+});
