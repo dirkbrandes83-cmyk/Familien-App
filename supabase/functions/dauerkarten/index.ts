@@ -17,7 +17,7 @@ Deno.serve(async (req) => {
 
   const jetzt = new Date();
   const saison = jetzt.getMonth() >= 6 ? jetzt.getFullYear() : jetzt.getFullYear() - 1;
-  const laden = async () => (await db.from("dk_spiele").select("id, datum, zeit, gegner, wett, zuteilung, wunsch, wunsch_von, notiz, kann_nicht").eq("saison", saison).order("datum")).data ?? [];
+  const laden = async () => (await db.from("dk_spiele").select("id, datum, zeit, gegner, wett, zuteilung, wunsch, wunsch_von, notiz, praef").eq("saison", saison).order("datum")).data ?? [];
   let spiele = await laden();
 
   if (req.method === "POST") {

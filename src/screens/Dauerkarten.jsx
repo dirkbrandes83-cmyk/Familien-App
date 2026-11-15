@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase, run, useTable } from '../data.js';
 import { Icon, PersonChips } from '../ui.jsx';
 import { WD, hm, expand, titelAm } from '../lib/dates.js';
-import { KAT, SEITE, BOERSE_MAX, andere, aktion, vorschlaege, kosten, boerseZahl, euro, wunschText } from '../lib/dauerkarten.js';
+import { KAT, SEITE, BOERSE_MAX, andere, aktion, vorschlaege, kosten, boerseZahl, euro, wunschText, PRAEF, praefHinweis } from '../lib/dauerkarten.js';
 
 const FARBE = {
   wir: { bg: '#CCFBF1', fg: '#0F766E' },
@@ -121,12 +121,26 @@ export function DkListe({ seite, spiele, preis, onAktion, members, onWer, busy, 
               <Kat k={s.zuteilung} />
             </div>
 
-            {(s.kann_nicht || []).length > 0 && (
-              <div className="dk-kannnicht">
-                <Icon name="x" size={15} />
-                {s.kann_nicht.length === 2 ? 'Beide können nicht – weitergeben oder Ticketbörse?'
-                  : s.kann_nicht.includes(seite) ? `Ihr könnt nicht – ${SEITE[andere(seite)]} sehen das`
-                    : `${SEITE[s.kann_nicht[0]]} können nicht`}
+            {/* Einschätzungen beider Seiten: Favorit / Option / Absage */}
+            {!vorbei && (
+              <div className="dk-praef">
+                <div className="dk-praefzeile">
+                  <span className="dk-praefwer">Ihr:</span>
+                  {Object.entries(PRAEF).map(([k2, p]) => {
+                    const an = s.praef?.[seite] === k2;
+                    return (
+                      <button key={k2} className={`dk-pchip p-${k2}${an ? ' an' : ''}`} aria-pressed={an} disabled={busy} title={p.text}
+                        onClick={() => onAktion(s, 'praef', k2)}><Icon name={p.icon} size={14} /> {p.label}</button>
+                    );
+                  })}
+                </div>
+                <div className="dk-praefzeile">
+                  <span className="dk-praefwer">{SEITE[andere(seite)]}:</span>
+                  {s.praef?.[andere(seite)]
+                    ? <span className={`dk-pchip p-${s.praef[andere(seite)]} an`}><Icon name={PRAEF[s.praef[andere(seite)]].icon} size={14} /> {PRAEF[s.praef[andere(seite)]].label}</span>
+                    : <span className="small">noch keine Angabe</span>}
+                </div>
+                {praefHinweis(s.praef) && !s.zuteilung && <div className="dk-praefhinweis">{praefHinweis(s.praef)}</div>}
               </div>
             )}
             {fremder && (
@@ -185,11 +199,6 @@ export function DkListe({ seite, spiele, preis, onAktion, members, onWer, busy, 
             })() : (
               <div className="dk-zeile">
                 <button className="dk-wunschbtn" onClick={() => setOffen({ id: s.id, paar: null, art: null })}><Icon name="plus" size={15} /> {s.zuteilung ? 'Ändern' : vorbei ? 'Nachtragen' : 'Eintragen'}</button>
-                {!vorbei && (
-                  <button className={`dk-wunschbtn${(s.kann_nicht || []).includes(seite) ? ' an' : ''}`} disabled={busy} aria-pressed={(s.kann_nicht || []).includes(seite)} onClick={() => onAktion(s, 'kannnicht')}>
-                    {(s.kann_nicht || []).includes(seite) ? 'Doch, wir können' : 'Wir können nicht'}
-                  </button>
-                )}
               </div>
             )}
 

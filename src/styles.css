@@ -737,3 +737,13 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .dk-tab td i { display: inline-block; width: 10px; height: 10px; border-radius: 5px; margin-right: 8px; vertical-align: 1px; }
 .dk-tab tr.offen td { color: var(--muted); }
 .dk-tab tr.summe td { border-bottom: 0; border-top: 2px solid var(--ink); font-weight: 800; }
+
+/* Einschätzung: Favorit / Option / Absage */
+.dk-praef { display: flex; flex-direction: column; gap: 6px; }
+.dk-praefzeile { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.dk-praefwer { font-size: 13px; font-weight: 700; color: var(--muted); min-width: 30px; }
+.dk-pchip { display: inline-flex; align-items: center; gap: 4px; border: 1.5px solid var(--line); background: #fff; border-radius: 14px; padding: 5px 11px; font-size: 14px; font-weight: 700; color: var(--muted); }
+.dk-pchip.p-favorit.an { background: #FEF3C7; border-color: #D97706; color: #92400E; }
+.dk-pchip.p-option.an { background: #DCFCE7; border-color: #16A34A; color: #14532D; }
+.dk-pchip.p-absage.an { background: #FEE2E2; border-color: #DC2626; color: #991B1B; }
+.dk-praefhinweis { font-size: 14px; font-weight: 700; color: #92400E; background: #FFFBEB; border-radius: 10px; padding: 6px 10px; }

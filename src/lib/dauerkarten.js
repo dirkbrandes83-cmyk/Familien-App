@@ -15,6 +15,24 @@ export const partei = (k) => (k === 'wir' || k === 'wir_weiter' ? 'wir' : k === 
 // Werder-Regel (ATGB 2026/27): höchstens 5 Spiele pro Saison in die Ticketbörse
 export const BOERSE_MAX = 5;
 
+// Einschätzung jeder Seite pro Spiel
+export const PRAEF = {
+  favorit: { label: 'Favorit', text: 'würden gerne hingehen', icon: 'star' },
+  option: { label: 'Option', text: 'hätten Zeit und würden gehen', icon: 'check' },
+  absage: { label: 'Absage', text: 'können/wollen nicht', icon: 'x' },
+};
+// Hinweis aus beiden Einschätzungen
+export function praefHinweis(praef = {}) {
+  const w = praef.wir, d = praef.die;
+  if (w === 'absage' && d === 'absage') return 'Beide sagen ab – weitergeben oder Ticketbörse?';
+  if (w === 'favorit' && d === 'favorit') return 'Beide haben es als Favorit – bitte absprechen';
+  if (w === 'favorit' && d !== 'favorit') return 'Vorschlag: Catrin & Dirk gehen';
+  if (d === 'favorit' && w !== 'favorit') return 'Vorschlag: Eika & Jan gehen';
+  if (w === 'option' && d === 'absage') return 'Vorschlag: Catrin & Dirk gehen';
+  if (d === 'option' && w === 'absage') return 'Vorschlag: Eika & Jan gehen';
+  return null;
+}
+
 export function boerseZahl(spiele) {
   return spiele.filter((s) => s.zuteilung === 'boerse' || (s.wunsch === 'boerse' && s.zuteilung !== 'boerse')).length;
 }
@@ -34,10 +52,12 @@ export function aktion(seite, spiele, s, was, kat, text) {
     // festlegen: ohne Rückfrage (z. B. wenn es schon abgesprochen ist)
     return { patch: was === 'festlegen' ? { zuteilung: kat, wunsch: null, wunsch_von: null } : { wunsch: kat, wunsch_von: seite } };
   }
-  if (was === 'kannnicht') {
-    // „Wir können nicht“ an- und ausschalten – Info für die andere Seite
-    const k = s.kann_nicht || [];
-    return { patch: { kann_nicht: k.includes(seite) ? k.filter((x) => x !== seite) : [...k, seite] } };
+  if (was === 'praef') {
+    // Eigene Einschätzung: Favorit / Option / Absage – nochmal tippen nimmt sie zurück
+    if (kat && !PRAEF[kat]) return { fehler: 'Unbekannte Einschätzung' };
+    const p = { ...(s.praef || {}) };
+    if (!kat || p[seite] === kat) delete p[seite]; else p[seite] = kat;
+    return { patch: { praef: p } };
   }
   if (was === 'notiz') {
     const n = String(text ?? '').trim().slice(0, 300);

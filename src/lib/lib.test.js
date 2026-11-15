@@ -231,9 +231,11 @@ test('Dauerkarten: direkt festlegen und Notiz', async () => {
   assert.deepEqual(aktion('die', [s], s, 'notiz', null, '  an Peter ').patch, { notiz: 'an Peter' });
 });
 
-test('Dauerkarten: wir können nicht', async () => {
-  const { aktion } = await import('./dauerkarten.js');
-  const s = { id: 'x', kann_nicht: ['die'] };
-  assert.deepEqual(aktion('wir', [s], s, 'kannnicht').patch, { kann_nicht: ['die', 'wir'] });
-  assert.deepEqual(aktion('die', [s], s, 'kannnicht').patch, { kann_nicht: [] });
+test('Dauerkarten: Favorit / Option / Absage', async () => {
+  const { aktion, praefHinweis } = await import('./dauerkarten.js');
+  const s = { id: 'x', praef: { die: 'absage' } };
+  assert.deepEqual(aktion('wir', [s], s, 'praef', 'favorit').patch, { praef: { die: 'absage', wir: 'favorit' } });
+  assert.deepEqual(aktion('die', [s], s, 'praef', 'absage').patch, { praef: {} }); // nochmal tippen = zurück
+  assert.equal(praefHinweis({ wir: 'favorit', die: 'favorit' }), 'Beide haben es als Favorit – bitte absprechen');
+  assert.equal(praefHinweis({ wir: 'absage', die: 'option' }), 'Vorschlag: Eika & Jan gehen');
 });
