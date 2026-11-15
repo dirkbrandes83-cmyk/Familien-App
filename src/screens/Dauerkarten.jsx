@@ -48,7 +48,16 @@ function waText(s, kat, seite, link) {
   const wann = `${tag(s.datum)}${s.zeit ? ` ${s.zeit} Uhr` : ''}`;
   return `⚽ Werder – ${s.gegner} (${wann}): ${wunschText(seite, kat)}. Bitte kurz bestätigen${link ? `: ${link}` : ' – in der Familien-App unter Werder-Dauerkarten'} 🙂`;
 }
-function WhatsApp({ text, onClose }) {
+function WhatsApp({ text, onClose, seite }) {
+  // Eika & Jan: Catrin & Dirk bekommen eine Mitteilung in ihrer App – keine WhatsApp nötig
+  if (seite === 'die') {
+    return (
+      <div className="dk-wa">
+        <span>Eingetragen. Catrin & Dirk bekommen automatisch eine Mitteilung in ihrer App.</span>
+        <button className="btn ghost small" style={{ width: 'auto', alignSelf: 'flex-start' }} onClick={onClose}>OK</button>
+      </div>
+    );
+  }
   return (
     <div className="dk-wa">
       <span>Wunsch eingetragen. Der anderen Seite Bescheid sagen?</span>
@@ -122,7 +131,7 @@ export function DkListe({ seite, spiele, preis, onAktion, members, onWer, busy, 
             </div>
 
             {/* Einschätzungen beider Seiten: Favorit / Option / Absage */}
-            {!vorbei && (
+            {!vorbei && !s.zuteilung && (
               <div className="dk-praef">
                 <div className="dk-praefzeile">
                   <span className="dk-praefwer">Ihr:</span>
@@ -161,7 +170,7 @@ export function DkListe({ seite, spiele, preis, onAktion, members, onWer, busy, 
                 </div>
               </div>
             )}
-            {wa?.id === s.id && <WhatsApp text={wa.text} onClose={() => setWa(null)} />}
+            {wa?.id === s.id && <WhatsApp text={wa.text} seite={seite} onClose={() => setWa(null)} />}
             {fremder || eigener ? null : offen?.id === s.id ? (() => {
               // Schritt 1: Paar oder Ticketbörse · Schritt 2: gehen selbst oder geben weiter
               const moeglich = vorschlaege(seite, spiele, s);
@@ -333,6 +342,7 @@ export function DauerkartenGast({ token }) {
       <main className="content">
         {fehler && <div className="card" style={{ color: '#B91C1C' }}>{fehler}</div>}
         {!daten && !fehler && <div className="empty">Lädt …</div>}
+        {daten && <div className="dk-gasthinweis"><Icon name="bell" size={16} /> Was ihr hier eintragt, sehen Catrin & Dirk sofort – sie bekommen eine Mitteilung in ihrer App. Ihr müsst ihnen nicht extra schreiben.</div>}
         {daten && <DkListe seite="die" spiele={daten.spiele} preis={daten.preis} onAktion={onAktion} busy={busy} />}
       </main>
     </div>

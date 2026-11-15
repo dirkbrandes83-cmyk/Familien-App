@@ -747,3 +747,5 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .dk-pchip.p-option.an { background: #DCFCE7; border-color: #16A34A; color: #14532D; }
 .dk-pchip.p-absage.an { background: #FEE2E2; border-color: #DC2626; color: #991B1B; }
 .dk-praefhinweis { font-size: 14px; font-weight: 700; color: #92400E; background: #FFFBEB; border-radius: 10px; padding: 6px 10px; }
+.dk-gasthinweis { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; background: #ECFDF5; color: #065F46; border-radius: 12px; padding: 10px 12px; font-weight: 600; }
+.dk-gasthinweis svg { flex: none; margin-top: 2px; }
