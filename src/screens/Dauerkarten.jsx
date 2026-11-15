@@ -80,6 +80,16 @@ export function DkListe({ seite, spiele, preis, onAktion, members, onWer, busy, 
   const vorbeiOffen = spiele.filter((s) => s.datum < heute() && !s.zuteilung && !s.wunsch).length;
   return (
     <>
+      <details className="card dk-hilfe">
+        <summary><Icon name="info" size={16} /> So funktioniert’s</summary>
+        <ol>
+          <li><b>Einschätzen:</b> Bei offenen Spielen gibt jede Seite an: ⭐ Favorit (würden gerne gehen), ✓ Option (hätten Zeit), ✕ Absage. Daraus entsteht ein Vorschlag.</li>
+          <li><b>Vergeben:</b> „Eintragen“ → Paar oder Ticketbörse → „gehen selbst“ oder „geben weiter“. Schon abgesprochen? „Festlegen“. Sonst „Als Wunsch senden“ – die andere Seite bestätigt.</li>
+          <li><b>Farben:</b> türkis = Catrin & Dirk, orange = Eika & Jan, gestrichelt = weitergegeben, violett = Ticketbörse (höchstens {BOERSE_MAX}× pro Saison).</li>
+          <li><b>Kosten:</b> Gesamtpreis ÷ alle Heimspiele. Jede Seite zahlt ihre Spiele, auch weitergegebene; Ticketbörse-Spiele zählen für Eika & Jan.</li>
+          <li><b>Benachrichtigung:</b> {seite === 'die' ? 'Catrin & Dirk bekommen bei jeder Eintragung eine Mitteilung in ihrer App – ihr müsst nicht extra schreiben.' : 'Trägt ihr einen Wunsch ein, könnt ihr Eika & Jan per WhatsApp Bescheid geben. Ihre Eintragungen kommen bei euch als Mitteilung an.'}</li>
+        </ol>
+      </details>
       <section className="card dk-stand">
         <div className="dk-zahlen">
           <div style={{ color: FARBE.wir.fg }}><b>{k.wir}</b><span>Catrin & Dirk</span></div>
