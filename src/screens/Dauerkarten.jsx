@@ -43,24 +43,16 @@ function Notiz({ s, busy, onSave }) {
 
 // Die Liste – für beide Seiten gleich. onAktion(spiel, was, kat) · onWer nur in der Eltern-App
 // termineAm(datum): bestehende Kalendereinträge an diesem Tag (nur Eltern-App)
-// WhatsApp-Nachricht zum Wunsch (öffnet WhatsApp, dort die Gruppe auswählen)
-function waText(s, kat, seite, link) {
+// WhatsApp-Nachricht für Eika & Jan (öffnet WhatsApp, dort die Gruppe auswählen)
+function waText(s, was, link) {
   const wann = `${tag(s.datum)}${s.zeit ? ` ${s.zeit} Uhr` : ''}`;
-  return `⚽ Werder – ${s.gegner} (${wann}): ${wunschText(seite, kat)}. Bitte kurz bestätigen${link ? `: ${link}` : ' – in der Familien-App unter Werder-Dauerkarten'} 🙂`;
+  return `⚽ Werder – ${s.gegner} (${wann}): ${was}${link ? ` – ${link}` : ''}`;
 }
-function WhatsApp({ text, onClose, seite }) {
-  // Eika & Jan: Catrin & Dirk bekommen eine Mitteilung in ihrer App – keine WhatsApp nötig
-  if (seite === 'die') {
-    return (
-      <div className="dk-wa">
-        <span>Eingetragen. Catrin & Dirk bekommen automatisch eine Mitteilung in ihrer App.</span>
-        <button className="btn ghost small" style={{ width: 'auto', alignSelf: 'flex-start' }} onClick={onClose}>OK</button>
-      </div>
-    );
-  }
+// Nur in der Eltern-App: Eika & Jan Bescheid geben (sie bekommen keine Mitteilung)
+function WhatsApp({ text, onClose }) {
   return (
     <div className="dk-wa">
-      <span>Wunsch eingetragen. Der anderen Seite Bescheid sagen?</span>
+      <span>Eika & Jan Bescheid sagen?</span>
       <div className="dk-knoepfe">
         <a className="btn small dk-wabtn" href={`https://wa.me/?text=${encodeURIComponent(text)}`} target="_blank" rel="noreferrer" onClick={onClose}>In WhatsApp teilen</a>
         <button className="btn ghost small" onClick={onClose}>Nein danke</button>
@@ -83,7 +75,12 @@ export function DkListe({ seite, spiele, preis, onAktion, members, onWer, busy, 
       <details className="card dk-hilfe">
         <summary><Icon name="info" size={16} /> So funktioniert’s</summary>
         <ul>
-          <li>„Festlegen“ gilt sofort, einen Wunsch muss die andere Seite bestätigen.</li>
+          <li><b>Favorit:</b> wir würden gerne hingehen.</li>
+          <li><b>Option:</b> wir hätten Zeit und würden gehen.</li>
+          <li><b>Absage:</b> wir können oder wollen nicht.</li>
+          <li>{seite === 'die'
+            ? 'Catrin & Dirk bekommen jede Eintragung als Mitteilung in ihrer App – ihr müsst nicht extra schreiben.'
+            : 'Eintragungen von Eika & Jan kommen bei euch als Mitteilung an. Eika & Jan sehen eure auf ihrer Seite; per WhatsApp könnt ihr ihnen zusätzlich Bescheid geben.'}</li>
         </ul>
       </details>
       <section className="card dk-stand">
@@ -144,7 +141,7 @@ export function DkListe({ seite, spiele, preis, onAktion, members, onWer, busy, 
                     const an = s.praef?.[seite] === k2;
                     return (
                       <button key={k2} className={`dk-pchip p-${k2}${an ? ' an' : ''}`} aria-pressed={an} disabled={busy} title={p.text}
-                        onClick={() => onAktion(s, 'praef', k2)}><Icon name={p.icon} size={14} /> {p.label}</button>
+                        onClick={() => { onAktion(s, 'praef', k2); if (seite === 'wir' && !an) setWa({ id: s.id, text: waText(s, `Catrin & Dirk: ${p.label} (${p.text})`, teilLink) }); }}><Icon name={p.icon} size={14} /> {p.label}</button>
                     );
                   })}
                 </div>
@@ -175,7 +172,7 @@ export function DkListe({ seite, spiele, preis, onAktion, members, onWer, busy, 
                 </div>
               </div>
             )}
-            {wa?.id === s.id && <WhatsApp text={wa.text} seite={seite} onClose={() => setWa(null)} />}
+            {seite === 'wir' && wa?.id === s.id && <WhatsApp text={wa.text} onClose={() => setWa(null)} />}
             {fremder || eigener ? null : offen?.id === s.id ? (() => {
               // Schritt 1: Paar oder Ticketbörse · Schritt 2: gehen selbst oder geben weiter
               const moeglich = vorschlaege(seite, spiele, s);
@@ -203,11 +200,9 @@ export function DkListe({ seite, spiele, preis, onAktion, members, onWer, busy, 
                     </div>
                   )}
                   <div className="dk-knoepfe">
-                    <button className="btn small" disabled={busy || !kat || gleich} onClick={() => { onAktion(s, 'festlegen', kat); setOffen(null); }}><Icon name="check" size={16} /> Festlegen</button>
-                    <button className="btn ghost small" disabled={busy || !kat || gleich} onClick={() => { onAktion(s, 'wunsch', kat); setOffen(null); setWa({ id: s.id, text: waText(s, kat, seite, teilLink) }); }}>Als Wunsch senden</button>
+                    <button className="btn small" disabled={busy || !kat || gleich} onClick={() => { onAktion(s, 'festlegen', kat); setOffen(null); if (seite === 'wir') setWa({ id: s.id, text: waText(s, `vergeben an ${KAT[kat]}`, teilLink) }); }}><Icon name="check" size={16} /> Festlegen</button>
                     <button className="btn ghost small" onClick={() => setOffen(null)}>Abbrechen</button>
                   </div>
-                  <div className="small">„Festlegen“, wenn ihr euch schon abgesprochen habt – sonst bestätigt {SEITE[andere(seite)]} den Wunsch.</div>
                 </div>
               );
             })() : (
@@ -347,7 +342,6 @@ export function DauerkartenGast({ token }) {
       <main className="content">
         {fehler && <div className="card" style={{ color: '#B91C1C' }}>{fehler}</div>}
         {!daten && !fehler && <div className="empty">Lädt …</div>}
-        {daten && <div className="dk-gasthinweis"><Icon name="bell" size={16} /> Was ihr hier eintragt, sehen Catrin & Dirk sofort – sie bekommen eine Mitteilung in ihrer App. Ihr müsst ihnen nicht extra schreiben.</div>}
         {daten && <DkListe seite="die" spiele={daten.spiele} preis={daten.preis} onAktion={onAktion} busy={busy} />}
       </main>
     </div>
