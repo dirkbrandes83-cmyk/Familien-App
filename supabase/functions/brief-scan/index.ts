@@ -1,4 +1,5 @@
 // Elternbrief-Scan: Foto oder PDF → Termine, Mitbringen, Fristen (Vorschläge).
+// art "wunschzettel": Foto eines (Kinder-)Wunschzettels → Liste der Wünsche.
 // Das Bild wird nur an die KI geschickt und nirgends gespeichert.
 // Benötigt das Secret ANTHROPIC_API_KEY (Supabase › Edge Functions › Secrets).
 import { createClient } from "jsr:@supabase/supabase-js@2";
@@ -16,7 +17,7 @@ function berlinToday() {
 }
 
 const PROMPT = (day: string, wd: string) => `Du liest einen Elternbrief oder eine Schul-/Kita-Mitteilung für eine Familie in Bremen aus.
-Heute ist ${wd}, der ${day}. Kinder: Jonte (10 Jahre) und Emil (8 Jahre). Eltern: Catrin und Dirk.
+Heute ist ${wd}, der ${day}. Kinder: Emil (10 Jahre, Klasse 5a) und Jonte (8 Jahre, Klasse 2c). Eltern: Catrin und Dirk.
 
 Gib NUR ein JSON-Objekt zurück, ohne weiteren Text, in genau dieser Form:
 {
@@ -33,6 +34,20 @@ Regeln:
 - Steht ein Kindername oder eine Klasse nicht im Brief, setze "unklar" bzw. "beide".
 - Nichts erfinden: Was nicht im Brief steht, weglassen. Leere Listen sind erlaubt.
 - Mitbringen nur, wenn das Kind an einem bestimmten Tag etwas dabeihaben oder tragen muss (z. B. Geld, Sportzeug, Kostüm).`;
+
+const WUNSCH_PROMPT = `Du liest einen Weihnachts-Wunschzettel einer Familie aus (oft von Kindern gemalt oder geschrieben, mit Rechtschreibfehlern).
+Familie: Kinder Emil (10) und Jonte (8), Eltern Catrin und Dirk.
+
+Gib NUR ein JSON-Objekt zurück, ohne weiteren Text:
+{
+  "fuer": "Name der Person, der der Zettel gehört (z. B. Emil oder Jonte), sonst \"unklar\"",
+  "wuensche": [{"idee": "Wunsch in korrekter Schreibweise, kurz", "hinweis": "Zusatz wie Farbe, Größe, Marke oder null"}]
+}
+Regeln:
+- Jeden einzelnen Wunsch als eigenen Eintrag, in der Reihenfolge auf dem Zettel.
+- Rechtschreibung behutsam korrigieren (z. B. „Leggo“ → „Lego“), aber nichts hinzuerfinden.
+- Gemalte Wünsche nur aufnehmen, wenn klar erkennbar ist, was gemeint ist.
+- Steht kein Name auf dem Zettel, "fuer": "unklar".`;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -59,7 +74,7 @@ Deno.serve(async (req) => {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({ model: MODEL, max_tokens: 2000, messages: [{ role: "user", content: [block, { type: "text", text: PROMPT(day, wd) }] }] }),
+      body: JSON.stringify({ model: MODEL, max_tokens: 2000, messages: [{ role: "user", content: [block, { type: "text", text: body.art === "wunschzettel" ? WUNSCH_PROMPT : PROMPT(day, wd) }] }] }),
       signal: AbortSignal.timeout(90000),
     });
     if (!res.ok) {
@@ -70,10 +85,13 @@ Deno.serve(async (req) => {
     const out = await res.json();
     const text = (out.content ?? []).filter((c: any) => c.type === "text").map((c: any) => c.text).join("");
     const m = text.match(/\{[\s\S]*\}/);
-    if (!m) return json({ error: "Im Brief wurde nichts Lesbares gefunden." }, 422);
+    if (!m) return json({ error: body.art === "wunschzettel" ? "Auf dem Zettel wurde nichts Lesbares gefunden." : "Im Brief wurde nichts Lesbares gefunden." }, 422);
     let parsed;
     try { parsed = JSON.parse(m[0]); } catch { return json({ error: "Die Antwort der KI war unvollständig – bitte nochmal versuchen." }, 502); }
     const clean = (a: unknown) => (Array.isArray(a) ? a : []);
+    if (body.art === "wunschzettel") {
+      return json({ fuer: String(parsed.fuer ?? "unklar"), wuensche: clean(parsed.wuensche).filter((w: any) => w?.idee).map((w: any) => ({ idee: String(w.idee).slice(0, 160), hinweis: w.hinweis ? String(w.hinweis).slice(0, 200) : null })) });
+    }
     return json({
       zusammenfassung: String(parsed.zusammenfassung ?? ""),
       fuer: parsed.fuer ?? "unklar",

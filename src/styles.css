@@ -760,3 +760,18 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 /* noch nicht terminierte Spiele: gegraut */
 .dk-spiel.unterminiert { filter: grayscale(0.85); opacity: 0.7; }
 .dk-spiel.unterminiert .sub { font-style: italic; }
+.gift-vonrow { display: flex; flex-direction: column; padding: 6px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.gift-vonrow span { color: var(--muted); }
+.gift-share { display: flex; flex-direction: column; gap: 8px; }
+.gift-scanlist { display: flex; flex-direction: column; gap: 10px; }
+.gift-scanrow { display: flex; gap: 10px; align-items: flex-start; }
+.gift-scanrow .check-btn { border: none; background: none; padding: 8px 0; }
+.small-input { font-size: 14px; padding: 6px 10px; min-height: 0; color: var(--muted); }
+
+.gift-prio { display: inline-block; margin-right: 6px; font-size: 13px; letter-spacing: -1px; color: #D97706; vertical-align: 1px; }
+.gift-prio.p1 { color: #DC2626; }
+.gift-prio-chip { display: inline-flex; align-items: center; gap: 2px; }
+.gift-prio-chip.on { background: #FEF3C7; border-color: #D97706; color: #92400E; }
+.gift-prio-mini { display: flex; gap: 6px; }
+.gift-prio-mini button { border: 1px solid var(--line); background: #fff; border-radius: 10px; padding: 3px 9px; font-size: 13px; color: #A8A29E; letter-spacing: -1px; }
+.gift-prio-mini button.on { background: #FEF3C7; border-color: #D97706; color: #B45309; }

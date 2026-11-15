@@ -5,7 +5,7 @@ import { shortLabel } from '../lib/dates.js';
 
 // Elternbrief scannen: Foto/PDF → Vorschläge prüfen → übernehmen.
 
-async function fileToPayload(file) {
+export async function fileToPayload(file) {
   if (file.type === 'application/pdf') {
     if (file.size > 8_000_000) throw new Error('Das PDF ist zu groß (max. 8 MB).');
     return { media_type: 'application/pdf', data: await toB64(file) };
