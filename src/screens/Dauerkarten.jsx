@@ -43,7 +43,25 @@ function Notiz({ s, busy, onSave }) {
 
 // Die Liste – für beide Seiten gleich. onAktion(spiel, was, kat) · onWer nur in der Eltern-App
 // termineAm(datum): bestehende Kalendereinträge an diesem Tag (nur Eltern-App)
-export function DkListe({ seite, spiele, preis, onAktion, members, onWer, busy, termineAm }) {
+// WhatsApp-Nachricht zum Wunsch (öffnet WhatsApp, dort die Gruppe auswählen)
+function waText(s, kat, seite, link) {
+  const wann = `${tag(s.datum)}${s.zeit ? ` ${s.zeit} Uhr` : ''}`;
+  return `⚽ Werder – ${s.gegner} (${wann}): ${wunschText(seite, kat)}. Bitte kurz bestätigen${link ? `: ${link}` : ' – in der Familien-App unter Werder-Dauerkarten'} 🙂`;
+}
+function WhatsApp({ text, onClose }) {
+  return (
+    <div className="dk-wa">
+      <span>Wunsch eingetragen. Der anderen Seite Bescheid sagen?</span>
+      <div className="dk-knoepfe">
+        <a className="btn small dk-wabtn" href={`https://wa.me/?text=${encodeURIComponent(text)}`} target="_blank" rel="noreferrer" onClick={onClose}>In WhatsApp teilen</a>
+        <button className="btn ghost small" onClick={onClose}>Nein danke</button>
+      </div>
+    </div>
+  );
+}
+
+export function DkListe({ seite, spiele, preis, onAktion, members, onWer, busy, termineAm, teilLink }) {
+  const [wa, setWa] = useState(null); // { id, text } nach einem Wunsch
   const [alle, setAlle] = useState(false);
   const [offen, setOffen] = useState(null); // Spiel, für das gerade ein Wunsch gewählt wird
   const k = kosten(spiele, preis);
@@ -119,6 +137,7 @@ export function DkListe({ seite, spiele, preis, onAktion, members, onWer, busy, 
                 </div>
               </div>
             )}
+            {wa?.id === s.id && <WhatsApp text={wa.text} onClose={() => setWa(null)} />}
             {fremder || eigener ? null : offen?.id === s.id ? (() => {
               // Schritt 1: Paar oder Ticketbörse · Schritt 2: gehen selbst oder geben weiter
               const moeglich = vorschlaege(seite, spiele, s);
@@ -147,7 +166,7 @@ export function DkListe({ seite, spiele, preis, onAktion, members, onWer, busy, 
                   )}
                   <div className="dk-knoepfe">
                     <button className="btn small" disabled={busy || !kat || gleich} onClick={() => { onAktion(s, 'festlegen', kat); setOffen(null); }}><Icon name="check" size={16} /> Festlegen</button>
-                    <button className="btn ghost small" disabled={busy || !kat || gleich} onClick={() => { onAktion(s, 'wunsch', kat); setOffen(null); }}>Als Wunsch senden</button>
+                    <button className="btn ghost small" disabled={busy || !kat || gleich} onClick={() => { onAktion(s, 'wunsch', kat); setOffen(null); setWa({ id: s.id, text: waText(s, kat, seite, teilLink) }); }}>Als Wunsch senden</button>
                     <button className="btn ghost small" onClick={() => setOffen(null)}>Abbrechen</button>
                   </div>
                   <div className="small">„Festlegen“, wenn ihr euch schon abgesprochen habt – sonst bestätigt {SEITE[andere(seite)]} den Wunsch.</div>
@@ -267,6 +286,7 @@ export default function Dauerkarten({ ctx, onBack }) {
       {!dk.loaded ? <div className="empty">Lädt …</div>
         : spiele.length === 0 ? <div className="empty">Die Heimspiele werden morgens um 6 Uhr geholt.</div>
           : <DkListe seite="wir" spiele={spiele} preis={st.preis} onAktion={onAktion} members={ctx.members} onWer={onWer} busy={busy}
+            teilLink={url}
             termineAm={(d) => expand(ctx.data.events.rows.filter((e) => !String(e.ext_uid || '').startsWith('dk:')), d, d)} />}
     </>
   );

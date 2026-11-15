@@ -725,3 +725,5 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .dk-spiel.frage[class*=" k-"] { outline: 3px solid #F59E0B; outline-offset: 2px; }
 .dk-wahl .chip.dk-paar { font-size: 15px; padding: 8px 14px; }
 .dk-art { padding-left: 4px; }
+.dk-wa { display: flex; flex-direction: column; gap: 8px; background: #DCFCE7; color: #14532D; border-radius: 12px; padding: 10px 12px; font-size: 14px; font-weight: 600; }
+.dk-wabtn { background: #16A34A; border-color: #16A34A; color: #fff; text-decoration: none; width: auto; display: inline-flex; align-items: center; }
