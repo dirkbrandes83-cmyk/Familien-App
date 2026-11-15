@@ -757,3 +757,6 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .dk-praefzeile.eigen .dk-pchip { flex: 1 1 0; justify-content: center; min-width: 0; padding: 6px 6px; white-space: nowrap; }
 .dk-ptextin { font-size: 14px; padding: 7px 10px; min-height: 0; }
 .dk-ptext { font-size: 14px; font-style: italic; color: var(--ink2); }
+/* noch nicht terminierte Spiele: gegraut */
+.dk-spiel.unterminiert { filter: grayscale(0.85); opacity: 0.7; }
+.dk-spiel.unterminiert .sub { font-style: italic; }

@@ -31,13 +31,19 @@ Deno.serve(async () => {
       }
     } catch (e) { fehler.push(`${q.liga}: ${(e as Error).message}`); }
   }
-  // Herren-Bundesliga: alle Heimspiele der Saison für die Dauerkarten (Zuteilung bleibt unangetastet)
+  // Herren-Bundesliga: alle Heimspiele der Saison für die Dauerkarten (Zuteilung bleibt unangetastet).
+  // „terminiert“: Die DFL legt die Anstoßzeiten spieltagweise fest. Ein Spieltag gilt als terminiert, sobald
+  // irgendein Spiel darin seit dem Rahmenspielplan (ältester Stand der Saison) geändert wurde.
   try {
     const r = await fetch(`https://api.openligadb.de/getmatchdata/bl1/${saison}`, { signal: AbortSignal.timeout(20000) });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    const rows = (await r.json()).filter((m: any) => /werder bremen/i.test(m.team1?.teamName ?? "")).map((m: any) => {
+    const alle = await r.json();
+    const basis = Math.min(...alle.map((m: any) => Date.parse(m.lastUpdateDateTime || "") || Infinity));
+    const festeTage = new Set(alle.filter((m: any) => m.matchIsFinished || (Date.parse(m.lastUpdateDateTime || "") || basis) - basis > 2 * 86400000).map((m: any) => m.group?.groupOrderID));
+    const rows = alle.filter((m: any) => /werder bremen/i.test(m.team1?.teamName ?? "")).map((m: any) => {
       const [datum, zeit] = String(m.matchDateTime).split("T");
-      return { id: `bl1-${m.matchID}`, saison, datum, zeit: zeit.slice(0, 5), gegner: m.team2?.teamName ?? "", wett: "Bundesliga" };
+      const terminiert = festeTage.has(m.group?.groupOrderID);
+      return { id: `bl1-${m.matchID}`, saison, datum, zeit: zeit.slice(0, 5), gegner: m.team2?.teamName ?? "", wett: "Bundesliga", terminiert };
     });
     if (rows.length) await db.from("dk_spiele").upsert(rows, { onConflict: "id" });
   } catch (e) { fehler.push(`bl1: ${(e as Error).message}`); }

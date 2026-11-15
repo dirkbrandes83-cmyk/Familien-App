@@ -55,7 +55,7 @@ function Notiz({ s, busy, onSave }) {
 // termineAm(datum): bestehende Kalendereinträge an diesem Tag (nur Eltern-App)
 // WhatsApp-Nachricht für Eika & Jan (öffnet WhatsApp, dort die Gruppe auswählen)
 function waText(s, was, link) {
-  const wann = `${tag(s.datum)}${s.zeit ? ` ${s.zeit} Uhr` : ''}`;
+  const wann = `${tag(s.datum)}${s.terminiert === false ? ', nicht terminiert' : s.zeit ? ` ${s.zeit} Uhr` : ''}`;
   return `⚽ Werder – ${s.gegner} (${wann}): ${was}${link ? ` – ${link}` : ''}`;
 }
 // Nur in der Eltern-App: Eika & Jan Bescheid geben (sie bekommen keine Mitteilung)
@@ -134,11 +134,11 @@ export function DkListe({ seite, spiele, preis, onAktion, members, onWer, busy, 
         const eigener = s.wunsch && s.wunsch_von === seite;
         const fremder = s.wunsch && s.wunsch_von !== seite;
         return (
-          <section key={s.id} className={`card dk-spiel${vorbei ? ' vorbei' : ''}${fremder ? ' frage' : ''}${s.zuteilung ? ` k-${s.zuteilung}` : ''}`}>
+          <section key={s.id} className={`card dk-spiel${vorbei ? ' vorbei' : ''}${fremder ? ' frage' : ''}${s.zuteilung ? ` k-${s.zuteilung}` : ''}${s.terminiert === false ? ' unterminiert' : ''}`}>
             <div className="dk-kopf">
               <div>
                 <div className="dk-gegner">Werder – {s.gegner}</div>
-                <div className="sub">{tag(s.datum)}{s.zeit ? ` · ${s.zeit} Uhr` : ''}{vorbei ? ' · gespielt' : ''}</div>
+                <div className="sub">{tag(s.datum)}{s.terminiert === false ? ' · nicht terminiert' : s.zeit ? ` · ${s.zeit} Uhr` : ''}{vorbei ? ' · gespielt' : ''}</div>
               </div>
               <Kat k={s.zuteilung} />
             </div>
