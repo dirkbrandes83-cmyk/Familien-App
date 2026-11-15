@@ -21,7 +21,10 @@ export function thisChristmasYear() {
 export default function Geschenke({ ctx }) {
   const [jahr, setJahr] = useState(thisChristmasYear);
   const [sheet, setSheet] = useState(null);
-  const all = ctx.data.gifts.rows.filter((g) => g.anlass === 'Weihnachten' && g.jahr === jahr);
+  const jahrAlle = ctx.data.gifts.rows.filter((g) => g.anlass === 'Weihnachten' && g.jahr === jahr);
+  const all = jahrAlle.filter((g) => !g.privat);
+  // Nur für mich: die Datenbank liefert private Einträge ohnehin nur an die Person, die sie angelegt hat
+  const geheim = jahrAlle.filter((g) => g.privat && g.by_who === ctx.me?.id);
 
   // Reihenfolge: Familie zuerst, dann alle anderen alphabetisch
   const memberNames = ctx.members.map((m) => m.name);
@@ -100,6 +103,27 @@ export default function Geschenke({ ctx }) {
           </section>
         );
       })}
+      <section className="card tight gift-geheim">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0 4px' }}>
+          <h3 style={{ margin: 0 }}>🔒 Nur für mich</h3>
+          <span className="small">sieht niemand sonst</span>
+        </div>
+        {geheim.length === 0 && <div className="small" style={{ paddingBottom: 6 }}>Hier planst du Geschenke, die die anderen nicht sehen sollen – z. B. für {ctx.me?.id === 'dirk' ? 'Catrin' : ctx.me?.id === 'catrin' ? 'Dirk' : 'deine Partnerin'}.</div>}
+        {[...geheim].sort((a, b) => (a.prio ?? 9) - (b.prio ?? 9) || a.created_at.localeCompare(b.created_at)).map((g) => (
+          <Swipe key={g.id} onRight={() => step(g)} rightLabel={STATUS[STATUS[g.status].next].label} onLeft={() => del(g)}>
+            <div className="row" style={{ minHeight: 56 }}>
+              <button className="gift-status" onClick={() => step(g)} aria-label={`Status: ${STATUS[g.status].label}, weiter`} data-s={g.status}>
+                <span aria-hidden="true">{STATUS[g.status].icon}</span><span>{STATUS[g.status].label}</span>
+              </button>
+              <button className="row-main" style={{ textAlign: 'left', background: 'none', border: 0, padding: 0, font: 'inherit', color: 'inherit' }} onClick={() => setSheet(g)}>
+                <span className="row-title">{g.prio && <span className={`gift-prio p${g.prio}`}>{PRIO[g.prio].kurz}</span>}{g.idee}</span>
+                <span className="small">{[`für ${g.fuer}`, g.preis ? euro(g.preis) : null, g.notiz || null, g.link ? '🔗 Link' : null].filter(Boolean).join(' · ')}</span>
+              </button>
+            </div>
+          </Swipe>
+        ))}
+        <button className="btn ghost small-btn" style={{ margin: '6px 0 10px' }} onClick={() => setSheet({ privat: true, fuer: ctx.me?.id === 'dirk' ? 'Catrin' : ctx.me?.id === 'catrin' ? 'Dirk' : '' })}>+ geheime Idee</button>
+      </section>
       <div className="small">Nur in der App für Erwachsene – auf dem Familien-iPad nicht sichtbar. Status antippen: Idee → Gekauft → Verpackt. Sterne: ★★★ Herzenswunsch, ★★ wichtig, ★ wäre schön.</div>
       {sheet && <GiftSheet ctx={ctx} gift={sheet} jahr={jahr} names={knownNames} givers={givers} onClose={() => setSheet(null)} />}
       {scan && <WunschScan ctx={ctx} jahr={jahr} names={knownNames} onClose={() => setScan(false)} />}
@@ -221,11 +245,13 @@ function GiftSheet({ ctx, gift, jahr, names, givers, onClose }) {
   const [notiz, setNotiz] = useState(gift.notiz ?? '');
   const [von, setVon] = useState(gift.von ?? '');
   const [prio, setPrio] = useState(gift.prio ?? null);
+  const [privat, setPrivat] = useState(!!gift.privat);
+  const eigenes = !editing || gift.by_who === ctx.me?.id;
   const ok = fuer.trim() && idee.trim();
   const save = async () => {
     if (!ok) return;
     const p = parseFloat(preis.replace(',', '.'));
-    const row = { fuer: fuer.trim(), idee: idee.trim(), preis: Number.isFinite(p) ? p : null, link: link.trim(), notiz: notiz.trim(), von: von.trim() || null, prio };
+    const row = { fuer: fuer.trim(), idee: idee.trim(), preis: Number.isFinite(p) ? p : null, link: link.trim(), notiz: notiz.trim(), von: von.trim() || null, prio, ...(eigenes ? { privat } : {}) };
     const res = editing
       ? await run(supabase.from('gift_ideas').update(row).eq('id', gift.id), ctx.fail)
       : await run(supabase.from('gift_ideas').insert({ ...row, anlass: 'Weihnachten', jahr, by_who: ctx.me.id }), ctx.fail);
@@ -236,7 +262,7 @@ function GiftSheet({ ctx, gift, jahr, names, givers, onClose }) {
     return { id: n, label: n, color: m?.color, bg: m?.bg };
   });
   return (
-    <Sheet title={editing ? 'Geschenk' : 'Geschenkidee'} onClose={onClose}
+    <Sheet title={privat ? '🔒 Geheime Idee' : editing ? 'Geschenk' : 'Geschenkidee'} onClose={onClose}
       actions={<div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <button className="btn" onClick={save} disabled={!ok}>{editing ? 'Speichern' : 'Eintragen'}</button>
         {editing && gift.link && <a className="btn ghost" href={/^https?:\/\//.test(gift.link) ? gift.link : `https://${gift.link}`} target="_blank" rel="noreferrer">Link öffnen</a>}
@@ -256,6 +282,9 @@ function GiftSheet({ ctx, gift, jahr, names, givers, onClose }) {
           <input className="input" type="url" value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://…" />
         </label>
       </div>
+      {eigenes && (
+        <label className="gift-privat"><input type="checkbox" checked={privat} onChange={(e) => setPrivat(e.target.checked)} /> 🔒 Nur für mich sichtbar</label>
+      )}
       <div className="field"><span>Wie wichtig ist der Wunsch?</span>
         <div className="chips">{[1, 2, 3].map((n) => (
           <button key={n} className={`chip gift-prio-chip${prio === n ? ' on' : ''}`} aria-pressed={prio === n} onClick={() => setPrio(prio === n ? null : n)}>

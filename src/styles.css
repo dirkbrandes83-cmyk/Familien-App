@@ -775,3 +775,6 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .gift-prio-mini { display: flex; gap: 6px; }
 .gift-prio-mini button { border: 1px solid var(--line); background: #fff; border-radius: 10px; padding: 3px 9px; font-size: 13px; color: #A8A29E; letter-spacing: -1px; }
 .gift-prio-mini button.on { background: #FEF3C7; border-color: #D97706; color: #B45309; }
+.gift-geheim { border: 2px dashed #A8A29E; background: #FAFAF9; }
+.gift-privat { display: flex; align-items: center; gap: 8px; font-weight: 700; margin-bottom: 12px; }
+.gift-privat input { width: 20px; height: 20px; }
