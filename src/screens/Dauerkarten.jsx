@@ -87,7 +87,7 @@ export function DkListe({ seite, spiele, preis, onAktion, members, onWer, busy, 
         const eigener = s.wunsch && s.wunsch_von === seite;
         const fremder = s.wunsch && s.wunsch_von !== seite;
         return (
-          <section key={s.id} className={`card dk-spiel${vorbei ? ' vorbei' : ''}${fremder ? ' frage' : ''}`}>
+          <section key={s.id} className={`card dk-spiel${vorbei ? ' vorbei' : ''}${fremder ? ' frage' : ''}${s.zuteilung ? ` k-${s.zuteilung}` : ''}`}>
             <div className="dk-kopf">
               <div>
                 <div className="dk-gegner">Werder – {s.gegner}</div>

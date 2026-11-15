@@ -712,3 +712,14 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .dk-termin { display: flex; align-items: center; gap: 8px; font-size: 14px; }
 .dk-tzeit { flex: none; min-width: 58px; font-weight: 700; color: var(--muted); display: inline-flex; }
 .dk-ttitel { flex: 1; min-width: 0; }
+
+/* Vergebene Spiele in der Farbe des Paars: Catrin & Dirk türkis, Eika & Jan orange; weitergegeben heller und gestrichelt, Ticketbörse violett */
+.dk-spiel.k-wir { background: #CCFBF1; border: 2px solid #14B8A6; }
+.dk-spiel.k-wir_weiter { background: #F0FDFA; border: 2px dashed #14B8A6; }
+.dk-spiel.k-die { background: #FFEDD5; border: 2px solid #F97316; }
+.dk-spiel.k-die_weiter { background: #FFF7ED; border: 2px dashed #F97316; }
+.dk-spiel.k-boerse { background: #EDE9FE; border: 2px solid #8B5CF6; }
+.dk-spiel.vorbei[class*=" k-"] { filter: saturate(0.6); }
+.dk-spiel[class*=" k-"] .dk-kat { background: #fff !important; }
+.dk-spiel[class*=" k-"] .dk-termine, .dk-spiel[class*=" k-"] .dk-wer { border-top-color: rgba(0,0,0,0.12); }
+.dk-spiel.frage[class*=" k-"] { outline: 3px solid #F59E0B; outline-offset: 2px; }
