@@ -13,9 +13,6 @@ const FARBE = {
   die_weiter: { bg: '#FFF7ED', fg: '#C2410C' },
   boerse: { bg: '#EDE9FE', fg: '#6D28D9' },
 };
-const KURZ = {
-  wir: 'Catrin & Dirk', die: 'Eika & Jan', wir_weiter: 'C & D geben weiter', die_weiter: 'E & J geben weiter', boerse: 'Ticketbörse',
-};
 const tag = (d) => { const x = new Date(`${d}T12:00`); return `${WD[(x.getDay() + 6) % 7]} ${x.getDate()}.${x.getMonth() + 1}.`; };
 const heute = () => new Date().toISOString().slice(0, 10);
 
@@ -122,24 +119,43 @@ export function DkListe({ seite, spiele, preis, onAktion, members, onWer, busy, 
                 </div>
               </div>
             )}
-            {fremder || eigener ? null : offen?.id === s.id ? (
-              <div className="dk-wahlbox">
-                <div className="dk-wahl">
-                  {vorschlaege(seite, spiele, s).map((kat) => (
-                    <button key={kat} className={`chip${offen.kat === kat ? ' gewaehlt' : ''}`} style={{ background: FARBE[kat].bg, color: FARBE[kat].fg, borderColor: offen.kat === kat ? FARBE[kat].fg : FARBE[kat].bg }}
-                      aria-pressed={offen.kat === kat} onClick={() => setOffen({ id: s.id, kat })}>{KURZ[kat]}</button>
-                  ))}
+            {fremder || eigener ? null : offen?.id === s.id ? (() => {
+              // Schritt 1: Paar oder Ticketbörse · Schritt 2: gehen selbst oder geben weiter
+              const moeglich = vorschlaege(seite, spiele, s);
+              const kat = offen.paar === 'boerse' ? 'boerse' : offen.paar && offen.art ? (offen.art === 'weiter' ? `${offen.paar}_weiter` : offen.paar) : null;
+              const gleich = kat && kat === s.zuteilung;
+              const paarBtn = (p, label) => (
+                <button key={p} className={`chip dk-paar${offen.paar === p ? ' gewaehlt' : ''}`} aria-pressed={offen.paar === p}
+                  style={{ background: FARBE[p].bg, color: FARBE[p].fg, borderColor: offen.paar === p ? FARBE[p].fg : FARBE[p].bg }}
+                  onClick={() => setOffen({ id: s.id, paar: p, art: p === 'boerse' ? null : offen.paar === p ? offen.art : null })}>{label}</button>
+              );
+              return (
+                <div className="dk-wahlbox">
+                  <div className="dk-wahl">
+                    {paarBtn('wir', 'Catrin & Dirk')}
+                    {paarBtn('die', 'Eika & Jan')}
+                    {moeglich.includes('boerse') && paarBtn('boerse', 'Ticketbörse')}
+                  </div>
+                  {offen.paar && offen.paar !== 'boerse' && (
+                    <div className="dk-wahl dk-art">
+                      {[['selbst', 'gehen selbst'], ['weiter', 'geben weiter']].map(([a, l]) => (
+                        <button key={a} className={`chip${offen.art === a ? ' gewaehlt' : ''}`} aria-pressed={offen.art === a}
+                          style={offen.art === a ? { background: FARBE[offen.paar].fg, borderColor: FARBE[offen.paar].fg, color: '#fff' } : { borderColor: FARBE[offen.paar].fg, color: FARBE[offen.paar].fg }}
+                          onClick={() => setOffen({ ...offen, art: a })}>{l}</button>
+                      ))}
+                    </div>
+                  )}
+                  <div className="dk-knoepfe">
+                    <button className="btn small" disabled={busy || !kat || gleich} onClick={() => { onAktion(s, 'festlegen', kat); setOffen(null); }}><Icon name="check" size={16} /> Festlegen</button>
+                    <button className="btn ghost small" disabled={busy || !kat || gleich} onClick={() => { onAktion(s, 'wunsch', kat); setOffen(null); }}>Als Wunsch senden</button>
+                    <button className="btn ghost small" onClick={() => setOffen(null)}>Abbrechen</button>
+                  </div>
+                  <div className="small">„Festlegen“, wenn ihr euch schon abgesprochen habt – sonst bestätigt {SEITE[andere(seite)]} den Wunsch.</div>
                 </div>
-                <div className="dk-knoepfe">
-                  <button className="btn small" disabled={busy || !offen.kat} onClick={() => { onAktion(s, 'festlegen', offen.kat); setOffen(null); }}><Icon name="check" size={16} /> Festlegen</button>
-                  <button className="btn ghost small" disabled={busy || !offen.kat} onClick={() => { onAktion(s, 'wunsch', offen.kat); setOffen(null); }}>Als Wunsch senden</button>
-                  <button className="btn ghost small" onClick={() => setOffen(null)}>Abbrechen</button>
-                </div>
-                <div className="small">„Festlegen“, wenn ihr euch schon abgesprochen habt – sonst bestätigt {SEITE[andere(seite)]} den Wunsch.</div>
-              </div>
-            ) : (
+              );
+            })() : (
               <div className="dk-zeile">
-                <button className="dk-wunschbtn" onClick={() => setOffen({ id: s.id, kat: null })}><Icon name="plus" size={15} /> {s.zuteilung ? 'Ändern' : vorbei ? 'Nachtragen' : 'Eintragen'}</button>
+                <button className="dk-wunschbtn" onClick={() => setOffen({ id: s.id, paar: null, art: null })}><Icon name="plus" size={15} /> {s.zuteilung ? 'Ändern' : vorbei ? 'Nachtragen' : 'Eintragen'}</button>
                 {!vorbei && (
                   <button className={`dk-wunschbtn${(s.kann_nicht || []).includes(seite) ? ' an' : ''}`} disabled={busy} aria-pressed={(s.kann_nicht || []).includes(seite)} onClick={() => onAktion(s, 'kannnicht')}>
                     {(s.kann_nicht || []).includes(seite) ? 'Doch, wir können' : 'Wir können nicht'}

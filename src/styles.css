@@ -723,3 +723,5 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .dk-spiel[class*=" k-"] .dk-kat { background: #fff !important; }
 .dk-spiel[class*=" k-"] .dk-termine, .dk-spiel[class*=" k-"] .dk-wer { border-top-color: rgba(0,0,0,0.12); }
 .dk-spiel.frage[class*=" k-"] { outline: 3px solid #F59E0B; outline-offset: 2px; }
+.dk-wahl .chip.dk-paar { font-size: 15px; padding: 8px 14px; }
+.dk-art { padding-left: 4px; }

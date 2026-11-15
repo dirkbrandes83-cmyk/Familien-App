@@ -19,11 +19,11 @@ export function boerseZahl(spiele) {
   return spiele.filter((s) => s.zuteilung === 'boerse' || (s.wunsch === 'boerse' && s.zuteilung !== 'boerse')).length;
 }
 
-// Was darf diese Seite vorschlagen?
+// Was kann gewählt werden? Alle Kategorien (Ticketbörse nur bis zum Limit)
 export function vorschlaege(seite, spiele, s) {
-  const out = [seite, `${seite}_weiter`, andere(seite)];
+  const out = ['wir', 'wir_weiter', 'die', 'die_weiter'];
   if (s.zuteilung === 'boerse' || boerseZahl(spiele) < BOERSE_MAX) out.push('boerse');
-  return out.filter((k) => k !== s.zuteilung);
+  return out;
 }
 
 // Änderung für eine Aktion. Gibt { patch } oder { fehler } zurück.
