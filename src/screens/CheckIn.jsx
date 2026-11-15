@@ -10,7 +10,7 @@ import { aufgaben, offen } from '../lib/aufgaben.js';
 import { toggleVote } from './Wochenende.jsx';
 
 const FACES = [[1, '😢', 'schlecht'], [2, '😕', 'nicht so gut'], [3, '😐', 'geht so'], [4, '🙂', 'gut'], [5, '😄', 'super']];
-const STEPS = ['Wer ist dabei?', 'Wie war deine Woche?', 'Das Schönste', 'Die neue Woche', 'Was steht an?', 'Danke-Runde', 'Unser Vorhaben', 'Nächstes Wochenende', 'Fertig'];
+const STEPS = ['Wer ist dabei?', 'Wie war deine Woche?', 'Das Schönste', 'Die neue Woche', 'Dienste', 'Was steht an?', 'Danke-Runde', 'Unser Vorhaben', 'Nächstes Wochenende', 'Fertig'];
 
 // Der Sonntag, zu dem der Check-in gehört: heute (So) oder der kommende Sonntag
 export function checkinSunday(day) {
@@ -136,9 +136,11 @@ export default function CheckIn({ ctx, onClose }) {
             </div>
           )}
 
-          {step === 4 && <Anstehend ctx={ctx} to={to} />}
+          {step === 4 && <Dienste ctx={ctx} />}
 
-          {step === 5 && (
+          {step === 5 && <Anstehend ctx={ctx} to={to} />}
+
+          {step === 6 && (
             <>
               {f.danke.length > 0 && (
                 <div className="ci-thanks">
@@ -169,7 +171,7 @@ export default function CheckIn({ ctx, onClose }) {
             </>
           )}
 
-          {step === 6 && (
+          {step === 7 && (
             <>
               <div className="ci-note">Habt ihr etwas, das ihr euch als Familie diese Woche vornehmt?</div>
               <div className="chips">
@@ -181,7 +183,7 @@ export default function CheckIn({ ctx, onClose }) {
             </>
           )}
 
-          {step === 7 && (
+          {step === 8 && (
             <>
               <div className="ci-note">Was machen wir nächstes Wochenende? Jeder tippt auf die Ideen, die ihm gefallen.</div>
               {rankIdeas(ctx.data.ideas.rows, ctx.data.ideaVotes.rows).slice(0, 6).map((i) => (
@@ -200,7 +202,7 @@ export default function CheckIn({ ctx, onClose }) {
             </>
           )}
 
-          {step === 8 && (
+          {step === 9 && (
             <div className="ci-done">
               <div className="ci-big"><Icon name="party" size={40} /> Schöne Woche!</div>
               <div className="ci-moods">
@@ -219,6 +221,42 @@ export default function CheckIn({ ctx, onClose }) {
             : <button className="btn st-big" onClick={onClose}>Fertig</button>}
         </footer>
       </div>
+    </div>
+  );
+}
+
+// Dienste (Ämtchen) für die kommende Woche verteilen – voreingestellt ist, wie es bisher war
+const TAGE = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+function Dienste({ ctx }) {
+  const list = [...ctx.data.chores.rows].sort((a, b) => a.sort - b.sort);
+  const aendern = async (c, patch) => {
+    ctx.data.chores.local((rows) => rows.map((x) => (x.id === c.id ? { ...x, ...patch } : x)));
+    const ok = await run(supabase.from('chores').update(patch).eq('id', c.id), ctx.fail);
+    if (!ok) ctx.data.chores.reload();
+  };
+  return (
+    <div className="ci-dienste">
+      <div className="small">So war es letzte Woche. Antippen zum Ändern – gilt ab morgen.</div>
+      {list.length === 0 && <div className="st-empty">Noch keine Dienste angelegt (Eltern-App → Zuhause → Ämtchen).</div>}
+      {list.map((c) => (
+        <div key={c.id} className="ci-dienst">
+          <div className="ci-dienstname">{c.title}</div>
+          <div className="ci-dienstwer">
+            {ctx.members.map((m) => (
+              <button key={m.id} className="chip" aria-pressed={c.who === m.id}
+                style={c.who === m.id ? { background: m.color, borderColor: m.color, color: '#fff' } : { borderColor: m.bg, color: m.color }}
+                onClick={() => c.who !== m.id && aendern(c, { who: m.id })}>{m.name}</button>
+            ))}
+          </div>
+          <div className="ci-diensttage">
+            {TAGE.map((t, i) => {
+              const an = (c.weekdays || []).includes(i);
+              return <button key={t} className={`ci-tag${an ? ' an' : ''}`} aria-pressed={an}
+                onClick={() => aendern(c, { weekdays: an ? c.weekdays.filter((x) => x !== i) : [...(c.weekdays || []), i].sort() })}>{t}</button>;
+            })}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

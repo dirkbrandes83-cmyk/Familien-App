@@ -778,3 +778,13 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .gift-geheim { border: 2px dashed #A8A29E; background: #FAFAF9; }
 .gift-privat { display: flex; align-items: center; gap: 8px; font-weight: 700; margin-bottom: 12px; }
 .gift-privat input { width: 20px; height: 20px; }
+
+/* Check-in: Dienste verteilen */
+.ci-dienste { display: flex; flex-direction: column; gap: 12px; }
+.ci-dienst { display: flex; flex-direction: column; gap: 8px; background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; }
+.ci-dienstname { font-weight: 800; font-size: 20px; }
+.ci-dienstwer { display: flex; flex-wrap: wrap; gap: 8px; }
+.ci-dienstwer .chip { font-size: 17px; padding: 8px 16px; }
+.ci-diensttage { display: flex; gap: 6px; }
+.ci-tag { flex: 1; border: 1.5px solid var(--line); background: #fff; border-radius: 10px; padding: 8px 0; font-weight: 700; font-size: 15px; color: var(--muted); }
+.ci-tag.an { background: #0F766E; border-color: #0F766E; color: #fff; }
