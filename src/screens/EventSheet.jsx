@@ -16,6 +16,18 @@ export default function EventSheet({ ctx, ev, preset = {}, onClose }) {
 function AboEvent({ ctx, ev, date, onClose }) {
   const sub = ctx.data.subs.rows.find((x) => x.id === ev.sub_id);
   const hasCare = ctx.data.care.rows.some((c) => c.event_id === ev.id);
+  // Bringen/Abholen lässt sich auch bei Abo-Terminen (Klender) eintragen – der Abgleich überschreibt es nicht
+  const [fahrt, setFahrt] = useState({ bring_by: ev.bring_by ?? '', pick_by: ev.pick_by ?? '' });
+  const drivers = [...new Set(['Dirk', 'Catrin', ...[...ctx.data.caregivers.rows].sort((a, b) => a.sort - b.sort).map((g) => g.name)])];
+  const driverColor = (n) => ctx.members.find((m) => m.name === n);
+  const opts = [...drivers.map((n) => ({ id: n, label: n, color: driverColor(n)?.color, bg: driverColor(n)?.bg })), { id: NICHT, label: 'Nicht nötig' }];
+  const setze = async (feld, n) => {
+    const v = fahrt[feld] === n ? null : n;
+    setFahrt((x) => ({ ...x, [feld]: v ?? '' }));
+    ctx.data.events.local((rows) => rows.map((e) => (e.id === ev.id ? { ...e, [feld]: v } : e)));
+    const ok = await run(supabase.from('events').update({ [feld]: v }).eq('id', ev.id), ctx.fail);
+    if (!ok) ctx.data.events.reload();
+  };
   return (
     <Sheet title={ev.title} onClose={onClose}
       actions={!hasCare && <button className="btn ghost" onClick={async () => { if (await careFromEvent(ctx, { ...ev, start_date: date || ev.start_date })) { ctx.say('Betreuung angelegt – unter „Betreuung“ anfragen'); onClose(); } }}>Kinderbetreuung dafür eintragen</button>}>
@@ -24,7 +36,13 @@ function AboEvent({ ctx, ev, date, onClose }) {
         <div className="sub">{ev.all_day ? 'ganztägig' : `${hm(ev.from_time)}${ev.to_time ? ` – ${hm(ev.to_time)}` : ''}`}{ev.rep !== 'keine' ? ` · ${ev.rep}` : ''}</div>
         {ev.note && <div className="sub" style={{ whiteSpace: 'pre-wrap' }}>{ev.note}</div>}
       </div>
-      <div className="small">Aus dem Abo „{sub?.name ?? 'Kalender'}“ – nur lesbar. Ändern geht im ursprünglichen Kalender.{hasCare ? ' Betreuung ist schon eingetragen.' : ''}</div>
+      {ev.kind === 'termin' && (
+        <>
+          <div className="field"><span>Bringt hin</span><ChipPick options={opts} value={fahrt.bring_by} onPick={(n) => setze('bring_by', n)} /></div>
+          <div className="field"><span>Holt ab</span><ChipPick options={opts} value={fahrt.pick_by} onPick={(n) => setze('pick_by', n)} /></div>
+        </>
+      )}
+      <div className="small">Aus dem Abo „{sub?.name ?? 'Kalender'}“. Bringen/Abholen speichert die App; Titel, Zeit und Personen änderst du im ursprünglichen Kalender.{hasCare ? ' Betreuung ist schon eingetragen.' : ''}</div>
     </Sheet>
   );
 }
