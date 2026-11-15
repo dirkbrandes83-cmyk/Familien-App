@@ -82,10 +82,20 @@ export function DkListe({ seite, spiele, preis, onAktion, members, onWer, busy, 
           <details className="dk-details">
             <summary>Kosten anzeigen</summary>
           <div className="dk-geld">
-            <div>{euro(preis)} ÷ {k.gesamt} Heimspiele = <b>{euro(k.proSpiel)}</b> pro Spiel</div>
-            <div>Catrin & Dirk: <b>{euro(k.wir_eur)}</b> ({k.wir}) · Eika & Jan: <b>{euro(k.die_eur)}</b> ({k.die})</div>
-            {k.offen > 0 && <div>Noch nicht vergeben: <b>{euro(k.offen_eur)}</b> ({k.offen} Spiele)</div>}
-            <div className="small">Weitergegebene Spiele zählen für die Seite, die weitergibt. Ticketbörse-Spiele zählen für Eika & Jan.</div>
+            <div className="dk-balken" aria-hidden="true">
+              <span style={{ flex: k.wir, background: '#14B8A6' }} />
+              <span style={{ flex: k.die, background: '#F97316' }} />
+              <span style={{ flex: k.offen, background: '#E7E5E4' }} />
+            </div>
+            <table className="dk-tab">
+              <tbody>
+                <tr><td><i style={{ background: '#14B8A6' }} />Catrin & Dirk</td><td>{k.wir} Sp.</td><td>{euro(k.wir_eur)}</td></tr>
+                <tr><td><i style={{ background: '#F97316' }} />Eika & Jan{k.boerse ? <span className="small"> (inkl. {k.boerse} Börse)</span> : null}</td><td>{k.die} Sp.</td><td>{euro(k.die_eur)}</td></tr>
+                {k.offen > 0 && <tr className="offen"><td><i style={{ background: '#E7E5E4' }} />Noch nicht vergeben</td><td>{k.offen} Sp.</td><td>{euro(k.offen_eur)}</td></tr>}
+                <tr className="summe"><td>Gesamt</td><td>{k.gesamt} Sp.</td><td>{euro(preis)}</td></tr>
+              </tbody>
+            </table>
+            <div className="small">{euro(k.proSpiel)} pro Spiel ({euro(preis)} ÷ {k.gesamt} Heimspiele). Weitergegebene Spiele zahlt die Seite, die weitergibt; Ticketbörse-Spiele zählen für Eika & Jan.</div>
           </div>
           </details>
         )}

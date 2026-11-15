@@ -727,3 +727,13 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .dk-art { padding-left: 4px; }
 .dk-wa { display: flex; flex-direction: column; gap: 8px; background: #DCFCE7; color: #14532D; border-radius: 12px; padding: 10px 12px; font-size: 14px; font-weight: 600; }
 .dk-wabtn { background: #16A34A; border-color: #16A34A; color: #fff; text-decoration: none; width: auto; display: inline-flex; align-items: center; }
+
+.dk-balken { display: flex; height: 12px; border-radius: 6px; overflow: hidden; gap: 2px; margin: 4px 0 2px; }
+.dk-balken span { min-width: 0; }
+.dk-tab { width: 100%; border-collapse: collapse; font-size: 15px; }
+.dk-tab td { padding: 6px 0; border-bottom: 1px solid var(--line2); }
+.dk-tab td:nth-child(2) { text-align: right; color: var(--muted); padding-right: 12px; white-space: nowrap; }
+.dk-tab td:nth-child(3) { text-align: right; font-weight: 800; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.dk-tab td i { display: inline-block; width: 10px; height: 10px; border-radius: 5px; margin-right: 8px; vertical-align: 1px; }
+.dk-tab tr.offen td { color: var(--muted); }
+.dk-tab tr.summe td { border-bottom: 0; border-top: 2px solid var(--ink); font-weight: 800; }
