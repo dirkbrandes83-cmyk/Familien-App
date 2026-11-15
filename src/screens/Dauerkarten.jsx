@@ -141,8 +141,7 @@ export function DkListe({ seite, spiele, preis, onAktion, members, onWer, busy, 
             {/* Einschätzungen beider Seiten: Favorit / Option / Absage */}
             {!vorbei && !s.zuteilung && (
               <div className="dk-praef">
-                <div className="dk-praefzeile">
-                  <span className="dk-praefwer">Ihr:</span>
+                <div className="dk-praefzeile eigen">
                   {Object.entries(PRAEF).map(([k2, p]) => {
                     const an = s.praef?.[seite] === k2;
                     return (
