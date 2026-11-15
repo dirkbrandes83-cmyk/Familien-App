@@ -84,8 +84,6 @@ export function DkListe({ seite, spiele, preis, onAktion, members, onWer, busy, 
         <summary><Icon name="info" size={16} /> So funktioniert’s</summary>
         <ul>
           <li>„Festlegen“ gilt sofort, einen Wunsch muss die andere Seite bestätigen.</li>
-          <li>Ticketbörse: höchstens {BOERSE_MAX}× pro Saison.</li>
-          <li>Kosten: Gesamtpreis ÷ alle Heimspiele. Weitergegebene Spiele zahlt, wer weitergibt; Ticketbörse-Spiele zählen für Eika & Jan.</li>
         </ul>
       </details>
       <section className="card dk-stand">
