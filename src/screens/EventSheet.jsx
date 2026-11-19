@@ -36,13 +36,13 @@ function AboEvent({ ctx, ev, date, onClose }) {
         <div className="sub">{ev.all_day ? 'ganztägig' : `${hm(ev.from_time)}${ev.to_time ? ` – ${hm(ev.to_time)}` : ''}`}{ev.rep !== 'keine' ? ` · ${ev.rep}` : ''}</div>
         {ev.note && <div className="sub" style={{ whiteSpace: 'pre-wrap' }}>{ev.note}</div>}
       </div>
-      {ev.kind === 'termin' && (
+      {ev.kind === 'termin' && (ev.who || []).some((w) => ctx.member(w)?.kid) && (
         <>
           <div className="field"><span>Bringt hin</span><ChipPick options={opts} value={fahrt.bring_by} onPick={(n) => setze('bring_by', n)} /></div>
           <div className="field"><span>Holt ab</span><ChipPick options={opts} value={fahrt.pick_by} onPick={(n) => setze('pick_by', n)} /></div>
         </>
       )}
-      <div className="small">Aus dem Abo „{sub?.name ?? 'Kalender'}“. Bringen/Abholen speichert die App; Titel, Zeit und Personen änderst du im ursprünglichen Kalender.{hasCare ? ' Betreuung ist schon eingetragen.' : ''}</div>
+      <div className="small">Aus dem Abo „{sub?.name ?? 'Kalender'}“. {(ev.who || []).some((w) => ctx.member(w)?.kid) ? 'Bringen/Abholen speichert die App; ' : ''}Titel, Zeit und Personen änderst du im ursprünglichen Kalender.{hasCare ? ' Betreuung ist schon eingetragen.' : ''}</div>
     </Sheet>
   );
 }
