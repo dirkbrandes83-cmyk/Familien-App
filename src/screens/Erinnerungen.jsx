@@ -4,6 +4,7 @@ import { Icon, Check, Swipe, Sheet, Seg, ChipPick, CatIcon } from '../ui.jsx';
 import { addDays, longLabel, shortLabel, WD } from '../lib/dates.js';
 import { packList, packDay } from './common.jsx';
 import Geschenke from './Geschenke.jsx';
+import { besorgenText } from '../lib/aufgaben.js';
 
 export default function Erinnerungen({ ctx, seg, setSeg }) {
   const inboxN = ctx.data.inbox.rows.filter((r) => !r.done_at).length;
@@ -293,6 +294,7 @@ const ADULT_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 function Besorgen({ ctx }) {
   const [sheet, setSheet] = useState(null);
   const [notiz, setNotiz] = useState(null);
+  const [kal, setKal] = useState(null);
   const open = ctx.data.buy.rows.filter((r) => !r.done).sort((a, b) => String(a.due || '9999').localeCompare(String(b.due || '9999')) || a.created_at.localeCompare(b.created_at));
   const done = async (r) => {
     ctx.data.buy.local((rows) => rows.map((x) => (x.id === r.id ? { ...x, done: true } : x)));
@@ -330,10 +332,11 @@ function Besorgen({ ctx }) {
                 <Check on={false} />
                 <span className="row-main">
                   <span className="row-title">{r.art}{r.size ? ` · Gr. ${r.size}` : ''}</span>
-                  <span className="small">{[r.due ? <b key="d" style={{ color: r.due <= addDays(ctx.day, 2) ? '#B45309' : undefined }}>bis {shortLabel(r.due)}</b> : null, r.note, by && by.id !== r.for_who ? `von ${by.name}` : null].filter(Boolean).reduce((acc, x, i) => (i ? [...acc, ' · ', x] : [x]), [])}</span>
+                  <span className="small">{[r.am ? <b key="am" style={{ color: '#0F766E', display: 'inline-flex', alignItems: 'center', gap: 3 }}><Icon name="cal" size={13} />{amText(r)}</b> : null, r.due ? <b key="d" style={{ color: r.due <= addDays(ctx.day, 2) ? '#B45309' : undefined }}>bis {shortLabel(r.due)}</b> : null, r.note, by && by.id !== r.for_who ? `von ${by.name}` : null].filter(Boolean).reduce((acc, x, i) => (i ? [...acc, ' · ', x] : [x]), [])}</span>
                 </span>
                 {w && <span className="pchip" style={{ background: w.bg, color: w.color }}>{w.name}</span>}
               </button>
+              <button className="icon-btn row-note" onClick={() => setKal({ ...r, _art: 'buy' })} aria-label={r.am ? 'Im Kalender verschieben' : 'In den Kalender'}><Icon name="cal" size={18} /></button>
               <button className="icon-btn row-note" onClick={() => setNotiz(r)} aria-label={r.note ? 'Notiz bearbeiten' : 'Notiz hinzufügen'}><Icon name="pencil" size={18} /></button>
               </div>
             </Swipe>
@@ -342,6 +345,7 @@ function Besorgen({ ctx }) {
       </section>
       {open.length > 0 && <div className="small">Antippen = besorgt. Nach links wischen = löschen.</div>}
       {notiz && <NotizSheet ctx={ctx} item={notiz} onClose={() => setNotiz(null)} />}
+      {kal && <TodoKalender ctx={ctx} todo={kal} onClose={() => setKal(null)} />}
       {sheet && (sheet.typ === 'sonstiges' ? <OtherSheet ctx={ctx} onClose={() => setSheet(null)} /> : <BuySheet ctx={ctx} preset={sheet} onClose={() => setSheet(null)} />)}
     </>
   );
@@ -350,18 +354,21 @@ function Besorgen({ ctx }) {
 // Notiz zu einem Besorgen-Eintrag, z. B. Geschenkideen, Größe, Preis, wo kaufen
 // To-do einem Kalendertag (optional mit Uhrzeit) zuordnen
 export const amText = (r) => `${shortLabel(r.am)}${r.um ? ` · ${r.um.slice(0, 5)}` : ''}`;
+// Gilt für To-dos (todo_inbox) und Besorgen (buy_items, _art: 'buy')
 export function TodoKalender({ ctx, todo, onClose }) {
+  const buy = todo._art === 'buy';
   const [am, setAm] = useState(todo.am || ctx.day);
   const [um, setUm] = useState(todo.um ? todo.um.slice(0, 5) : '');
   const speichern = async (patch) => {
-    ctx.data.inbox.local((rows) => rows.map((x) => (x.id === todo.id ? { ...x, ...patch } : x)));
-    const ok = await run(supabase.from('todo_inbox').update(patch).eq('id', todo.id), ctx.fail);
-    if (!ok) ctx.data.inbox.reload();
+    const data = buy ? ctx.data.buy : ctx.data.inbox;
+    data.local((rows) => rows.map((x) => (x.id === todo.id ? { ...x, ...patch } : x)));
+    const ok = await run(supabase.from(buy ? 'buy_items' : 'todo_inbox').update(patch).eq('id', todo.id), ctx.fail);
+    if (!ok) data.reload();
     else ctx.say(patch.am ? `Im Kalender am ${shortLabel(patch.am)}` : 'Aus dem Kalender genommen');
     onClose();
   };
   return (
-    <Sheet title={todo.title} onClose={onClose}
+    <Sheet title={buy ? besorgenText(todo) : todo.title} onClose={onClose}
       actions={<>
         {todo.am && <button className="btn ghost" onClick={() => speichern({ am: null, um: null })}>Aus dem Kalender</button>}
         <button className="btn" disabled={!am} onClick={() => speichern({ am, um: um || null })}>In den Kalender</button>

@@ -4,6 +4,7 @@ import { addDays, expand, mondayOf, longLabel, parse, iso, MONTHS, WD, weekday }
 import { EventRow } from './common.jsx';
 import { supabase, run } from '../data.js';
 import { TodoKalender, amText } from './Erinnerungen.jsx';
+import { besorgenText } from '../lib/aufgaben.js';
 import Betreuung, { ReviewBox, careStatus } from './Betreuung.jsx';
 
 export default function Kalender({ ctx, seg = 'termine', setSeg = () => {} }) {
@@ -15,7 +16,10 @@ export default function Kalender({ ctx, seg = 'termine', setSeg = () => {} }) {
 
   const events = who === 'all' ? ctx.data.events.rows : ctx.data.events.rows.filter((e) => e.who.includes('all') || e.who.includes(who));
   // To-dos, die einem Kalendertag zugeordnet sind (gefiltert wie die Termine)
-  const todos = ctx.data.inbox.rows.filter((t) => t.am && (who === 'all' || t.owner === who || t.for_who === who || (!t.owner && (t.typ ?? 'termin') === 'termin' && who === 'dirk')));
+  const todos = [
+    ...ctx.data.inbox.rows.filter((t) => t.am && (who === 'all' || t.owner === who || t.for_who === who || (!t.owner && (t.typ ?? 'termin') === 'termin' && who === 'dirk'))),
+    ...ctx.data.buy.rows.filter((b) => b.am && (who === 'all' || b.for_who === who)).map((b) => ({ ...b, _art: 'buy', title: besorgenText(b), done_at: b.done ? b.done_at || 'ja' : null })),
+  ];
   const people = [{ id: 'all', name: 'Alle', color: '#1C1917', bg: '#E7E1D8' }, ...ctx.members];
 
   const openCare = ctx.data.care.rows.filter((c) => c.on_date >= ctx.day && careStatus(ctx.data.asks.rows.filter((a) => a.need_id === c.id)) !== 'gesichert').length;
@@ -148,7 +152,7 @@ function Monat({ ctx, events, todos, month, setMonth, sel, setSel }) {
 function TagListe({ ctx, occ, todos }) {
   const items = [
     ...occ.map((o) => ({ t: o.ev.all_day ? '00' : String(o.ev.from_time || '00'), el: <EventRow key={o.ev.id + o.date} ev={o.ev} date={o.date} ctx={ctx} /> })),
-    ...todos.map((t) => ({ t: t.um ? String(t.um) : '99', el: <TodoRows key={t.id} ctx={ctx} list={[t]} /> })),
+    ...todos.map((t) => ({ t: t.um ? String(t.um) : '99', el: <TodoRows key={(t._art || 't') + t.id} ctx={ctx} list={[t]} /> })),
   ].sort((a, b) => a.t.localeCompare(b.t));
   return <>{items.map((x) => x.el)}</>;
 }
@@ -159,9 +163,12 @@ function TodoRows({ ctx, list }) {
   if (!list.length) return null;
   const toggle = async (t) => {
     const v = t.done_at ? null : new Date().toISOString();
-    ctx.data.inbox.local((rows) => rows.map((x) => (x.id === t.id ? { ...x, done_at: v } : x)));
-    const ok = await run(supabase.from('todo_inbox').update({ done_at: v }).eq('id', t.id), ctx.fail);
-    if (!ok) ctx.data.inbox.reload();
+    const buy = t._art === 'buy';
+    const data = buy ? ctx.data.buy : ctx.data.inbox;
+    const patch = buy ? { done: !!v, done_at: v } : { done_at: v };
+    data.local((rows) => rows.map((x) => (x.id === t.id ? { ...x, ...patch } : x)));
+    const ok = await run(supabase.from(buy ? 'buy_items' : 'todo_inbox').update(patch).eq('id', t.id), ctx.fail);
+    if (!ok) data.reload();
   };
   const sorted = [...list].sort((a, b) => String(a.um || '99').localeCompare(String(b.um || '99')));
   return (
@@ -176,7 +183,7 @@ function TodoRows({ ctx, list }) {
             <button className="cal-todo-main" onClick={() => setKal(t)}>
               <span className="row-main">
                 <span className="row-title" style={t.done_at ? { textDecoration: 'line-through' } : undefined}>{t.title}</span>
-                <span className="small">{[owner && `${owner.name} kümmert sich`, fuer && `für ${fuer.name}`, t.due && t.due !== t.am && `Frist ${amText({ am: t.due })}`].filter(Boolean).join(' · ') || 'To-do'}</span>
+                <span className="small">{[t._art === 'buy' && 'Besorgen', owner && `${owner.name} kümmert sich`, fuer && `für ${fuer.name}`, t.due && t.due !== t.am && `Frist ${amText({ am: t.due })}`].filter(Boolean).join(' · ') || 'To-do'}</span>
               </span>
               <Icon name="chev" size={18} className="chev" />
             </button>
