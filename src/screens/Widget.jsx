@@ -60,7 +60,7 @@ export default function Widget({ ctx, onBack }) {
         <label className="field"><span>Name der Liste in Erinnerungen (genau wie dort geschrieben)</span>
           <input className="input" value={listName} onChange={(e) => setListName(e.target.value)} maxLength={60} />
         </label>
-        <div className="small">Gibt es die Liste schon, übernimmt die App beim ersten Abgleich alles, was dort offen ist. Gibt es sie nicht, wird sie angelegt. Bei einer mit Catrin geteilten Liste reicht es, wenn eine Person den Abgleich einrichtet.</div>
+        <div className="small">Gibt es die Liste schon, übernimmt die App beim ersten Abgleich alles, was dort offen ist. Gibt es sie nicht, wird sie angelegt. Tipp: Die Liste in Erinnerungen nicht teilen – jede Person richtet den Abgleich mit einer eigenen Liste ein. Bei geteilten Listen meldet Apple sonst jeden Eintrag, den das Skript anlegt, als „hinzugefügt von …“.</div>
         {kind !== 'einkauf' && <button className="btn" onClick={() => create('einkauf')}>Einkauf einrichten</button>}
         <div className="small">Auf der Watch selbst läuft kein Abgleich: Was du dort abhakst, kommt in die Familien-App, sobald das iPhone das nächste Mal abgleicht (Widget oder Kurzbefehl).</div>
       </section>
