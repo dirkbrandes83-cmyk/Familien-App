@@ -194,15 +194,16 @@ const PLACEHOLDER = {
 function Vereinbaren({ ctx }) {
   const [f, setF] = useState({ typ: 'termin', title: '', forWho: null, owner: null, due: '' });
   const [filter, setFilter] = useState('alle');
+  const [kal, setKal] = useState(null);
   const all = ctx.data.inbox.rows.filter((r) => !r.done_at)
     .sort((a, b) => String(a.due || '9999').localeCompare(String(b.due || '9999')) || a.created_at.localeCompare(b.created_at));
   const open = filter === 'mir' ? all.filter((r) => (r.owner ?? (r.typ === 'termin' || !r.typ ? 'dirk' : null)) === ctx.me.id) : all;
   const add = async (e) => {
     e.preventDefault();
     if (!f.title.trim()) return;
-    const ok = await run(supabase.from('todo_inbox').insert({ typ: f.typ, title: f.title.trim(), for_who: f.forWho, owner: f.owner, due: f.due || null, by_who: ctx.me.id }), ctx.fail);
+    const ok = await run(supabase.from('todo_inbox').insert({ typ: f.typ, title: f.title.trim(), for_who: f.forWho, owner: f.owner, due: f.due || null, am: f.am || null, by_who: ctx.me.id }), ctx.fail);
     if (ok) {
-      setF({ ...f, title: '', forWho: null, due: '' });
+      setF({ ...f, title: '', forWho: null, due: '', am: '' });
       ctx.say(f.owner && f.owner !== ctx.me.id ? `Eingetragen – ${ctx.member(f.owner)?.name} kümmert sich` : f.typ === 'termin' && !ctx.isDirk && !f.owner ? 'Eingetragen – Dirk plant es ein' : 'Eingetragen');
     }
   };
@@ -241,12 +242,14 @@ function Vereinbaren({ ctx }) {
                   <span className="row-main">
                     <span className="row-title" style={{ fontWeight: 600 }}>{r.title}</span>
                     <span className="small" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                      {r.am && <b style={{ color: '#0F766E', display: 'inline-flex', alignItems: 'center', gap: 3 }}><Icon name="cal" size={13} />{amText(r)}</b>}
                       {r.due && <b style={{ color: soon ? '#B45309' : undefined }}>bis {shortLabel(r.due)}</b>}
                       {who && <b style={{ color: who.color }}>{who.name}</b>}
                       {owner ? <span>· {owner.id === ctx.me.id ? 'du kümmerst dich' : `${owner.name} kümmert sich`}</span> : typ === 'termin' ? <span>· Dirk plant ein</span> : null}
                       {by && by.id !== ctx.me.id && <span>· von {by.name}</span>}
                     </span>
                   </span>
+                  <button className="icon-btn" style={{ border: 'none' }} aria-label={r.am ? 'Im Kalender verschieben' : 'In den Kalender'} onClick={() => setKal(r)}><Icon name="cal" size={18} /></button>
                   {typ === 'termin' && ctx.isDirk
                     ? <button className="btn small" onClick={() => plan(r)}>Einplanen</button>
                     : <button className="btn ghost small" onClick={() => finish(r)}>Erledigt</button>}
@@ -257,6 +260,7 @@ function Vereinbaren({ ctx }) {
         </div>
         <ZuletztErledigt ctx={ctx} />
       </section>
+      {kal && <TodoKalender ctx={ctx} todo={kal} onClose={() => setKal(null)} />}
       <form className="card" onSubmit={add}>
         <div className="field"><span>Was ist zu tun?</span>
           <ChipPick options={Object.entries(TYP).map(([id, label]) => ({ id, label: <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon name={TYP_ICON[id]} size={17} />{label}</span> }))} value={f.typ} onPick={(t) => setF({ ...f, typ: t })} />
@@ -266,6 +270,9 @@ function Vereinbaren({ ctx }) {
         </label>
         <label className="field"><span>Bis wann? (optional)</span>
           <input className="input" type="date" value={f.due} min={ctx.day} onChange={(e) => setF({ ...f, due: e.target.value })} />
+        </label>
+        <label className="field"><span>Wann erledigen? (optional, steht dann im Kalender)</span>
+          <input className="input" type="date" value={f.am || ''} min={ctx.day} onChange={(e) => setF({ ...f, am: e.target.value })} />
         </label>
         <div className="field"><span>Wer kümmert sich? (optional)</span>
           <ChipPick options={adults} value={f.owner} onPick={(id) => setF({ ...f, owner: f.owner === id ? null : id })} />
@@ -341,6 +348,40 @@ function Besorgen({ ctx }) {
 }
 
 // Notiz zu einem Besorgen-Eintrag, z. B. Geschenkideen, Größe, Preis, wo kaufen
+// To-do einem Kalendertag (optional mit Uhrzeit) zuordnen
+export const amText = (r) => `${shortLabel(r.am)}${r.um ? ` · ${r.um.slice(0, 5)}` : ''}`;
+export function TodoKalender({ ctx, todo, onClose }) {
+  const [am, setAm] = useState(todo.am || ctx.day);
+  const [um, setUm] = useState(todo.um ? todo.um.slice(0, 5) : '');
+  const speichern = async (patch) => {
+    ctx.data.inbox.local((rows) => rows.map((x) => (x.id === todo.id ? { ...x, ...patch } : x)));
+    const ok = await run(supabase.from('todo_inbox').update(patch).eq('id', todo.id), ctx.fail);
+    if (!ok) ctx.data.inbox.reload();
+    else ctx.say(patch.am ? `Im Kalender am ${shortLabel(patch.am)}` : 'Aus dem Kalender genommen');
+    onClose();
+  };
+  return (
+    <Sheet title={todo.title} onClose={onClose}
+      actions={<>
+        {todo.am && <button className="btn ghost" onClick={() => speichern({ am: null, um: null })}>Aus dem Kalender</button>}
+        <button className="btn" disabled={!am} onClick={() => speichern({ am, um: um || null })}>In den Kalender</button>
+      </>}>
+      <label className="field"><span>An welchem Tag?</span>
+        <input className="input" type="date" value={am} onChange={(e) => setAm(e.target.value)} />
+      </label>
+      <div className="chips">
+        {[[0, 'Heute'], [1, 'Morgen'], [2, 'Übermorgen'], [7, 'In einer Woche']].map(([n, label]) => (
+          <button key={n} className="chip" style={am === addDays(ctx.day, n) ? { background: '#0F766E', borderColor: '#0F766E', color: '#fff' } : undefined} aria-pressed={am === addDays(ctx.day, n)} onClick={() => setAm(addDays(ctx.day, n))}>{label}</button>
+        ))}
+      </div>
+      <label className="field"><span>Uhrzeit (optional)</span>
+        <input className="input" type="time" value={um} onChange={(e) => setUm(e.target.value)} />
+      </label>
+      {todo.due && <div className="small">Frist: bis {shortLabel(todo.due)}</div>}
+    </Sheet>
+  );
+}
+
 function NotizSheet({ ctx, item, onClose }) {
   const [note, setNote] = useState(item.note || '');
   const save = async () => {

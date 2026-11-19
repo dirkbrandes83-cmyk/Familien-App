@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Icon, Seg } from '../ui.jsx';
+import { Icon, Seg, Check } from '../ui.jsx';
 import { addDays, expand, mondayOf, longLabel, parse, iso, MONTHS, WD, weekday } from '../lib/dates.js';
 import { EventRow } from './common.jsx';
+import { supabase, run } from '../data.js';
+import { TodoKalender, amText } from './Erinnerungen.jsx';
 import Betreuung, { ReviewBox, careStatus } from './Betreuung.jsx';
 
 export default function Kalender({ ctx, seg = 'termine', setSeg = () => {} }) {
@@ -12,6 +14,8 @@ export default function Kalender({ ctx, seg = 'termine', setSeg = () => {} }) {
   const [sel, setSel] = useState(ctx.day);
 
   const events = who === 'all' ? ctx.data.events.rows : ctx.data.events.rows.filter((e) => e.who.includes('all') || e.who.includes(who));
+  // To-dos, die einem Kalendertag zugeordnet sind (gefiltert wie die Termine)
+  const todos = ctx.data.inbox.rows.filter((t) => t.am && (who === 'all' || t.owner === who || t.for_who === who || (!t.owner && (t.typ ?? 'termin') === 'termin' && who === 'dirk')));
   const people = [{ id: 'all', name: 'Alle', color: '#1C1917', bg: '#E7E1D8' }, ...ctx.members];
 
   const openCare = ctx.data.care.rows.filter((c) => c.on_date >= ctx.day && careStatus(ctx.data.asks.rows.filter((a) => a.need_id === c.id)) !== 'gesichert').length;
@@ -48,15 +52,15 @@ export default function Kalender({ ctx, seg = 'termine', setSeg = () => {} }) {
       </div>
       <ReviewBox ctx={ctx} />
 
-      {view === 'woche' ? <Woche ctx={ctx} events={events} start={weekStart} />
-        : <Monat ctx={ctx} events={events} month={month} setMonth={setMonth} sel={sel} setSel={setSel} />}
+      {view === 'woche' ? <Woche ctx={ctx} events={events} todos={todos} start={weekStart} />
+        : <Monat ctx={ctx} events={events} todos={todos} month={month} setMonth={setMonth} sel={sel} setSel={setSel} />}
 
       <div className="small">Neue Familientermine legt ihr hier an. Kalender.digital und andere Abos richtet ihr unter „Mehr“ ein – sie sind nur lesbar.</div>
     </>
   );
 }
 
-function Woche({ ctx, events, start }) {
+function Woche({ ctx, events, todos, start }) {
   const end = addDays(start, 6);
   const occ = expand(events, start, end);
   const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
@@ -71,14 +75,15 @@ function Woche({ ctx, events, start }) {
     <>
       {days.map((d) => {
         const list = occ.filter((o) => o.date === d);
+        const tl = todos.filter((t) => t.am === d);
         const isToday = d === ctx.day;
         return (
-          <section key={d} id={`tag-${d}`} className="card cal-day" style={{ padding: list.length ? '12px 16px 4px' : '10px 16px', gap: 2, opacity: d < ctx.day ? 0.6 : 1 }}>
+          <section key={d} id={`tag-${d}`} className="card cal-day" style={{ padding: list.length || tl.length ? '12px 16px 4px' : '10px 16px', gap: 2, opacity: d < ctx.day ? 0.6 : 1 }}>
             <div className="card-head">
               <span className="label" style={isToday ? { color: '#0F766E' } : undefined}>{isToday ? 'Heute · ' : ''}{longLabel(d)}</span>
               <button className="icon-btn" style={{ width: 36, height: 36, border: 'none' }} aria-label={`Termin am ${longLabel(d)} anlegen`} onClick={() => ctx.openEvent(null, { start_date: d })}><Icon name="plus" size={16} /></button>
             </div>
-            {list.length === 0 ? null : list.map((o) => <EventRow key={o.ev.id + o.date} ev={o.ev} date={o.date} ctx={ctx} />)}
+            <TagListe ctx={ctx} occ={list} todos={tl} />
           </section>
         );
       })}
@@ -86,7 +91,7 @@ function Woche({ ctx, events, start }) {
   );
 }
 
-function Monat({ ctx, events, month, setMonth, sel, setSel }) {
+function Monat({ ctx, events, todos, month, setMonth, sel, setSel }) {
   const first = `${month}-01`;
   const gridStart = mondayOf(first);
   const cells = Array.from({ length: 42 }, (_, i) => addDays(gridStart, i));
@@ -104,6 +109,8 @@ function Monat({ ctx, events, month, setMonth, sel, setSel }) {
   const m = parse(first);
   const shiftMonth = (n) => { const d = new Date(m.getFullYear(), m.getMonth() + n, 1, 12); setMonth(iso(d).slice(0, 7)); };
   const selList = byDay[sel] || [];
+  const selTodos = todos.filter((t) => t.am === sel);
+  const todoTage = new Set(todos.filter((t) => !t.done_at).map((t) => t.am));
   return (
     <>
       <section className="card" style={{ padding: '10px 8px' }}>
@@ -120,7 +127,7 @@ function Monat({ ctx, events, month, setMonth, sel, setSel }) {
             return (
               <button key={d} className={cls} onClick={() => setSel(d)} aria-label={`${longLabel(d)}, ${list.length} Termine`} aria-pressed={d === sel}>
                 <span>{parse(d).getDate()}</span>
-                <span className="mdots">{dotColors(list).map((c, i) => <span key={i} style={{ background: c }} />)}</span>
+                <span className="mdots">{dotColors(list).map((c, i) => <span key={i} style={{ background: c }} />)}{todoTage.has(d) && <span className="mdot-todo" />}</span>
               </button>
             );
           })}
@@ -131,8 +138,52 @@ function Monat({ ctx, events, month, setMonth, sel, setSel }) {
           <span className="label">{sel === ctx.day ? 'Heute · ' : ''}{longLabel(sel)}</span>
           <button className="icon-btn" aria-label="Termin an diesem Tag anlegen" onClick={() => ctx.openEvent(null, { start_date: sel })}><Icon name="plus" size={18} /></button>
         </div>
-        {selList.length === 0 ? <div className="empty">Nichts geplant.</div> : selList.map((o) => <EventRow key={o.ev.id} ev={o.ev} date={o.date} ctx={ctx} />)}
+        {selList.length === 0 && selTodos.length === 0 ? <div className="empty">Nichts geplant.</div> : <TagListe ctx={ctx} occ={selList} todos={selTodos} />}
       </section>
+    </>
+  );
+}
+
+// Termine und To-dos eines Tages nach Uhrzeit gemischt (Ganztägiges zuerst, To-dos ohne Zeit am Ende)
+function TagListe({ ctx, occ, todos }) {
+  const items = [
+    ...occ.map((o) => ({ t: o.ev.all_day ? '00' : String(o.ev.from_time || '00'), el: <EventRow key={o.ev.id + o.date} ev={o.ev} date={o.date} ctx={ctx} /> })),
+    ...todos.map((t) => ({ t: t.um ? String(t.um) : '99', el: <TodoRows key={t.id} ctx={ctx} list={[t]} /> })),
+  ].sort((a, b) => a.t.localeCompare(b.t));
+  return <>{items.map((x) => x.el)}</>;
+}
+
+// To-dos im Kalender: abhaken direkt, antippen zum Verschieben
+function TodoRows({ ctx, list }) {
+  const [kal, setKal] = useState(null);
+  if (!list.length) return null;
+  const toggle = async (t) => {
+    const v = t.done_at ? null : new Date().toISOString();
+    ctx.data.inbox.local((rows) => rows.map((x) => (x.id === t.id ? { ...x, done_at: v } : x)));
+    const ok = await run(supabase.from('todo_inbox').update({ done_at: v }).eq('id', t.id), ctx.fail);
+    if (!ok) ctx.data.inbox.reload();
+  };
+  const sorted = [...list].sort((a, b) => String(a.um || '99').localeCompare(String(b.um || '99')));
+  return (
+    <>
+      {sorted.map((t) => {
+        const owner = ctx.member(t.owner);
+        const fuer = ctx.member(t.for_who);
+        return (
+          <div key={t.id} className="row cal-todo" style={{ opacity: t.done_at ? 0.55 : 1 }}>
+            <span className="time">{t.um ? t.um.slice(0, 5) : <button className="cal-todo-check" aria-label={t.done_at ? 'Wieder öffnen' : 'Erledigt'} onClick={() => toggle(t)}><Check on={!!t.done_at} /></button>}</span>
+            {t.um && <button className="cal-todo-check" aria-label={t.done_at ? 'Wieder öffnen' : 'Erledigt'} onClick={() => toggle(t)}><Check on={!!t.done_at} /></button>}
+            <button className="cal-todo-main" onClick={() => setKal(t)}>
+              <span className="row-main">
+                <span className="row-title" style={t.done_at ? { textDecoration: 'line-through' } : undefined}>{t.title}</span>
+                <span className="small">{[owner && `${owner.name} kümmert sich`, fuer && `für ${fuer.name}`, t.due && t.due !== t.am && `Frist ${amText({ am: t.due })}`].filter(Boolean).join(' · ') || 'To-do'}</span>
+              </span>
+              <Icon name="chev" size={18} className="chev" />
+            </button>
+          </div>
+        );
+      })}
+      {kal && <TodoKalender ctx={ctx} todo={kal} onClose={() => setKal(null)} />}
     </>
   );
 }
