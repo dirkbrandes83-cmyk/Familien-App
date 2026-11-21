@@ -7,7 +7,8 @@ const QUELLEN = [
   { liga: "dfbf", team: "Werder-Frauen", wett: "DFB-Pokal", heim: /werder bremen frauen/i, art: "frauen" },
   { liga: "rln", team: "Werder U23 ♂", wett: "Regionalliga", heim: /werder bremen ii/i, art: "herren" },
 ];
-const kurz = (n: string) => n.replace(/\s+(Frauen|II)$/i, "").replace(/^(1\. FC|1\. FSV|FC|SV|VfL|VfB|SC|TSG 1899|SpVgg|SSV|HSC)\s+/i, (m) => (/^(1\. FC|1\. FSV)/i.test(m) ? m : "")).trim();
+// Nur „Frauen“ kürzen – „II“ bleibt, sonst wird aus „Hamburger SV II“ der HSV
+const kurz = (n: string) => n.replace(/\s+Frauen$/i, "").replace(/^(1\. FC|1\. FSV|FC|SV|VfL|VfB|SC|TSG 1899|SpVgg|SSV|HSC)\s+/i, (m) => (/^(1\. FC|1\. FSV)/i.test(m) ? m : "")).trim();
 
 Deno.serve(async () => {
   const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -20,13 +21,17 @@ Deno.serve(async () => {
     try {
       const r = await fetch(`https://api.openligadb.de/getmatchdata/${q.liga}/${saison}`, { signal: AbortSignal.timeout(20000) });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      for (const m of await r.json()) {
+      const alle = await r.json();
+      // Vorläufig = Spieltag seit dem Rahmenspielplan unverändert (wie unten bei den Dauerkarten)
+      const basis = Math.min(...alle.map((m: any) => Date.parse(m.lastUpdateDateTime || "") || Infinity));
+      const festeTage = new Set(alle.filter((m: any) => m.matchIsFinished || (Date.parse(m.lastUpdateDateTime || "") || basis) - basis > 2 * 86400000).map((m: any) => m.group?.groupOrderID));
+      for (const m of alle) {
         if (!q.heim.test(m.team1?.teamName ?? "")) continue;
         const [datum, zeit] = String(m.matchDateTime).split("T");
         if (datum < heute) continue;
         spiele.push({
           id: `${q.liga}-${m.matchID}`, team: q.team, art: q.art, wett: q.wett, datum, zeit: zeit.slice(0, 5),
-          gegner: kurz(m.team2?.teamName ?? ""), ort: m.location?.locationStadium || "Weserstadion – Platz 11",
+          gegner: kurz(m.team2?.teamName ?? ""), fest: festeTage.has(m.group?.groupOrderID), ort: m.location?.locationStadium || "Weserstadion – Platz 11",
         });
       }
     } catch (e) { fehler.push(`${q.liga}: ${(e as Error).message}`); }

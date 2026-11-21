@@ -9,7 +9,7 @@ import { WDL, weekday, shortLabel } from '../lib/dates.js';
 import { ABSCHNITTE, BAUSTEINE, bausteinIcon, tagesplan, aktuellerAbschnitt } from '../lib/wochenplan.js';
 import { wetterInfo, nass, rankIdeas } from '../lib/wochenende.js';
 import { useWetter, Overlay, einplanen, spielEinplanen } from './Wochenende.jsx';
-import { heimspiele, spieleAn, spielTitel, geplant } from '../lib/spiele.js';
+import { heimspiele, spieleAn, spielTitel, geplant, zeitText } from '../lib/spiele.js';
 import { mealOf } from './Zuhause.jsx';
 
 const ICON = { termin: 'cal', aemtchen: 'todo', essen: 'clock' };
@@ -120,7 +120,7 @@ export default function Wochenplan({ ctx, days, station, onKiste, kompakt, ohneL
                         )
                       ))}
                       {!vorbei && spieleAn(spiele, [d], a.id).filter((x) => !geplant(ctx.data.events.rows, x)).map((x) => (
-                        <button key={x.id} className="wp-frei wp-spielvorschlag" onClick={() => spielEinplanen(ctx, x, station)}><Icon name="ball" size={station ? 18 : 16} /> {x.zeit} {spielTitel(x)}?</button>
+                        <button key={x.id} className="wp-frei wp-spielvorschlag" onClick={() => spielEinplanen(ctx, x, station)}><Icon name="ball" size={station ? 18 : 16} /> {x.zeit}{x.fest === false ? '?' : ''} {spielTitel(x)}?</button>
                       ))}
                       {/* ein Knopf pro Abschnitt: Eltern planen alles (Baustein, To-do, Idee), Kinder wählen eine Idee */}
                       {edit
@@ -254,7 +254,7 @@ function BausteinSheet({ ctx, date, slot, onClose }) {
         <div className="field"><span>Werder spielt zu Hause</span>
           <div className="wp-todos">{spiele.map((x) => (
             <button key={x.id} className="wp-todo wp-spiel" onClick={() => spielRein(x)}>
-              <Icon name="ball" size={18} /><span>{spielTitel(x)}</span><span className="small">{x.zeit} Uhr</span>
+              <Icon name="ball" size={18} /><span>{spielTitel(x)}</span><span className="small">{zeitText(x)}</span>
             </button>
           ))}</div>
         </div>
@@ -313,7 +313,7 @@ function IdeeWaehlen({ ctx, station, date, slot, regen, onClose }) {
         {spiele.map((x) => (
           <button key={x.id} className={`wk-top wk-spielbtn${station ? ' st-big' : ''}`} disabled={busy} onClick={() => spielPick(x)}>
             <span className="wk-title"><Icon name="ball" size={20} /> {spielTitel(x)}</span>
-            <span className="wk-sub">{x.zeit} Uhr · {x.ort}</span>
+            <span className="wk-sub">{zeitText(x)} · {x.ort}</span>
           </button>
         ))}
         {list.map((i) => (

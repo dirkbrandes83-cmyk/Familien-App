@@ -5,7 +5,7 @@ import { supabase, run } from '../data.js';
 import { Icon } from '../ui.jsx';
 import { WD, WDL, shortLabel, weekday } from '../lib/dates.js';
 import { wetterInfo, nass, weekendDays, busyOf, rankIdeas, WO, DAUER, KOSTEN } from '../lib/wochenende.js';
-import { heimspiele, spieleAn, spielTitel, geplant } from '../lib/spiele.js';
+import { heimspiele, spieleAn, spielTitel, geplant, zeitText } from '../lib/spiele.js';
 
 // Wetter aus settings lesen; ist es älter als 3 Stunden, einmal neu holen
 export function useWetter(ctx) {
@@ -214,7 +214,7 @@ export async function spielEinplanen(ctx, s, station) {
   const [h, m] = s.zeit.split(':').map(Number);
   const ende = `${String(Math.min(23, h + 2)).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
   const ok = await run(supabase.from('events').insert({
-    title: `🎈 ${spielTitel(s)}`, kind: 'termin', who: ['all'], start_date: s.datum, all_day: false, from_time: s.zeit, to_time: ende,
+    title: `🎈 ${spielTitel(s)}`, note: s.fest === false ? 'Anstoßzeit vorläufig – bitte kurz vorher prüfen.' : null, kind: 'termin', who: ['all'], start_date: s.datum, all_day: false, from_time: s.zeit, to_time: ende,
     note: `${s.wett} · ${s.ort}`, src: station ? 'station' : 'fam', created_by: station ? null : ctx.me?.id,
   }), ctx.fail);
   if (ok) { ctx.data.events.reload?.(); ctx.say(`${spielTitel(s)} steht am ${WDL[weekday(s.datum)]} im Kalender`); }
@@ -236,14 +236,14 @@ export function Heimspiele({ ctx, days, station }) {
             <Icon name="ball" size={station ? 30 : 24} />
             <div className="wk-spielinfo">
               <div className="wk-title">{s.team} – {s.gegner}</div>
-              <div className="wk-sub">{WDL[weekday(s.datum)]} {s.zeit} Uhr · {s.ort} · {s.wett}</div>
+              <div className="wk-sub">{WDL[weekday(s.datum)]} {zeitText(s)} · {s.ort} · {s.wett}</div>
             </div>
             {drin ? <span className="wk-drin"><Icon name="check" size={16} /> im Plan</span>
               : <button className="btn small" style={{ width: 'auto' }} onClick={() => spielEinplanen(ctx, s, station)}>Machen wir!</button>}
           </div>
         );
       })}
-      {naechstes && <div className="small wk-next"><Icon name="ball" size={15} /> Nächstes Heimspiel: {spielTitel(naechstes)}, {shortLabel(naechstes.datum)} {naechstes.zeit} Uhr</div>}
+      {naechstes && <div className="small wk-next"><Icon name="ball" size={15} /> Nächstes Heimspiel: {spielTitel(naechstes)}, {shortLabel(naechstes.datum)} {zeitText(naechstes)}</div>}
     </div>
   );
 }

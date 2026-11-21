@@ -4,6 +4,8 @@ import { slotOf } from './wochenplan.js';
 export function heimspiele(settingsRows) {
   return settingsRows.find((r) => r.key === 'spiele')?.value?.spiele ?? [];
 }
+// Anstoßzeit; „vorläufig“, solange der Verband den Spieltag noch nicht fest angesetzt hat
+export const zeitText = (s) => `${s.zeit} Uhr${s.fest === false ? ' (vorläufig)' : ''}`;
 export const spielTitel = (s) => `${s.team} – ${s.gegner}`;
 // Spiele an diesen Tagen; optional nur in einem Abschnitt (vormittag/nachmittag …)
 export function spieleAn(spiele, days, slot) {
