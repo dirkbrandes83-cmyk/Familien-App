@@ -103,9 +103,9 @@ export default function Wochenplan({ ctx, days, station, onKiste, kompakt, ohneL
                             {edit
                               ? <button className="wp-check" aria-pressed={i.done} aria-label={i.done ? 'Wieder offen' : 'Erledigt'} onClick={() => (i.done ? i.aufgabe.zurueck() : i.aufgabe.erledigen())}><Check on={i.done} /></button>
                               : <Icon name={i.aufgabe.art === 'besorgen' ? 'bag' : 'todo'} size={18} />}
-                            {edit ? <button className="wp-txt" onClick={() => setMove({ item: i, date: d, slot: a.id })}>{i.text}</button> : <span>{i.text}</span>}
-                            <Dabei ctx={ctx} ids={i.dabei} big={station} onEdit={edit ? () => setMove({ item: i, date: d, slot: a.id }) : null} />
-                            {edit && <button className="wp-x" aria-label={`${i.text} aus dem Plan nehmen`} onClick={() => entfernen(ctx, i.row, i.text)}><Icon name="x" size={14} /></button>}
+                            {edit && i.row ? <button className="wp-txt" onClick={() => setMove({ item: i, date: d, slot: a.id })}>{i.text}</button> : <span>{i.time ? <b>{i.time} </b> : null}{i.text}</span>}
+                            <Dabei ctx={ctx} ids={i.dabei} big={station} onEdit={edit && i.row ? () => setMove({ item: i, date: d, slot: a.id }) : null} />
+                            {edit && i.row && <button className="wp-x" aria-label={`${i.text} aus dem Plan nehmen`} onClick={() => entfernen(ctx, i.row, i.text)}><Icon name="x" size={14} /></button>}
                           </div>
                         ) : (
                         <div key={n} className={`wp-item ${i.art}${i.idee ? ' idee' : ''}`}>

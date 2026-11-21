@@ -183,6 +183,8 @@ function StundenplanKarte({ ctx, kid, date }) {
 // Erinnerungen, die dieses Kind betreffen: Erledigen, Besorgen und Geschenke zu seinen Terminen
 export function fuerKind(ctx, kidId) {
   // Aus dem gemeinsamen Aufgaben-Modell: Erledigen und Besorgen, die dieses Kind betreffen
-  return offen(aufgaben(ctx)).filter((a) => a.forWho === kidId && (a.art === 'erledigen' || a.art === 'besorgen'))
-    .map((a) => ({ id: a.key, text: a.text, due: a.due }));
+  // Im Kalender auf einen späteren Tag gelegt → erst an dem Tag zeigen; heutige mit Uhrzeit nach vorn
+  return offen(aufgaben(ctx)).filter((a) => a.forWho === kidId && (a.art === 'erledigen' || a.art === 'besorgen') && !(a.am && a.am > ctx.day))
+    .sort((a, b) => (b.am === ctx.day) - (a.am === ctx.day) || String(a.um || '99').localeCompare(String(b.um || '99')))
+    .map((a) => ({ id: a.key, text: a.am === ctx.day ? `${a.um ? `${a.um.slice(0, 5)} Uhr: ` : 'Heute: '}${a.text}` : a.text, due: a.due }));
 }

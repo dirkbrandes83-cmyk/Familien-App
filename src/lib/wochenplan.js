@@ -46,6 +46,13 @@ export function tagesplan({ date, events, plan, rahmen = [], chores = [], meal, 
   for (const r of rahmen.filter((x) => x.tag === wd)) {
     slots[r.slot].push({ art: 'baustein', text: r.who ? `${r.text} ${name(r.who) ?? ''}`.trim() : r.text, fest: true, rahmen: r, dabei: r.dabei ?? (r.who ? [r.who] : ['all']) });
   }
+  const eingeplant = new Set(plan.filter((x) => x.todo_ref).map((x) => x.todo_ref));
+  // To-dos und Besorgen, die im Kalender auf diesen Tag gelegt wurden (mit Uhrzeit im passenden Abschnitt)
+  for (const t of todos.values()) {
+    if (t.am !== date || eingeplant.has(t.key)) continue;
+    const dabei = [...new Set([t.owner, t.forWho].filter(Boolean))];
+    slots[t.um ? slotOf(t.um) : 'vormittag'].push({ art: 'todo', text: t.text, time: t.um ? hm(t.um) : undefined, done: t.done, aufgabe: t, dabei: dabei.length ? dabei : ['all'] });
+  }
   for (const p of plan.filter((x) => x.on_date === date)) {
     if (p.todo_ref) {
       const t = todos.get(p.todo_ref);
