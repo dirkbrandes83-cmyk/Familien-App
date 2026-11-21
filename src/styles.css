@@ -805,5 +805,4 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .mcell.out .mev { opacity: .45; }
 .mcell.sel .mev { color: #fff; }
 .mcell.today:not(.sel) { background: #ECFDF5; }
-.mseg { margin: 0 4px 6px; padding: 3px; }
-.mseg button { padding: 5px 0; font-size: 13px; min-height: 0; }
+.mtoggle { border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: 1px 7px; font-size: 12px; font-weight: 700; color: var(--muted); line-height: 1.5; min-width: 32px; }

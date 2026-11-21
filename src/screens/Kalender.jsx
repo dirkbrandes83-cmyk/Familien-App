@@ -121,13 +121,11 @@ function Monat({ ctx, events, todos, month, setMonth, sel, setSel }) {
   return (
     <>
       <section className="card" style={{ padding: '10px 8px' }}>
-        <div className="seg mseg" role="group" aria-label="Darstellung">
-          <button className={!text ? 'on' : ''} aria-pressed={!text} onClick={() => umschalten(false)}>Punkte</button>
-          <button className={text ? 'on' : ''} aria-pressed={text} onClick={() => umschalten(true)}>Mit Text</button>
-        </div>
         <div className="card-head" style={{ padding: '0 4px 6px' }}>
           <button className="icon-btn" aria-label="Voriger Monat" onClick={() => shiftMonth(-1)}><Icon name="left" /></button>
-          <span style={{ fontWeight: 700 }}>{MONTHS[m.getMonth()]} {m.getFullYear()}</span>
+          <span style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>{MONTHS[m.getMonth()]} {m.getFullYear()}
+            <button className="mtoggle" onClick={() => umschalten(!text)} aria-label={text ? 'Nur Punkte zeigen' : 'Termine mit Text zeigen'} title={text ? 'Nur Punkte' : 'Mit Text'}>{text ? '•••' : 'Aa'}</button>
+          </span>
           <button className="icon-btn" aria-label="Nächster Monat" onClick={() => shiftMonth(1)}><Icon name="chev" /></button>
         </div>
         <div className={`month${text ? ' mtext' : ''}`}>
