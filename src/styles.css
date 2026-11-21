@@ -83,7 +83,7 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .swipe-fg { position: relative; background: var(--card); }
 .month { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
 .month .wd { text-align: center; font-size: 11px; font-weight: 700; color: var(--muted); padding-bottom: 2px; }
-.mcell { min-height: 46px; border-radius: 10px; border: none; background: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.mcell { min-height: 46px; border-radius: 10px; border: none; background: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-width: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
 .mcell.out { color: #C4BCB0; }
 .mcell.today { color: var(--teal); font-weight: 800; }
 .mcell.sel { background: var(--ink); color: #fff; }
@@ -793,3 +793,15 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .cal-todo .cal-todo-check { background: none; border: none; padding: 4px; display: inline-flex; }
 .cal-todo .cal-todo-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; background: none; border: none; padding: 0; text-align: left; }
 .mdot-todo { width: 6px; height: 6px; border-radius: 2px; background: #B45309; }
+
+/* Monatsansicht: Termine ganz klein */
+.month .mcell { justify-content: flex-start; align-items: stretch; min-height: 64px; padding: 3px 2px; border-radius: 6px; gap: 1px; overflow: hidden; }
+.month .mcell .mnum { text-align: left; padding-left: 2px; font-size: 14px; }
+.mevs { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.mev { display: flex; align-items: center; gap: 2px; font-size: 9.5px; line-height: 1.25; font-weight: 500; color: var(--ink); white-space: nowrap; overflow: hidden; text-align: left; }
+.mev i { display: inline-flex; gap: 1px; flex: none; }
+.mev i b { width: 3px; height: 10px; border-radius: 2px; }
+.mev.more { color: var(--muted); padding-left: 2px; }
+.mcell.out .mev { opacity: .45; }
+.mcell.sel .mev { color: #fff; }
+.mcell.today:not(.sel) { background: #ECFDF5; }

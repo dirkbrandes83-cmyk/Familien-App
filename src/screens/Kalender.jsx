@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Icon, Seg, Check } from '../ui.jsx';
-import { addDays, expand, mondayOf, longLabel, parse, iso, MONTHS, WD, weekday } from '../lib/dates.js';
+import { addDays, expand, mondayOf, longLabel, parse, iso, MONTHS, WD, weekday, titelAm } from '../lib/dates.js';
 import { EventRow } from './common.jsx';
 import { supabase, run } from '../data.js';
 import { TodoKalender, amText } from './Erinnerungen.jsx';
@@ -130,8 +130,17 @@ function Monat({ ctx, events, todos, month, setMonth, sel, setSel }) {
             const cls = ['mcell', d.slice(0, 7) !== month && 'out', d === ctx.day && 'today', d === sel && 'sel'].filter(Boolean).join(' ');
             return (
               <button key={d} className={cls} onClick={() => setSel(d)} aria-label={`${longLabel(d)}, ${list.length} Termine`} aria-pressed={d === sel}>
-                <span>{parse(d).getDate()}</span>
-                <span className="mdots">{dotColors(list).map((c, i) => <span key={i} style={{ background: c }} />)}{todoTage.has(d) && <span className="mdot-todo" />}</span>
+                <span className="mnum">{parse(d).getDate()}</span>
+                {/* Termine ganz klein: Farbstreifen je Person + Titelanfang; Geburtstage zuerst, dann nach Uhrzeit */}
+                <span className="mevs">
+                  {[...list].sort((a, b) => (b.ev.kind === 'geburtstag') - (a.ev.kind === 'geburtstag') || (b.ev.all_day ? 1 : 0) - (a.ev.all_day ? 1 : 0) || String(a.ev.from_time || '').localeCompare(String(b.ev.from_time || ''))).slice(0, 5).map((o) => (
+                    <span key={o.ev.id} className="mev">
+                      <i>{dotColors([o]).map((c, i) => <b key={i} style={{ background: c }} />)}</i>{titelAm(o.ev, d).replace(/^🎈\s*/, '')}
+                    </span>
+                  ))}
+                  {list.length > 5 && <span className="mev more">+{list.length - 5}</span>}
+                  {todoTage.has(d) && <span className="mev todo"><i><b style={{ background: '#B45309' }} /></i>To-do</span>}
+                </span>
               </button>
             );
           })}
