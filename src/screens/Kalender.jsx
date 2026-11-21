@@ -115,15 +115,22 @@ function Monat({ ctx, events, todos, month, setMonth, sel, setSel }) {
   const selList = byDay[sel] || [];
   const selTodos = todos.filter((t) => t.am === sel);
   const todoTage = new Set(todos.filter((t) => !t.done_at).map((t) => t.am));
+  // Ansicht merken (pro Gerät): Punkte oder Text
+  const [text, setText] = useState(() => { try { return localStorage.getItem('monat-ansicht') !== 'punkte'; } catch { return true; } });
+  const umschalten = (v) => { setText(v); try { localStorage.setItem('monat-ansicht', v ? 'text' : 'punkte'); } catch { /* egal */ } };
   return (
     <>
       <section className="card" style={{ padding: '10px 8px' }}>
+        <div className="seg mseg" role="group" aria-label="Darstellung">
+          <button className={!text ? 'on' : ''} aria-pressed={!text} onClick={() => umschalten(false)}>Punkte</button>
+          <button className={text ? 'on' : ''} aria-pressed={text} onClick={() => umschalten(true)}>Mit Text</button>
+        </div>
         <div className="card-head" style={{ padding: '0 4px 6px' }}>
           <button className="icon-btn" aria-label="Voriger Monat" onClick={() => shiftMonth(-1)}><Icon name="left" /></button>
           <span style={{ fontWeight: 700 }}>{MONTHS[m.getMonth()]} {m.getFullYear()}</span>
           <button className="icon-btn" aria-label="Nächster Monat" onClick={() => shiftMonth(1)}><Icon name="chev" /></button>
         </div>
-        <div className="month">
+        <div className={`month${text ? ' mtext' : ''}`}>
           {WD.map((w) => <span key={w} className="wd">{w}</span>)}
           {shown.map((d) => {
             const list = byDay[d] || [];
@@ -131,8 +138,9 @@ function Monat({ ctx, events, todos, month, setMonth, sel, setSel }) {
             return (
               <button key={d} className={cls} onClick={() => setSel(d)} aria-label={`${longLabel(d)}, ${list.length} Termine`} aria-pressed={d === sel}>
                 <span className="mnum">{parse(d).getDate()}</span>
+                {!text && <span className="mdots">{dotColors(list).map((c, i) => <span key={i} style={{ background: c }} />)}{todoTage.has(d) && <span className="mdot-todo" />}</span>}
                 {/* Termine ganz klein: Farbstreifen je Person + Titelanfang; Geburtstage zuerst, dann nach Uhrzeit */}
-                <span className="mevs">
+                {text && <span className="mevs">
                   {[...list].sort((a, b) => (b.ev.kind === 'geburtstag') - (a.ev.kind === 'geburtstag') || (b.ev.all_day ? 1 : 0) - (a.ev.all_day ? 1 : 0) || String(a.ev.from_time || '').localeCompare(String(b.ev.from_time || ''))).slice(0, 5).map((o) => (
                     <span key={o.ev.id} className="mev">
                       <i>{dotColors([o]).map((c, i) => <b key={i} style={{ background: c }} />)}</i>{titelAm(o.ev, d).replace(/^🎈\s*/, '')}
@@ -140,7 +148,7 @@ function Monat({ ctx, events, todos, month, setMonth, sel, setSel }) {
                   ))}
                   {list.length > 5 && <span className="mev more">+{list.length - 5}</span>}
                   {todoTage.has(d) && <span className="mev todo"><i><b style={{ background: '#B45309' }} /></i>To-do</span>}
-                </span>
+                </span>}
               </button>
             );
           })}
