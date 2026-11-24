@@ -5,8 +5,6 @@ import { parseIcs, isCurrent } from '../lib/ics.js';
 import { shortLabel, hm } from '../lib/dates.js';
 import Mitteilungen from './Mitteilungen.jsx';
 import Widget from './Widget.jsx';
-import Stundenplan from './Stundenplan.jsx';
-import Dauerkarten from './Dauerkarten.jsx';
 import CheckIn, { checkinSunday } from './CheckIn.jsx';
 import { shortLabel as sl } from '../lib/dates.js';
 
@@ -16,9 +14,6 @@ export default function Mehr({ ctx }) {
   if (page === 'abos') return <Abos ctx={ctx} onBack={() => setPage(null)} />;
   if (page === 'push') return <Mitteilungen ctx={ctx} onBack={() => setPage(null)} />;
   if (page === 'widget') return <Widget ctx={ctx} onBack={() => setPage(null)} />;
-  if (page === 'dauerkarten') return <Dauerkarten ctx={ctx} onBack={() => setPage(null)} />;
-  if (page === 'stundenplan') return <Stundenplan ctx={ctx} onBack={() => setPage(null)} />;
-  if (page === 'checkins') return <CheckinVerlauf ctx={ctx} onBack={() => setPage(null)} />;
   const backup = async () => {
     const tables = ['events', 'shopping_items', 'frequent_items', 'pack_rules', 'pack_items', 'todo_inbox', 'buy_items', 'meals', 'recipes', 'chores', 'cleaning_areas', 'cleaning_notes', 'laundry_log', 'caregivers', 'care_needs', 'care_asks', 'calendar_subscriptions', 'settings'];
     const out = { exportiert: new Date().toISOString() };
@@ -33,28 +28,12 @@ export default function Mehr({ ctx }) {
   return (
     <>
       <section className="card tight">
-        <button className="row" style={{ minHeight: 60 }} onClick={() => setPage('checkins')}>
-          <span className="row-main"><span style={{ fontWeight: 700 }}>☀️ Sonntags-Check-in</span><span className="sub">Starten und frühere Wochen ansehen</span></span>
-          <Icon name="chev" size={18} />
-        </button>
-        <button className="row" style={{ minHeight: 60 }} onClick={() => setPage('dauerkarten')}>
-          <span className="row-main"><span style={{ fontWeight: 700 }}>⚽ Werder-Dauerkarten</span><span className="sub">Mit Eika & Jan absprechen, wer wann geht</span></span>
-          <Icon name="chev" size={18} />
-        </button>
-        <button className="row" style={{ minHeight: 60 }} onClick={() => setPage('stundenplan')}>
-          <span className="row-main"><span style={{ fontWeight: 700 }}>Stundenplan</span><span className="sub">{ctx.kids.map((k) => k.name).join(' und ')} – erscheint auf dem iPad</span></span>
-          <Icon name="chev" size={18} />
-        </button>
         <button className="row" style={{ minHeight: 60 }} onClick={() => setPage('push')}>
           <span className="row-main"><span style={{ fontWeight: 700 }}>Mitteilungen</span><span className="sub">Morgens, abends und bei neuen Einträgen</span></span>
           <Icon name="chev" size={18} />
         </button>
         <button className="row" style={{ minHeight: 60 }} onClick={() => setPage('widget')}>
           <span className="row-main"><span style={{ fontWeight: 700 }}>Widget und Apple Watch</span><span className="sub">„Heute“-Widget · Einkaufsliste auf der Watch</span></span>
-          <Icon name="chev" size={18} />
-        </button>
-        <button className="row" style={{ minHeight: 60 }} onClick={() => setPage('klender')}>
-          <span className="row-main"><span style={{ fontWeight: 700 }}>Von Klender umziehen</span><span className="sub">Export-Link oder .ics-Datei</span></span>
           <Icon name="chev" size={18} />
         </button>
         <button className="row" style={{ minHeight: 60 }} onClick={() => setPage('abos')}>
@@ -64,6 +43,10 @@ export default function Mehr({ ctx }) {
         <button className="row" style={{ minHeight: 60 }} onClick={backup}>
           <span className="row-main"><span style={{ fontWeight: 700 }}>Sicherung herunterladen</span><span className="sub">Alle Termine und Listen als Datei</span></span>
           <Icon name="upload" size={18} style={{ transform: 'rotate(180deg)' }} />
+        </button>
+        <button className="row" style={{ minHeight: 60 }} onClick={() => setPage('klender')}>
+          <span className="row-main"><span style={{ fontWeight: 700 }}>Von Klender umziehen</span><span className="sub">Export-Link oder .ics-Datei</span></span>
+          <Icon name="chev" size={18} />
         </button>
       </section>
       <section className="card">
@@ -78,7 +61,6 @@ export default function Mehr({ ctx }) {
         <div className="sub">Angemeldet als {ctx.me.name}</div>
         <button className="btn ghost" onClick={() => supabase.auth.signOut()}>Abmelden</button>
       </section>
-      <div className="small">Später möglich: Wochenende, Wunschzettel und Sonntags-Check-in.</div>
     </>
   );
 }
@@ -334,13 +316,13 @@ function Abos({ ctx, onBack }) {
 }
 
 const FACE = { 1: '😢', 2: '😕', 3: '😐', 4: '🙂', 5: '😄' };
-function CheckinVerlauf({ ctx, onBack }) {
+export function CheckinVerlauf({ ctx, onBack }) {
   const [open, setOpen] = useState(false);
   const list = [...ctx.data.checkins.rows].sort((a, b) => b.sonntag.localeCompare(a.sonntag));
   const cur = list.find((r) => r.sonntag === checkinSunday(ctx.day));
   return (
     <>
-      <button className="btn ghost" onClick={onBack} style={{ alignSelf: 'flex-start' }}><Icon name="left" size={18} />Zurück</button>
+      {onBack && <button className="btn ghost" onClick={onBack} style={{ alignSelf: 'flex-start' }}><Icon name="left" size={18} />Zurück</button>}
       <section className="card">
         <div className="card-title">☀️ Sonntags-Check-in</div>
         <div className="small">Am besten sonntags gemeinsam am Familien-iPad – dort erscheint der Knopf oben rechts. Hier geht es auch.</div>

@@ -204,6 +204,23 @@ test('Wochenplan: Abschnitte, Bausteine, freie Zeit', async () => {
   assert.equal(p.slots.abend[0].text, 'Pizza');
 });
 
+test('Wochenplan: To-dos stehen mit Datum am Eintrag (Uhrzeit vor Tageszeit)', async () => {
+  const { tagesplan } = await import('./wochenplan.js');
+  const sa = '2026-11-14';
+  const todos = new Map([
+    ['t1', { key: 't1', text: 'Postident', am: sa, abschnitt: 'nachmittag', owner: 'dirk' }],
+    ['b1', { key: 'b1', text: 'Schuhe', am: sa, um: '11:00:00', forWho: 'emil' }],
+    ['t2', { key: 't2', text: 'Ohne Zeit', am: sa }],
+    ['t3', { key: 't3', text: 'Anderer Tag', am: '2026-11-15' }],
+  ]);
+  const p = tagesplan({ date: sa, events: [], plan: [{ on_date: sa, slot: 'abend', todo_ref: 't1', text: 'alt' }], rahmen: [], members: [], todos });
+  assert.deepEqual(p.slots.nachmittag.map((i) => i.text), ['Postident']);
+  assert.deepEqual(p.slots.vormittag.map((i) => i.text), ['Schuhe', 'Ohne Zeit']);
+  assert.equal(p.slots.vormittag[0].time, '11:00');
+  assert.deepEqual(p.slots.abend, []); // alte todo_ref-Zeile zählt nicht doppelt
+  assert.deepEqual(p.slots.vormittag[0].dabei, ['emil']);
+});
+
 test('Dauerkarten: Wunsch, Bestätigen, Börse-Limit, Kosten', async () => {
   const { aktion, kosten, boerseZahl } = await import('./dauerkarten.js');
   const sp = Array.from({ length: 8 }, (_, i) => ({ id: `s${i}`, zuteilung: null, wunsch: null, wunsch_von: null }));

@@ -1,9 +1,7 @@
 import { useState } from 'react';
 import { supabase, run, learnedSections } from '../data.js';
 import { Icon, Check, Sheet, Seg, ChipPick, Swipe } from '../ui.jsx';
-import Wochenplan from './Wochenplan.jsx';
-import { weekendDays } from '../lib/wochenende.js';
-import Ideenkiste from './Wochenende.jsx';
+import Stundenplan from './Stundenplan.jsx';
 import { addDays, mondayOf, longLabel, parse, WD, weekday, MONTHS, shortLabel } from '../lib/dates.js';
 import { sectionOf, splitNames } from '../lib/shop.js';
 import { BINS, WASH, muellStatus, binsForWeek, nextCleaning, agoLabel, weekdaysLabel } from '../lib/home.js';
@@ -37,14 +35,14 @@ export function Bin({ id, size = 22 }) {
 export default function Zuhause({ ctx, seg, setSeg }) {
   return (
     <>
-      <Seg label="Bereich" value={seg} onPick={setSeg} options={[['essen', 'Essen'], ['aemtchen', 'Ämtchen'], ['haushalt', 'Haushalt'], ['wochenende', 'Freizeit']]} />
-      {seg === 'essen' ? <Essen ctx={ctx} /> : seg === 'aemtchen' ? <Aemtchen ctx={ctx} /> : seg === 'wochenende' ? <><Wochenplan ctx={ctx} days={weekendDays(ctx.day)} onKiste={() => document.querySelector('.wk')?.scrollIntoView({ behavior: 'smooth' })} /><Ideenkiste ctx={ctx} /></> : <Haushalt ctx={ctx} />}
+      <Seg label="Bereich" value={seg} onPick={setSeg} options={[['aemtchen', 'Ämtchen'], ['haushalt', 'Haushalt'], ['stundenplan', 'Stundenplan']]} />
+      {seg === 'haushalt' ? <Haushalt ctx={ctx} /> : seg === 'stundenplan' ? <Stundenplan ctx={ctx} /> : <Aemtchen ctx={ctx} />}
     </>
   );
 }
 
 /* ---------------- Essen ---------------- */
-function Essen({ ctx }) {
+export function Essen({ ctx }) {
   const [week, setWeek] = useState(mondayOf(ctx.day));
   const [sheet, setSheet] = useState(null); // { date, wish }
   const [recipes, setRecipes] = useState(false);

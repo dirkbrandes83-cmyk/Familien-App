@@ -6,8 +6,8 @@ import { longLabel, today } from './lib/dates.js';
 import Login, { NewPassword } from './screens/Login.jsx';
 import Heute from './screens/Heute.jsx';
 import Kalender from './screens/Kalender.jsx';
-import Einkauf from './screens/Einkauf.jsx';
-import Erinnerungen from './screens/Erinnerungen.jsx';
+import Listen from './screens/Erinnerungen.jsx';
+import Planen from './screens/Planen.jsx';
 import Mehr from './screens/Mehr.jsx';
 import EventSheet from './screens/EventSheet.jsx';
 import Station from './screens/station/Station.jsx';
@@ -17,10 +17,17 @@ import Scan from './screens/Scan.jsx';
 const TABS = [
   ['heute', 'Heute', 'home'],
   ['kalender', 'Kalender', 'cal'],
-  ['einkauf', 'Einkauf', 'cart'],
-  ['erinn', 'Erinnerungen', 'bell'],
+  ['listen', 'Listen', 'todo'],
+  ['planen', 'Planen', 'balloon'],
   ['zuhause', 'Zuhause', 'house'],
 ];
+const TAB_IDS = TABS.map((t) => t[0]);
+// Alte Ziele (vor dem Umbau) auf die neue Struktur abbilden
+const ALT = {
+  einkauf: ['listen', 'einkauf'], erinn: ['listen'],
+  'zuhause:wochenende': ['planen', 'wochenende'], 'zuhause:essen': ['planen', 'essen'], 'erinn:geschenke': ['planen', 'geschenke'],
+};
+const merk = (key, def) => { try { return localStorage.getItem(key) || def; } catch { return def; } };
 
 const DK_TOKEN = new URLSearchParams(location.search).get('dk');
 
@@ -73,10 +80,12 @@ function Family({ session }) {
 }
 
 function Shell({ me, members }) {
-  const [tab, setTab] = useState(() => sessionStorage.getItem('tab') || 'heute');
-  const [erSeg, setErSeg] = useState('vereinbaren');
+  const [tab, setTab] = useState(() => { const t = sessionStorage.getItem('tab'); return TAB_IDS.includes(t) ? t : 'heute'; });
+  const [liSeg, setLiSegRaw] = useState(() => merk('listen-seg', 'einkauf'));
+  const setLiSeg = (v) => { setLiSegRaw(v); try { localStorage.setItem('listen-seg', v); } catch { /* egal */ } };
+  const [plSeg, setPlSeg] = useState('wochenende');
   const [plus, setPlus] = useState(false);
-  const [zhSeg, setZhSeg] = useState('essen');
+  const [zhSeg, setZhSeg] = useState('aemtchen');
   const [calSeg, setCalSeg] = useState('termine');
   const [mehr, setMehr] = useState(false);
   const [toast, setToast] = useState(null);
@@ -116,14 +125,22 @@ function Shell({ me, members }) {
     kids: members.filter((m) => m.kid),
     openEvent: (ev, preset) => setEventEdit({ ev, preset }),
     openScan: () => setScan(true),
-    go: (t, seg) => { setMehr(false); setTab(t); if (seg && t === 'erinn') setErSeg(seg); if (seg && t === 'zuhause') setZhSeg(seg); if (seg && t === 'kalender') setCalSeg(seg); },
+    go: (t0, seg0) => {
+      const [t, seg] = ALT[`${t0}:${seg0}`] || (ALT[t0] ? [ALT[t0][0], seg0 || ALT[t0][1]] : [t0, seg0]);
+      setMehr(false); setPlus(false); setTab(t);
+      if (seg && t === 'listen') setLiSeg(seg);
+      if (seg && t === 'planen') setPlSeg(seg);
+      if (seg && t === 'zuhause') setZhSeg(seg);
+      if (seg && t === 'kalender') setCalSeg(seg);
+    },
    
   }), [me, members, day, say, fail, ...Object.values(data).map((d) => d.rows)]);
 
   const openShop = data.shop.rows.filter((r) => !r.done).length;
-  const openInbox = data.inbox.rows.filter((r) => !r.done_at).length;
+  const openInbox = data.inbox.rows.filter((r) => !r.done_at && (!r.owner || r.owner === me.id)).length;
+  const openBuy = data.buy.rows.filter((r) => !r.done).length;
   const toReview = data.events.rows.filter((e) => e.review).length;
-  const titles = { heute: `Hallo ${me.name}`, kalender: 'Kalender', einkauf: 'Einkaufsliste', erinn: 'Erinnerungen', zuhause: 'Zuhause' };
+  const titles = { heute: `Hallo ${me.name}`, kalender: 'Kalender', listen: 'Listen', planen: 'Planen', zuhause: 'Zuhause' };
 
   return (
     <div className="app">
@@ -133,19 +150,20 @@ function Shell({ me, members }) {
             <div className="date">{longLabel(day)}</div>
             <h1>{mehr ? 'Mehr' : titles[tab]}</h1>
           </div>
-          {tab === 'heute' && !mehr && (
+          {!mehr && (
             <button className="icon-btn plus-btn" aria-label="Eintragen" aria-expanded={plus} onClick={() => setPlus(!plus)}><Icon name={plus ? 'x' : 'plus'} /></button>
           )}
-          <button className="me-btn" onClick={() => setMehr(!mehr)} aria-label="Mehr: Klender-Umzug, Konto" aria-expanded={mehr}>
+          <button className="me-btn" onClick={() => setMehr(!mehr)} aria-label="Mehr: Einstellungen und Konto" aria-expanded={mehr}>
             <span className="avatar" style={{ background: me.bg, color: me.color }} aria-hidden="true">{me.name[0]}</span>
             <Icon name={mehr ? 'x' : 'menu'} />
           </button>
         </div>
-        {plus && tab === 'heute' && !mehr && (
+        {plus && !mehr && (
           <div className="plus-menu" role="menu">
             {[['cal', 'Termin', () => ctx.openEvent(null, { start_date: day })],
-              ['cart', 'Einkauf', () => ctx.go('einkauf')],
-              ['todo', 'Erinnerung', () => ctx.go('erinn', 'vereinbaren')],
+              ['cart', 'Einkauf', () => ctx.go('listen', 'einkauf')],
+              ['todo', 'To-do', () => ctx.go('listen', 'vereinbaren')],
+              ['bag', 'Besorgen', () => ctx.go('listen', 'besorgen')],
               ['form', 'Elternbrief scannen', () => ctx.openScan()]].map(([ic, l, fn]) => (
               <button key={l} role="menuitem" className="plus-item" onClick={() => { setPlus(false); fn(); }}><Icon name={ic} size={18} />{l}</button>
             ))}
@@ -158,17 +176,17 @@ function Shell({ me, members }) {
           : tab === 'heute' ? <Heute ctx={ctx} />
           : tab === 'kalender' ? <Kalender ctx={ctx} seg={calSeg} setSeg={setCalSeg} />
           : tab === 'zuhause' ? <Zuhause ctx={ctx} seg={zhSeg} setSeg={setZhSeg} />
-          : tab === 'einkauf' ? <Einkauf ctx={ctx} />
-          : <Erinnerungen ctx={ctx} seg={erSeg} setSeg={setErSeg} />}
+          : tab === 'planen' ? <Planen ctx={ctx} seg={plSeg} setSeg={setPlSeg} />
+          : <Listen ctx={ctx} seg={liSeg} setSeg={setLiSeg} />}
       </main>
 
       <nav className="tabs" aria-label="Bereiche">
         <div className="tabs-inner">
           {TABS.map(([id, label, icon]) => {
-            const n = id === 'einkauf' ? openShop : id === 'erinn' && me.id === 'dirk' ? openInbox : id === 'kalender' ? toReview : 0;
+            const n = id === 'listen' ? openShop + openInbox + openBuy : id === 'kalender' ? toReview : 0;
             return (
               <button key={id} className={`tab${tab === id && !mehr ? ' on' : ''}`} aria-current={tab === id && !mehr ? 'page' : undefined}
-                onClick={() => { setMehr(false); setTab(id); }}>
+                onClick={() => { setMehr(false); setPlus(false); setTab(id); }}>
                 <Icon name={icon} size={24} />
                 {label}
                 {n > 0 && <span className="dot" aria-label={`${n} offen`}>{n}</span>}

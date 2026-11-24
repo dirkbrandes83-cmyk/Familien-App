@@ -2,6 +2,7 @@
 // Eltern legen Bausteine hinein (Marktbesuch, Auszeit für …), freie Abschnitte füllt man mit einer Idee.
 // Auf dem iPad sehen die Kinder, was jetzt dran ist und was danach kommt.
 import { useState } from 'react';
+import { EintragSheet } from './Eintrag.jsx';
 import { supabase, run } from '../data.js';
 import { Icon, Check } from '../ui.jsx';
 import { aufgaben, offen } from '../lib/aufgaben.js';
@@ -57,6 +58,7 @@ export default function Wochenplan({ ctx, days, station, onKiste, kompakt, ohneL
   const [add, setAdd] = useState(null);   // { date, slot }
   const [idee, setIdee] = useState(null); // { date, slot }
   const [move, setMove] = useState(null); // { item, date, slot }
+  const [eintrag, setEintrag] = useState(null); // To-do/Besorgen aus dem Plan bearbeiten
   const wetter = useWetter(ctx);
   const edit = !station;
   const zeigen = station && !nebeneinander ? [days.includes(tag) ? tag : days[0]] : days;
@@ -103,9 +105,8 @@ export default function Wochenplan({ ctx, days, station, onKiste, kompakt, ohneL
                             {edit
                               ? <button className="wp-check" aria-pressed={i.done} aria-label={i.done ? 'Wieder offen' : 'Erledigt'} onClick={() => (i.done ? i.aufgabe.zurueck() : i.aufgabe.erledigen())}><Check on={i.done} /></button>
                               : <Icon name={i.aufgabe.art === 'besorgen' ? 'bag' : 'todo'} size={18} />}
-                            {edit && i.row ? <button className="wp-txt" onClick={() => setMove({ item: i, date: d, slot: a.id })}>{i.text}</button> : <span>{i.time ? <b>{i.time} </b> : null}{i.text}</span>}
-                            <Dabei ctx={ctx} ids={i.dabei} big={station} onEdit={edit && i.row ? () => setMove({ item: i, date: d, slot: a.id }) : null} />
-                            {edit && i.row && <button className="wp-x" aria-label={`${i.text} aus dem Plan nehmen`} onClick={() => entfernen(ctx, i.row, i.text)}><Icon name="x" size={14} /></button>}
+                            {edit ? <button className="wp-txt" onClick={() => setEintrag(i.aufgabe)}>{i.time ? <b>{i.time} </b> : null}{i.text}</button> : <span>{i.time ? <b>{i.time} </b> : null}{i.text}</span>}
+                            <Dabei ctx={ctx} ids={i.dabei} big={station} onEdit={edit ? () => setEintrag(i.aufgabe) : null} />
                           </div>
                         ) : (
                         <div key={n} className={`wp-item ${i.art}${i.idee ? ' idee' : ''}`}>
@@ -135,6 +136,7 @@ export default function Wochenplan({ ctx, days, station, onKiste, kompakt, ohneL
         })}
       </div>
       {move && <Verschieben ctx={ctx} days={days} {...move} onClose={() => setMove(null)} />}
+      {eintrag && <EintragSheet ctx={ctx} todo={{ ...eintrag.row, _art: eintrag.tabelle === 'buy_items' ? 'buy' : undefined }} onClose={() => setEintrag(null)} />}
       {add && <BausteinSheet ctx={ctx} {...add} onClose={() => setAdd(null)} />}
       {idee && <IdeeWaehlen ctx={ctx} station={station} {...idee} regen={nass(wetter(idee.date))} onClose={() => setIdee(null)} />}
     </section>
@@ -212,8 +214,7 @@ function BausteinSheet({ ctx, date, slot, onClose }) {
   const [dabei, setDabei] = useState(['all']);
   const label = ABSCHNITTE.find((a) => a.id === slot).label;
   const wd = weekday(date);
-  const geplant = new Set(ctx.data.wePlan.rows.map((r) => r.todo_ref).filter(Boolean));
-  const todos = offen(aufgaben(ctx)).filter((a) => (a.art === 'erledigen' || a.art === 'besorgen') && !geplant.has(a.key))
+  const todos = offen(aufgaben(ctx)).filter((a) => (a.art === 'erledigen' || a.art === 'besorgen') && !a.am)
     .sort((a, b) => String(a.due || '9999').localeCompare(String(b.due || '9999')));
   const regen = nass(useWetter(ctx)(date));
   const ideen = ['vormittag', 'nachmittag'].includes(slot) ? rankIdeas(ctx.data.ideas.rows, ctx.data.ideaVotes.rows, { regen }).filter((i) => !regen || i.wo !== 'draussen').slice(0, 5) : [];
@@ -221,8 +222,12 @@ function BausteinSheet({ ctx, date, slot, onClose }) {
   const spielRein = async (x) => { if (await spielEinplanen(ctx, x, false)) onClose(); };
   const ideeRein = async (i) => { if (await einplanen(ctx, i, date, ABSCHNITTE.find((x) => x.id === slot).start, false)) onClose(); };
   const schieben = async (a) => {
-    const ok = await run(supabase.from('we_plan').insert({ on_date: date, slot, text: a.text.slice(0, 120), todo_ref: a.key, dabei: a.owner ? [a.owner] : ['all'], created_by: ctx.me.id }), ctx.fail);
-    if (ok) { ctx.data.wePlan.reload(); ctx.say(`${a.text} liegt jetzt am ${WDL[wd]} ${label}`); onClose(); }
+    // Datum steht am Eintrag selbst – dann zeigen Kalender, Listen und Station dasselbe
+    const data = a.tabelle === 'buy_items' ? ctx.data.buy : ctx.data.inbox;
+    const patch = { am: date, um: null, abschnitt: slot };
+    data.local((rows) => rows.map((x) => (x.id === a.row.id ? { ...x, ...patch } : x)));
+    const ok = await run(supabase.from(a.tabelle).update(patch).eq('id', a.row.id), ctx.fail);
+    if (ok) { ctx.say(`${a.text} liegt jetzt am ${WDL[wd]} ${label}`); onClose(); } else data.reload();
   };
   const t = (b ? b.text : text).trim();
   const ok = t && (!b?.person || who);

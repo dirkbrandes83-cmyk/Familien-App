@@ -43,7 +43,7 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; }
 .chips.scroll { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
 .chip { min-height: 44px; padding: 0 14px; border-radius: 22px; font-weight: 600; font-size: 14px; background: var(--card); border: 2px solid var(--line); white-space: nowrap; }
-.chip.on { color: #fff; }
+.chip.on { color: #fff; background: var(--ink); border-color: var(--ink); }
 .chip.plain { border: 1px solid var(--border); }
 .pchip { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
 .pchips { display: flex; gap: 4px; flex-wrap: wrap; }
@@ -369,8 +369,8 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .head { position: fixed; top: 0; z-index: 15; background: var(--bg); padding: calc(env(safe-area-inset-top) + 6px) 16px 6px; display: flex; flex-direction: column; gap: 0; left: 0; right: 0; border-bottom: 1px solid var(--line); max-width: 560px; margin: 0 auto; }
 .head-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .head-row > div:first-child { display: flex; align-items: baseline; gap: 8px; min-width: 0; flex: 1 1 auto; }
-.head h1 { font-size: 21px; line-height: 1.2; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; order: 1; }
-.head .date { font-size: 12px; white-space: nowrap; order: 2; }
+.head h1 { font-size: 21px; line-height: 1.2; margin: 0; white-space: nowrap; flex: none; order: 1; }
+.head .date { font-size: 12px; white-space: nowrap; order: 2; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .head .me-btn { min-height: 36px; }
 .head .avatar { width: 28px; height: 28px; border-radius: 14px; font-size: 14px; }
 .head .plus-btn { width: 36px; height: 36px; border-radius: 18px; }
@@ -806,3 +806,22 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .mcell.sel .mev { color: #fff; }
 .mcell.today:not(.sel) { background: #ECFDF5; }
 .mtoggle { border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: 1px 7px; font-size: 12px; font-weight: 700; color: var(--muted); line-height: 1.5; min-width: 32px; }
+
+/* Planen: Bereichs-Chips (scrollen waagerecht) */
+.pl-chips { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 4px; scrollbar-width: none; }
+.pl-chips::-webkit-scrollbar { display: none; }
+.pl-chip { flex: none; display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid var(--line); background: #fff; border-radius: 999px; padding: 8px 14px; font-weight: 700; font-size: 15px; color: var(--muted); }
+.pl-chip.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+/* Listen: Segment mit Zahl */
+.seg-txt { display: inline-flex; align-items: center; gap: 5px; }
+.seg-n2 { font-size: 11px; font-weight: 800; background: #B45309; color: #fff; border-radius: 999px; padding: 0 6px; line-height: 17px; }
+
+/* Eintragszeile: Kästchen links abhaken, Rest öffnet das Eintrags-Menü */
+.row .row-check { flex: none; background: none; border: none; padding: 6px 4px 6px 0; display: inline-flex; }
+.row .row-open { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; background: none; border: none; padding: 0; text-align: left; color: inherit; font: inherit; }
+
+/* Listen: Segmente mit Symbol, Name und Zahl – passt auch auf schmale Handys */
+.li-seg .seg button { padding: 6px 2px; min-height: 54px; }
+.li-seg .seg-txt { flex-direction: column; gap: 2px; font-size: 12.5px; position: relative; }
+.li-seg .seg-n2 { position: absolute; top: -4px; right: -14px; }
+.ein-del { align-self: center; background: none; border: none; color: #B91C1C; font-weight: 700; padding: 8px; display: inline-flex; align-items: center; gap: 6px; }

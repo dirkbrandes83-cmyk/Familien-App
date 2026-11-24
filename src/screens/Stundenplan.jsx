@@ -38,7 +38,7 @@ export default function Stundenplan({ ctx, onBack }) {
 
   return (
     <>
-      <button className="btn ghost" onClick={onBack} style={{ alignSelf: 'flex-start' }}><Icon name="left" size={18} />Zurück</button>
+      {onBack && <button className="btn ghost" onClick={onBack} style={{ alignSelf: 'flex-start' }}><Icon name="left" size={18} />Zurück</button>}
       <section className="card">
         <div className="card-title">Stundenplan</div>
         <div className="small">Erscheint auf dem Familien-iPad auf der Seite des Kindes – passend zu „Heute“ oder „Morgen“.</div>

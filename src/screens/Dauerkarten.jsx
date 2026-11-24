@@ -308,7 +308,7 @@ export default function Dauerkarten({ ctx, onBack }) {
 
   return (
     <>
-      <button className="btn ghost" onClick={onBack} style={{ alignSelf: 'flex-start' }}><Icon name="left" size={18} />Zurück</button>
+      {onBack && <button className="btn ghost" onClick={onBack} style={{ alignSelf: 'flex-start' }}><Icon name="left" size={18} />Zurück</button>}
       <section className="card dk-setup">
         <div className="card-title">Werder-Dauerkarten · 2 Plätze</div>
         <div className="dk-row">

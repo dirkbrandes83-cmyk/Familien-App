@@ -46,26 +46,23 @@ export function tagesplan({ date, events, plan, rahmen = [], chores = [], meal, 
   for (const r of rahmen.filter((x) => x.tag === wd)) {
     slots[r.slot].push({ art: 'baustein', text: r.who ? `${r.text} ${name(r.who) ?? ''}`.trim() : r.text, fest: true, rahmen: r, dabei: r.dabei ?? (r.who ? [r.who] : ['all']) });
   }
-  const eingeplant = new Set(plan.filter((x) => x.todo_ref).map((x) => x.todo_ref));
-  // To-dos und Besorgen, die im Kalender auf diesen Tag gelegt wurden (mit Uhrzeit im passenden Abschnitt)
+  // To-dos und Besorgen mit Tag (am): Uhrzeit → passender Abschnitt, sonst gewählter Abschnitt, sonst Vormittag.
+  // Das Datum steht nur am Eintrag – Wochenplan, Kalender und Station lesen alle von dort.
   for (const t of todos.values()) {
-    if (t.am !== date || eingeplant.has(t.key)) continue;
+    if (t.am !== date) continue;
     const dabei = [...new Set([t.owner, t.forWho].filter(Boolean))];
-    slots[t.um ? slotOf(t.um) : 'vormittag'].push({ art: 'todo', text: t.text, time: t.um ? hm(t.um) : undefined, done: t.done, aufgabe: t, dabei: dabei.length ? dabei : ['all'] });
+    slots[t.um ? slotOf(t.um) : (slots[t.abschnitt] ? t.abschnitt : 'vormittag')].push({ art: 'todo', text: t.text, time: t.um ? hm(t.um) : undefined, done: t.done, aufgabe: t, dabei: dabei.length ? dabei : ['all'] });
   }
   for (const p of plan.filter((x) => x.on_date === date)) {
-    if (p.todo_ref) {
-      const t = todos.get(p.todo_ref);
-      if (t) slots[p.slot].push({ art: 'todo', text: t.text, done: t.done, aufgabe: t, row: p, dabei: p.dabei?.length ? p.dabei : t.owner ? [t.owner] : ['all'] });
-      continue;
-    }
+    if (p.todo_ref) continue; // alt: früher eingeplante To-dos – stehen jetzt mit Datum am Eintrag
     slots[p.slot].push({ art: 'baustein', text: p.who ? `${p.text} ${name(p.who) ?? ''}`.trim() : p.text, row: p, dabei: p.dabei ?? ['all'] });
   }
   for (const c of chores.filter((x) => (x.weekdays || []).includes(wd))) {
     slots.morgens.push({ art: 'aemtchen', text: c.title, who: c.who, dabei: [c.who] });
   }
   if (meal) slots.abend.push({ art: 'essen', text: meal });
-  for (const a of ABSCHNITTE) slots[a.id].sort((x, y) => String(x.time ?? '').localeCompare(String(y.time ?? '')));
+  const zeit = (x) => String(x.time ?? (x.art === 'todo' ? '99' : '')); // To-dos ohne Uhrzeit ans Ende
+  for (const a of ABSCHNITTE) slots[a.id].sort((x, y) => zeit(x).localeCompare(zeit(y)));
   // Vormittag/Nachmittag ohne Termin oder Baustein: frei für eine Idee
   const frei = ['vormittag', 'nachmittag'].filter((s) => !slots[s].some((i) => i.art === 'termin' || i.art === 'baustein'));
   return { geburtstage, ganztags, slots, frei };

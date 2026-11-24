@@ -3,7 +3,7 @@ import { Icon, Seg, Check } from '../ui.jsx';
 import { addDays, expand, mondayOf, longLabel, parse, iso, MONTHS, WD, weekday, titelAm } from '../lib/dates.js';
 import { EventRow } from './common.jsx';
 import { supabase, run } from '../data.js';
-import { TodoKalender, amText } from './Erinnerungen.jsx';
+import { EintragSheet, amText } from './Eintrag.jsx';
 import { besorgenText } from '../lib/aufgaben.js';
 import Betreuung, { ReviewBox, careStatus } from './Betreuung.jsx';
 
@@ -205,7 +205,7 @@ function TodoRows({ ctx, list }) {
           </div>
         );
       })}
-      {kal && <TodoKalender ctx={ctx} todo={kal} onClose={() => setKal(null)} />}
+      {kal && <EintragSheet ctx={ctx} todo={kal} onClose={() => setKal(null)} />}
     </>
   );
 }

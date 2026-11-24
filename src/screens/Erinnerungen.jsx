@@ -3,33 +3,36 @@ import { supabase, run } from '../data.js';
 import { Icon, Check, Swipe, Sheet, Seg, ChipPick, CatIcon } from '../ui.jsx';
 import { addDays, longLabel, shortLabel, WD } from '../lib/dates.js';
 import { packList, packDay } from './common.jsx';
-import Geschenke from './Geschenke.jsx';
-import { besorgenText } from '../lib/aufgaben.js';
+import Einkauf from './Einkauf.jsx';
+import { EintragSheet, amText } from './Eintrag.jsx';
 
-export default function Erinnerungen({ ctx, seg, setSeg }) {
+// Listen: alles zum Abhaken an einem Ort – Einkauf, Besorgen, To-dos, Mitnehmen
+const SEGS = ['einkauf', 'besorgen', 'vereinbaren', 'mitnehmen'];
+export default function Listen({ ctx, seg: seg0, setSeg }) {
+  const seg = SEGS.includes(seg0) ? seg0 : 'einkauf';
+  const shopN = ctx.data.shop.rows.filter((r) => !r.done).length;
   const inboxN = ctx.data.inbox.rows.filter((r) => !r.done_at).length;
   const buyN = ctx.data.buy.rows.filter((r) => !r.done).length;
   return (
     <>
-      <Seg label="Bereich" value={seg} onPick={setSeg} options={[
-        ['vereinbaren', <SegIcon name="todo" n={inboxN} />, `Erledigen${inboxN ? `, ${inboxN} offen` : ''}`],
-        ['mitnehmen', <SegIcon name="backpack" />, 'Mitnehmen'],
-        ['besorgen', <SegIcon name="bag" n={buyN} />, `Besorgen${buyN ? `, ${buyN} offen` : ''}`],
-        ['geschenke', <SegIcon name="gift" />, 'Geschenke'],
-      ]} />
-      {seg !== 'geschenke' && <button className="btn dashed" onClick={ctx.openScan}>Elternbrief scannen</button>}
-      {seg === 'mitnehmen' ? <Mitnehmen ctx={ctx} /> : seg === 'vereinbaren' ? <Vereinbaren ctx={ctx} /> : seg === 'geschenke' ? <Geschenke ctx={ctx} /> : <Besorgen ctx={ctx} />}
+      <div className="li-seg"><Seg label="Liste" value={seg} onPick={setSeg} options={[
+        ['einkauf', <SegLabel icon="cart" text="Einkauf" n={shopN} />, `Einkauf${shopN ? `, ${shopN} offen` : ''}`],
+        ['besorgen', <SegLabel icon="bag" text="Besorgen" n={buyN} />, `Besorgen${buyN ? `, ${buyN} offen` : ''}`],
+        ['vereinbaren', <SegLabel icon="todo" text="To-dos" n={inboxN} />, `To-dos${inboxN ? `, ${inboxN} offen` : ''}`],
+        ['mitnehmen', <SegLabel icon="backpack" text="Mitnehmen" />, 'Mitnehmen'],
+      ]} /></div>
+      {seg === 'einkauf' ? <Einkauf ctx={ctx} /> : seg === 'mitnehmen' ? <Mitnehmen ctx={ctx} /> : seg === 'vereinbaren' ? <Vereinbaren ctx={ctx} /> : <Besorgen ctx={ctx} />}
     </>
   );
+}
+function SegLabel({ icon, text, n }) {
+  return <span className="seg-txt" aria-hidden="true"><span style={{ position: 'relative' }}><Icon name={icon} size={20} />{n ? <span className="seg-n2">{n}</span> : null}</span>{text}</span>;
 }
 
 const ART = { mit: 'Mitbringen', an: 'Steht an', bes: 'Besonderheit' };
 const ART_ICON = { mit: 'backpack', an: 'bell', bes: 'star' };
 const TYP_ICON = { termin: 'cal', anrufen: 'phone', ausfuellen: 'form', kuendigen: 'cancel', ueberweisen: 'euro', sonstiges: 'dots' };
 
-function SegIcon({ name, n }) {
-  return <span className="seg-icon" aria-hidden="true"><Icon name={name} size={22} />{n ? <span className="seg-n">{n}</span> : null}</span>;
-}
 const kidOpts = (ctx) => ctx.kids.map((k) => ({ id: k.id, label: k.name, color: k.color, bg: k.bg }));
 
 /* ---------------- Mitnehmen ---------------- */
@@ -224,7 +227,7 @@ function Vereinbaren({ ctx }) {
     <>
       <section className="card">
         <div className="card-head">
-          <div><div className="card-title">Zu erledigen</div><div className="small">Wischen: rechts = erledigt, links = löschen</div></div>
+          <div><div className="card-title">Zu erledigen</div><div className="small">Kästchen = erledigt · Antippen = Wann, Wer, Notiz</div></div>
           <span className="badge">{all.length}</span>
         </div>
         <Seg label="Filter" value={filter} onPick={setFilter} options={[['alle', 'Alle'], ['mir', 'Für mich']]} />
@@ -239,6 +242,8 @@ function Vereinbaren({ ctx }) {
             return (
               <Swipe key={r.id} onRight={() => finish(r)} onLeft={() => del(r)}>
                 <div className="row">
+                  <button className="row-check" aria-label={`${r.title} erledigt`} onClick={() => finish(r)}><Check on={false} /></button>
+                  <button className="row-open" onClick={() => setKal(r)} aria-label={`${r.title} bearbeiten`}>
                   <CatIcon name={TYP_ICON[typ]} label={TYP_KURZ[typ]} size={18} />
                   <span className="row-main">
                     <span className="row-title" style={{ fontWeight: 600 }}>{r.title}</span>
@@ -248,12 +253,11 @@ function Vereinbaren({ ctx }) {
                       {who && <b style={{ color: who.color }}>{who.name}</b>}
                       {owner ? <span>· {owner.id === ctx.me.id ? 'du kümmerst dich' : `${owner.name} kümmert sich`}</span> : typ === 'termin' ? <span>· Dirk plant ein</span> : null}
                       {by && by.id !== ctx.me.id && <span>· von {by.name}</span>}
+                      {r.note && <span>· {r.note}</span>}
                     </span>
                   </span>
-                  <button className="icon-btn" style={{ border: 'none' }} aria-label={r.am ? 'Im Kalender verschieben' : 'In den Kalender'} onClick={() => setKal(r)}><Icon name="cal" size={18} /></button>
-                  {typ === 'termin' && ctx.isDirk
-                    ? <button className="btn small" onClick={() => plan(r)}>Einplanen</button>
-                    : <button className="btn ghost small" onClick={() => finish(r)}>Erledigt</button>}
+                  </button>
+                  {typ === 'termin' && ctx.isDirk && !r.am && <button className="btn small" onClick={() => plan(r)}>Termin</button>}
                 </div>
               </Swipe>
             );
@@ -261,7 +265,7 @@ function Vereinbaren({ ctx }) {
         </div>
         <ZuletztErledigt ctx={ctx} />
       </section>
-      {kal && <TodoKalender ctx={ctx} todo={kal} onClose={() => setKal(null)} />}
+      {kal && <EintragSheet ctx={ctx} todo={kal} onClose={() => setKal(null)} />}
       <form className="card" onSubmit={add}>
         <div className="field"><span>Was ist zu tun?</span>
           <ChipPick options={Object.entries(TYP).map(([id, label]) => ({ id, label: <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon name={TYP_ICON[id]} size={17} />{label}</span> }))} value={f.typ} onPick={(t) => setF({ ...f, typ: t })} />
@@ -293,7 +297,6 @@ const ADULT_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 
 function Besorgen({ ctx }) {
   const [sheet, setSheet] = useState(null);
-  const [notiz, setNotiz] = useState(null);
   const [kal, setKal] = useState(null);
   const open = ctx.data.buy.rows.filter((r) => !r.done).sort((a, b) => String(a.due || '9999').localeCompare(String(b.due || '9999')) || a.created_at.localeCompare(b.created_at));
   const done = async (r) => {
@@ -327,85 +330,27 @@ function Besorgen({ ctx }) {
           const by = ctx.member(r.by_who);
           return (
             <Swipe key={r.id} onRight={() => done(r)} onLeft={() => del(r)}>
-              <div className="row-line">
-              <button className="row" style={{ minHeight: 56 }} onClick={() => done(r)}>
-                <Check on={false} />
+              <div className="row" style={{ minHeight: 56 }}>
+              <button className="row-check" aria-label={`${r.art} besorgt`} onClick={() => done(r)}><Check on={false} /></button>
+              <button className="row-open" onClick={() => setKal({ ...r, _art: 'buy' })} aria-label={`${r.art} bearbeiten`}>
                 <span className="row-main">
                   <span className="row-title">{r.art}{r.size ? ` · Gr. ${r.size}` : ''}</span>
                   <span className="small">{[r.am ? <b key="am" style={{ color: '#0F766E', display: 'inline-flex', alignItems: 'center', gap: 3 }}><Icon name="cal" size={13} />{amText(r)}</b> : null, r.due ? <b key="d" style={{ color: r.due <= addDays(ctx.day, 2) ? '#B45309' : undefined }}>bis {shortLabel(r.due)}</b> : null, r.note, by && by.id !== r.for_who ? `von ${by.name}` : null].filter(Boolean).reduce((acc, x, i) => (i ? [...acc, ' · ', x] : [x]), [])}</span>
                 </span>
                 {w && <span className="pchip" style={{ background: w.bg, color: w.color }}>{w.name}</span>}
               </button>
-              <button className="icon-btn row-note" onClick={() => setKal({ ...r, _art: 'buy' })} aria-label={r.am ? 'Im Kalender verschieben' : 'In den Kalender'}><Icon name="cal" size={18} /></button>
-              <button className="icon-btn row-note" onClick={() => setNotiz(r)} aria-label={r.note ? 'Notiz bearbeiten' : 'Notiz hinzufügen'}><Icon name="pencil" size={18} /></button>
               </div>
             </Swipe>
           );
         })}
       </section>
-      {open.length > 0 && <div className="small">Antippen = besorgt. Nach links wischen = löschen.</div>}
-      {notiz && <NotizSheet ctx={ctx} item={notiz} onClose={() => setNotiz(null)} />}
-      {kal && <TodoKalender ctx={ctx} todo={kal} onClose={() => setKal(null)} />}
+      {open.length > 0 && <div className="small">Kästchen = besorgt · Antippen = Wann, Wer, Notiz</div>}
+      {kal && <EintragSheet ctx={ctx} todo={kal} onClose={() => setKal(null)} />}
       {sheet && (sheet.typ === 'sonstiges' ? <OtherSheet ctx={ctx} onClose={() => setSheet(null)} /> : <BuySheet ctx={ctx} preset={sheet} onClose={() => setSheet(null)} />)}
     </>
   );
 }
 
-// Notiz zu einem Besorgen-Eintrag, z. B. Geschenkideen, Größe, Preis, wo kaufen
-// To-do einem Kalendertag (optional mit Uhrzeit) zuordnen
-export const amText = (r) => `${shortLabel(r.am)}${r.um ? ` · ${r.um.slice(0, 5)}` : ''}`;
-// Gilt für To-dos (todo_inbox) und Besorgen (buy_items, _art: 'buy')
-export function TodoKalender({ ctx, todo, onClose }) {
-  const buy = todo._art === 'buy';
-  const [am, setAm] = useState(todo.am || ctx.day);
-  const [um, setUm] = useState(todo.um ? todo.um.slice(0, 5) : '');
-  const speichern = async (patch) => {
-    const data = buy ? ctx.data.buy : ctx.data.inbox;
-    data.local((rows) => rows.map((x) => (x.id === todo.id ? { ...x, ...patch } : x)));
-    const ok = await run(supabase.from(buy ? 'buy_items' : 'todo_inbox').update(patch).eq('id', todo.id), ctx.fail);
-    if (!ok) data.reload();
-    else ctx.say(patch.am ? `Im Kalender am ${shortLabel(patch.am)}` : 'Aus dem Kalender genommen');
-    onClose();
-  };
-  return (
-    <Sheet title={buy ? besorgenText(todo) : todo.title} onClose={onClose}
-      actions={<>
-        {todo.am && <button className="btn ghost" onClick={() => speichern({ am: null, um: null })}>Aus dem Kalender</button>}
-        <button className="btn" disabled={!am} onClick={() => speichern({ am, um: um || null })}>In den Kalender</button>
-      </>}>
-      <label className="field"><span>An welchem Tag?</span>
-        <input className="input" type="date" value={am} onChange={(e) => setAm(e.target.value)} />
-      </label>
-      <div className="chips">
-        {[[0, 'Heute'], [1, 'Morgen'], [2, 'Übermorgen'], [7, 'In einer Woche']].map(([n, label]) => (
-          <button key={n} className="chip" style={am === addDays(ctx.day, n) ? { background: '#0F766E', borderColor: '#0F766E', color: '#fff' } : undefined} aria-pressed={am === addDays(ctx.day, n)} onClick={() => setAm(addDays(ctx.day, n))}>{label}</button>
-        ))}
-      </div>
-      <label className="field"><span>Uhrzeit (optional)</span>
-        <input className="input" type="time" value={um} onChange={(e) => setUm(e.target.value)} />
-      </label>
-      {todo.due && <div className="small">Frist: bis {shortLabel(todo.due)}</div>}
-    </Sheet>
-  );
-}
-
-function NotizSheet({ ctx, item, onClose }) {
-  const [note, setNote] = useState(item.note || '');
-  const save = async () => {
-    const v = note.trim();
-    ctx.data.buy.local((rows) => rows.map((x) => (x.id === item.id ? { ...x, note: v } : x)));
-    const ok = await run(supabase.from('buy_items').update({ note: v }).eq('id', item.id), ctx.fail);
-    if (!ok) ctx.data.buy.reload();
-    onClose();
-  };
-  return (
-    <Sheet title={item.art} onClose={onClose} actions={<button className="btn" onClick={save}>Speichern</button>}>
-      <label className="field"><span>Notiz</span>
-        <textarea className="input" rows={4} value={note} onChange={(e) => setNote(e.target.value)} placeholder="z. B. wünscht sich Lego Technik, ca. 20 €, bei Thalia reserviert" maxLength={500} autoFocus />
-      </label>
-    </Sheet>
-  );
-}
 
 function BuySheet({ ctx, preset, onClose }) {
   const [forWho, setForWho] = useState(preset.for_who ?? null);
