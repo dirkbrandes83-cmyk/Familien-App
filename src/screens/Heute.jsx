@@ -118,6 +118,7 @@ function Fahrt({ ev, ctx }) {
 function FuerDich({ ctx, skip }) {
   const me = ctx.me.id;
   const [hidden, setHidden] = useState([]); // gerade abgehakt → kurz durchgestrichen, dann weg
+  const [mehr, setMehr] = useState(false);
   const hide = (key) => { setHidden((h) => [...h, key]); };
   const alle = offen(aufgaben(ctx));
   const bald = addDays(ctx.day, 3);
@@ -153,6 +154,10 @@ function FuerDich({ ctx, skip }) {
   // nach Frist sortiert, ohne Frist ans Ende
   items.sort((a, b) => String(a.due || '9999').localeCompare(String(b.due || '9999')));
   const visible = items.filter((i) => !hidden.includes(i.key) || i.local);
+  // Sofort sichtbar: Müll und alles, was heute/morgen fällig oder überfällig ist – der Rest eingeklappt
+  const morgen = addDays(ctx.day, 1);
+  const jetzt = visible.filter((i) => i.local || (i.due && i.due <= morgen));
+  const spaeter = visible.filter((i) => !jetzt.includes(i));
   if (!visible.length && !chores.length && !fahrten.length && !meine.length) {
     return <section className="card h-sec"><div className="h-label">Für dich</div><div className="empty">Heute nichts für dich zu tun.</div></section>;
   }
@@ -171,17 +176,20 @@ function FuerDich({ ctx, skip }) {
           <Check on={c.done} /><span className={`h-item-text${c.done ? ' done' : ''}`}>{c.title}</span><span className="h-item-sub">Ämtchen</span>
         </button>
       ))}
-      {visible.slice(0, 6).map((i) => {
+      {[...jetzt, ...(mehr ? spaeter : [])].map((i) => {
         const off = hidden.includes(i.key);
         return (
           <button key={i.key} className="h-item" aria-pressed={off}
             onClick={async () => { if (off) { setHidden((h) => h.filter((k) => k !== i.key)); return; } hide(i.key); if (i.done && await i.done()) ctx.say(`Erledigt: ${i.text}`, i.undo); }}>
-            <Check on={off} /><span className={`h-item-text${off ? ' done' : ''}`}>{i.text}</span>
-            {i.sub && <span className={`h-item-sub${i.warn ? ' warn' : ''}`}>{i.sub}</span>}
+            <Check on={off} />
+            <span className="h-item-zwei">
+              <span className={`h-item-text${off ? ' done' : ''}`}>{i.text}</span>
+              {i.sub && <span className={`h-item-sub${i.warn ? ' warn' : ''}`}>{i.sub}</span>}
+            </span>
           </button>
         );
       })}
-      {visible.length > 6 && <button className="h-more" onClick={() => ctx.go('listen', 'vereinbaren')}>… und {visible.length - 6} weitere</button>}
+      {spaeter.length > 0 && <button className="h-more" aria-expanded={mehr} onClick={() => setMehr(!mehr)}>{mehr ? 'Weniger zeigen' : `${spaeter.length} weitere ohne Termin …`}</button>}
       {fahrten.map((o) => {
         const field = o.field;
         const kid = ctx.kids.filter((k) => o.ev.who.includes(k.id)).map((k) => k.name).join(' und ');
