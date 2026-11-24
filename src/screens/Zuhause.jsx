@@ -72,22 +72,7 @@ export function Essen({ ctx }) {
   const s = parse(week);
   return (
     <>
-      {wishes.length > 0 && (
-        <section className="card tight">
-          <div className="card-title" style={{ padding: '10px 0 4px' }}>Wünsche</div>
-          {wishes.map((w) => {
-            const p = ctx.member(w.who);
-            return (
-              <Swipe key={w.id} onRight={() => wishDone(w)} onLeft={() => wishDone(w)} leftLabel="Erledigt">
-                <div className="row">
-                  <span className="row-main"><span><b style={{ color: p?.color }}>{p?.name ?? 'Jemand'}</b> wünscht sich {w.title}</span></span>
-                  <button className="btn small" onClick={() => setSheet({ date: null, wish: w })}>Einplanen</button>
-                </div>
-              </Swipe>
-            );
-          })}
-        </section>
-      )}
+      <Wunschliste ctx={ctx} wishes={wishes} onDone={wishDone} />
 
       <div className="card-head">
         <button className="icon-btn" aria-label="Vorige Woche" onClick={() => setWeek(addDays(week, -7))}><Icon name="left" /></button>
@@ -121,6 +106,80 @@ export function Essen({ ctx }) {
       {sheet && <MealSheet ctx={ctx} date={sheet.date} wish={sheet.wish} onClose={() => setSheet(null)} />}
       {recipes && <RecipesSheet ctx={ctx} onClose={() => setRecipes(false)} />}
     </>
+  );
+}
+
+// Essens-Wunschliste: alle tragen Wünsche ein; ein Wunsch wird mit einem Tipp einem Tag zugeordnet
+function Wunschliste({ ctx, wishes, onDone }) {
+  const [text, setText] = useState('');
+  const [wer, setWer] = useState(ctx.me.id);
+  const [auf, setAuf] = useState(null); // id des aufgeklappten Wunsches
+  const tage = Array.from({ length: 8 }, (_, i) => addDays(ctx.day, i));
+  const add = async (e) => {
+    e.preventDefault();
+    const t = text.trim();
+    if (!t) return;
+    setText('');
+    const ok = await run(supabase.from('meal_wishes').insert({ who: wer, title: t.slice(0, 80) }), ctx.fail);
+    if (ok) ctx.data.wishes.reload();
+  };
+  const zuordnen = async (w, d) => {
+    const rec = ctx.data.recipes.rows.find((r) => r.name.toLowerCase() === w.title.toLowerCase());
+    const ok = await run(supabase.from('meals').upsert({ on_date: d, title: w.title, recipe_id: rec?.id ?? null, note: '', by_who: ctx.me.id, updated_at: new Date().toISOString() }), ctx.fail);
+    if (!ok) return;
+    await run(supabase.from('meal_wishes').update({ done_at: new Date().toISOString() }).eq('id', w.id), ctx.fail);
+    ctx.say(`${w.title} am ${WD[weekday(d)]} ${parse(d).getDate()}.`, async () => {
+      await run(supabase.from('meal_wishes').update({ done_at: null }).eq('id', w.id), ctx.fail);
+      await run(supabase.from('meals').delete().eq('on_date', d), ctx.fail);
+    });
+    setAuf(null);
+  };
+  const gerichte = ctx.data.recipes.rows.map((r) => r.name).filter((n) => n !== PIZZA && !wishes.some((w) => w.title.toLowerCase() === n.toLowerCase())).sort((a, b) => a.localeCompare(b, 'de'));
+  return (
+    <section className="card tight">
+      <div className="card-head" style={{ padding: '10px 0 4px' }}>
+        <div><div className="card-title">Wunschliste</div><div className="small">Wünsche antippen und einem Tag zuordnen</div></div>
+        {wishes.length > 0 && <span className="badge">{wishes.length}</span>}
+      </div>
+      <form onSubmit={add} style={{ display: 'flex', gap: 8, padding: '4px 0 6px' }}>
+        <input className="input" value={text} onChange={(e) => setText(e.target.value)} placeholder="Was möchtest du gern essen?" aria-label="Essenswunsch" maxLength={80} />
+        <button className="btn" style={{ flex: 'none', width: 52, padding: 0 }} aria-label="Wunsch hinzufügen"><Icon name="plus" /></button>
+      </form>
+      <ChipPick options={ctx.members.map((m) => ({ id: m.id, label: m.name, color: m.color, bg: m.bg }))} value={wer} onPick={setWer} />
+      {gerichte.length > 0 && (
+        <div className="chips" style={{ padding: '8px 0 4px' }}>
+          {gerichte.slice(0, 8).map((n) => <button key={n} type="button" className="chip plain" onClick={() => setText(n)}>+ {n}</button>)}
+        </div>
+      )}
+      {wishes.length === 0 && <div className="empty" style={{ padding: '10px 0' }}>Noch keine Wünsche.</div>}
+      {wishes.map((w) => {
+        const p = ctx.member(w.who);
+        const offen = auf === w.id;
+        return (
+          <div key={w.id} style={{ borderTop: '1px solid var(--line)' }}>
+            <Swipe onLeft={() => onDone(w)} leftLabel="Weg">
+              <button className="row" aria-expanded={offen} onClick={() => setAuf(offen ? null : w.id)}>
+                <span className="row-main"><span className="row-title" style={{ fontWeight: 700 }}>{w.title}</span><span className="small">{p ? <b style={{ color: p.color }}>{p.name}</b> : 'Jemand'} wünscht sich das</span></span>
+                <span className="btn small ghost" aria-hidden="true">{offen ? 'Zu' : 'Wann?'}</span>
+              </button>
+            </Swipe>
+            {offen && (
+              <div className="wl-tage" role="group" aria-label={`${w.title} einem Tag zuordnen`}>
+                {tage.map((d) => {
+                  const m = mealOf(ctx, d);
+                  return (
+                    <button key={d} className={`wl-tag${m.planned || m.fixed ? ' belegt' : ''}`} onClick={() => zuordnen(w, d)}>
+                      <b>{d === ctx.day ? 'Heute' : `${WD[weekday(d)]} ${parse(d).getDate()}.`}</b>
+                      <span>{m.planned || m.fixed ? m.title : 'frei'}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </section>
   );
 }
 

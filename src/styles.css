@@ -833,3 +833,10 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .h-tl-todo .h-tl-title { flex: 1; min-width: 0; background: none; border: none; padding: 0; text-align: left; font: inherit; font-weight: 600; color: inherit; cursor: pointer; }
 .h-tl-todo .done { text-decoration: line-through; }
 .h-push { flex-direction: column; align-items: stretch; gap: 8px; cursor: default; }
+
+/* Essen: Wunsch einem Tag zuordnen */
+.wl-tage { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; padding: 4px 0 12px; }
+.wl-tag { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; border: 1.5px solid #99F6E4; background: #F0FDFA; border-radius: 10px; padding: 6px 8px; text-align: left; min-width: 0; }
+.wl-tag b { font-size: 14px; }
+.wl-tag span { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.wl-tag.belegt { border-color: var(--line); background: #fff; }
