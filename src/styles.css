@@ -826,3 +826,10 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .li-seg .seg-n2 { position: absolute; top: -4px; right: -14px; }
 .ein-del { align-self: center; background: none; border: none; color: #B91C1C; font-weight: 700; padding: 8px; display: inline-flex; align-items: center; gap: 6px; }
 .li-seg .seg-txt { font-size: 11.5px; letter-spacing: -0.2px; }
+
+/* Heute: To-dos in der Zeitleiste, Mitteilungs-Frage */
+.h-tl-todo { display: flex; align-items: center; gap: 10px; }
+.h-tl-todo .h-tl-time { background: none; border: none; padding: 0; display: inline-flex; justify-content: flex-start; }
+.h-tl-todo .h-tl-title { flex: 1; min-width: 0; background: none; border: none; padding: 0; text-align: left; font: inherit; font-weight: 600; color: inherit; cursor: pointer; }
+.h-tl-todo .done { text-decoration: line-through; }
+.h-push { flex-direction: column; align-items: stretch; gap: 8px; cursor: default; }

@@ -15,8 +15,22 @@ function b64ToBytes(b64) {
   return Uint8Array.from(raw, (c) => c.charCodeAt(0));
 }
 
-const standalone = () => window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true;
-const supported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+// Mitteilungen auf diesem Gerät einschalten (muss aus einem Antippen heraus aufgerufen werden).
+// Gibt { sub, row } zurück oder wirft mit einer verständlichen Meldung.
+export async function pushEinschalten(ctx) {
+  const perm = await Notification.requestPermission();
+  if (perm !== 'granted') throw new Error('Mitteilungen wurden nicht erlaubt. In den Einstellungen des iPhones unter „Mitteilungen“ › „Familie“ einschalten.');
+  const reg = await navigator.serviceWorker.ready;
+  const s = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(import.meta.env.VITE_VAPID_PUBLIC) });
+  const j = s.toJSON();
+  const device = /iPad/.test(navigator.userAgent) ? 'iPad' : /iPhone/.test(navigator.userAgent) ? 'iPhone' : /Android/.test(navigator.userAgent) ? 'Android' : 'Computer';
+  const row = await run(supabase.from('push_subscriptions').upsert({ member_id: ctx.me.id, endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth, device }, { onConflict: 'endpoint' }).select('*').single(), ctx.fail);
+  if (!row) throw new Error('Konnte nicht gespeichert werden.');
+  return { sub: s, row };
+}
+
+export const standalone = () => window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true;
+export const supported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
 
 export default function Mitteilungen({ ctx, onBack }) {
   const [sub, setSub] = useState(undefined); // PushSubscription | null
@@ -39,16 +53,10 @@ export default function Mitteilungen({ ctx, onBack }) {
   const enable = async () => {
     setMsg(''); setBusy(true);
     try {
-      const perm = await Notification.requestPermission();
-      if (perm !== 'granted') { setMsg('Mitteilungen wurden nicht erlaubt. In den Einstellungen des iPhones unter „Mitteilungen“ › „Familie“ einschalten.'); return; }
-      const reg = await navigator.serviceWorker.ready;
-      const s = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(import.meta.env.VITE_VAPID_PUBLIC) });
-      const j = s.toJSON();
-      const device = /iPad/.test(navigator.userAgent) ? 'iPad' : /iPhone/.test(navigator.userAgent) ? 'iPhone' : /Android/.test(navigator.userAgent) ? 'Android' : 'Computer';
-      const res = await run(supabase.from('push_subscriptions').upsert({ member_id: ctx.me.id, endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth, device }, { onConflict: 'endpoint' }).select('*').single(), ctx.fail);
-      if (res) { setSub(s); setRow(res); ctx.say('Mitteilungen sind an'); }
+      const { sub: s, row: res } = await pushEinschalten(ctx);
+      setSub(s); setRow(res); ctx.say('Mitteilungen sind an');
     } catch (e) {
-      setMsg(`Hat nicht geklappt: ${e.message}`);
+      setMsg(e.message.startsWith('Mitteilungen') ? e.message : `Hat nicht geklappt: ${e.message}`);
     } finally { setBusy(false); }
   };
   const disable = async () => {

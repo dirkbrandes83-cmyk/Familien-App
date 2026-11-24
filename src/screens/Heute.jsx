@@ -10,6 +10,9 @@ import { aufgaben, offen, fahrtSetzen, NICHT } from '../lib/aufgaben.js';
 import { upcomingTests } from '../lib/tests.js';
 import { mealOf, choresToday, toggleChore } from './Zuhause.jsx';
 import { isWeekendSoon } from '../lib/wochenende.js';
+import { ABSCHNITTE } from '../lib/wochenplan.js';
+import { EintragSheet } from './Eintrag.jsx';
+import { pushEinschalten, supported, standalone } from './Mitteilungen.jsx';
 
 const mins = (t) => { const [h, m] = String(t).split(':').map(Number); return h * 60 + m; };
 const nowMins = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
@@ -42,14 +45,27 @@ export default function Heute({ ctx }) {
 }
 
 /* ---------- schmale Hinweise: Check-in, Wochenende ---------- */
+const pushFrage = () => { try { return supported() && standalone() && Notification.permission === 'default' && localStorage.getItem('push-frage') !== 'nein'; } catch { return false; } };
 function Hinweise({ ctx, onCheckin }) {
+  const [push, setPush] = useState(pushFrage);
   const so = weekday(ctx.day) === 6 && !ctx.data.checkins.rows.find((r) => r.sonntag === ctx.day)?.fertig;
   const we = isWeekendSoon(ctx.day) && weekday(ctx.day) !== 6;
-  if (!so && !we) return null;
+  if (!so && !we && !push) return null;
+  const einschalten = async () => {
+    try { await pushEinschalten(ctx); ctx.say('Mitteilungen sind an'); } catch (e) { ctx.fail(e.message); }
+    setPush(false);
+  };
+  const spaeter = () => { try { localStorage.setItem('push-frage', 'nein'); } catch { /* egal */ } setPush(false); };
   return (
     <div className="h-hints">
+      {push && (
+        <div className="h-hint h-push">
+          <span className="h-hint-l"><Icon name="bell" size={18} />Mitteilungen einschalten? Dann erfährst du, wer abholt, was neu ist und was morgen ansteht.</span>
+          <span style={{ display: 'flex', gap: 6 }}><button className="btn small" onClick={einschalten}>Ja</button><button className="btn ghost small" onClick={spaeter}>Später</button></span>
+        </div>
+      )}
       {so && <button className="h-hint" onClick={onCheckin}><span className="h-hint-l"><Icon name="sun" size={18} />Sonntags-Check-in starten</span><Icon name="chev" size={16} /></button>}
-      {we && <button className="h-hint" onClick={() => ctx.go('zuhause', 'wochenende')}><span className="h-hint-l"><Icon name="balloon" size={18} />Was machen wir am Wochenende?</span><Icon name="chev" size={16} /></button>}
+      {we && <button className="h-hint" onClick={() => ctx.go('planen', 'wochenende')}><span className="h-hint-l"><Icon name="balloon" size={18} />Was machen wir am Wochenende?</span><Icon name="chev" size={16} /></button>}
     </div>
   );
 }
@@ -106,7 +122,7 @@ function FuerDich({ ctx, skip }) {
   const bald = addDays(ctx.day, 3);
 
   // Zum Abhaken: meine Erledigen-Punkte, Besorgen mit Frist (für alle), Müll wenn ich dran bin
-  const items = alle.filter((a) =>
+  const items = alle.filter((a) => !(a.am && a.am >= ctx.day)).filter((a) =>
     (a.art === 'erledigen' && a.owner === me) ||
     (a.art === 'besorgen' && (a.owner === me || (a.due && a.due <= bald))) ||
     (a.art === 'muell' && a.owner === me))
@@ -164,7 +180,7 @@ function FuerDich({ ctx, skip }) {
           </button>
         );
       })}
-      {visible.length > 6 && <button className="h-more" onClick={() => ctx.go('erinn', 'vereinbaren')}>… und {visible.length - 6} weitere</button>}
+      {visible.length > 6 && <button className="h-more" onClick={() => ctx.go('listen', 'vereinbaren')}>… und {visible.length - 6} weitere</button>}
       {fahrten.map((o) => {
         const field = o.field;
         const kid = ctx.kids.filter((k) => o.ev.who.includes(k.id)).map((k) => k.name).join(' und ');
@@ -222,11 +238,15 @@ function FamilieHeute({ ctx, now, short, skip }) {
   const occ = expand(ctx.data.events.rows, ctx.day, tomorrow);
   const today = occ.filter((o) => o.date === ctx.day);
   const meal = mealOf(ctx, ctx.day);
+  const [eintrag, setEintrag] = useState(null);
+  const START = { morgens: 7 * 60, vormittag: 10 * 60, nachmittag: 13 * 60, abend: 18 * 60 };
+  const heuteTodos = aufgaben(ctx).filter((a) => (a.art === 'erledigen' || a.art === 'besorgen') && a.am === ctx.day);
   const rows = [
     ...today.filter((o) => !skip.has(o.ev.id)).map((o) => ({ key: o.ev.id, t: o.ev.all_day ? -1 : mins(o.ev.from_time), o })),
+    ...heuteTodos.map((a) => ({ key: a.key, t: a.um ? mins(a.um) : (START[a.abschnitt] ?? 23 * 60), a })),
     ...(meal && (meal.planned || meal.fixed) ? [{ key: 'essen', t: 18 * 60, meal: meal.title }] : []),
   ].sort((a, b) => a.t - b.t);
-  const past = (r) => (r.meal ? r.t + 60 <= now : r.o && !r.o.ev.all_day && mins(r.o.ev.to_time || r.o.ev.from_time) + (r.o.ev.to_time ? 0 : 60) <= now);
+  const past = (r) => (r.a ? r.a.done : r.meal ? r.t + 60 <= now : r.o && !r.o.ev.all_day && mins(r.o.ev.to_time || r.o.ev.from_time) + (r.o.ev.to_time ? 0 : 60) <= now);
   const shown = short ? rows.filter((r) => !past(r)) : rows;
 
   const tom = occ.filter((o) => o.date === tomorrow);
@@ -241,8 +261,17 @@ function FamilieHeute({ ctx, now, short, skip }) {
         <button className="icon-btn" aria-label="Neuer Termin" onClick={() => ctx.openEvent(null, { start_date: ctx.day })}><Icon name="plus" size={18} /></button>
       </div>
       {shown.length === 0 && <div className="empty">{rows.length ? 'Für heute ist alles vorbei.' : skip.size ? 'Sonst nichts heute.' : 'Heute nichts geplant.'}</div>}
-      {shown.map((r) => r.meal ? (
-        <button key="essen" className={`h-tl${past(r) ? ' past' : ''}`} onClick={() => ctx.go('zuhause', 'essen')}>
+      {shown.map((r) => r.a ? (
+        <div key={r.key} className={`h-tl h-tl-todo${r.a.done ? ' past' : ''}`}>
+          <button className="h-tl-time" aria-label={r.a.done ? `${r.a.text} wieder offen` : `${r.a.text} erledigt`} onClick={() => (r.a.done ? r.a.zurueck() : r.a.erledigen())}><Check on={r.a.done} /></button>
+          <button className="h-tl-title" onClick={() => setEintrag(r.a)}>
+            <span className={r.a.done ? 'done' : undefined}>{r.a.text}</span>
+            <span className="h-tl-to"> {r.a.um ? hm(r.a.um) : ABSCHNITTE.find((x) => x.id === r.a.abschnitt)?.label || 'heute'} · {r.a.art === 'besorgen' ? 'besorgen' : 'To-do'}</span>
+          </button>
+          <PersonChips who={[...new Set([r.a.owner, r.a.forWho].filter(Boolean))]} members={ctx.members} />
+        </div>
+      ) : r.meal ? (
+        <button key="essen" className={`h-tl${past(r) ? ' past' : ''}`} onClick={() => ctx.go('planen', 'essen')}>
           <span className="h-tl-time">18:00</span><span className="h-tl-title">{r.meal}</span>
         </button>
       ) : (
@@ -253,6 +282,7 @@ function FamilieHeute({ ctx, now, short, skip }) {
           <PersonChips who={r.o.ev.who} members={ctx.members} />
         </button>
       ))}
+      {eintrag && <EintragSheet ctx={ctx} todo={{ ...eintrag.row, _art: eintrag.tabelle === 'buy_items' ? 'buy' : undefined }} onClose={() => setEintrag(null)} />}
       <button className="h-tomorrow" onClick={() => ctx.go('kalender')}>
         <b>Morgen:</b>{' '}
         {special.length === 0 && rest === 0 ? 'nichts geplant' : [
@@ -272,9 +302,9 @@ function Kacheln({ ctx, hidePack }) {
   const buy = offen(aufgaben(ctx)).filter((a) => a.art === 'besorgen');
   const tests = upcomingTests(ctx.data.events.rows, ctx.day, 14);
   const tiles = [
-    shop.length && { icon: 'cart', label: 'Einkauf', value: `${shop.length} · ${shop.slice(0, 2).map((s) => s.name).join(', ')}`, go: () => ctx.go('einkauf') },
-    !hidePack && packOpen && { icon: 'backpack', label: pd === ctx.day ? 'Einpacken heute' : 'Einpacken morgen', value: `${packOpen} offen`, go: () => ctx.go('erinn', 'mitnehmen') },
-    buy.length && { icon: 'bag', label: 'Besorgen', value: `${buy.length} · ${buy[0].text}`, go: () => ctx.go('erinn', 'besorgen') },
+    shop.length && { icon: 'cart', label: 'Einkauf', value: `${shop.length} · ${shop.slice(0, 2).map((s) => s.name).join(', ')}`, go: () => ctx.go('listen', 'einkauf') },
+    !hidePack && packOpen && { icon: 'backpack', label: pd === ctx.day ? 'Einpacken heute' : 'Einpacken morgen', value: `${packOpen} offen`, go: () => ctx.go('listen', 'mitnehmen') },
+    buy.length && { icon: 'bag', label: 'Besorgen', value: `${buy.length} · ${buy[0].text}`, go: () => ctx.go('listen', 'besorgen') },
     tests.length && { icon: 'form', label: 'Tests', value: `${tests.length} in 2 Wochen`, go: () => ctx.go('kalender') },
   ].filter(Boolean);
   if (!tiles.length) return null;
