@@ -4,10 +4,11 @@ import { Icon, Check, Swipe, Sheet, Seg, ChipPick, CatIcon } from '../ui.jsx';
 import { addDays, longLabel, shortLabel, WD } from '../lib/dates.js';
 import { packList, packDay } from './common.jsx';
 import Einkauf from './Einkauf.jsx';
+import EigeneListen from './EigeneListen.jsx';
 import { EintragSheet, amText } from './Eintrag.jsx';
 
 // Listen: alles zum Abhaken an einem Ort – Einkauf, Besorgen, To-dos, Mitnehmen
-const SEGS = ['einkauf', 'besorgen', 'vereinbaren', 'mitnehmen'];
+const SEGS = ['einkauf', 'besorgen', 'vereinbaren', 'mitnehmen', 'eigene'];
 export default function Listen({ ctx, seg: seg0, setSeg }) {
   const seg = SEGS.includes(seg0) ? seg0 : 'einkauf';
   const shopN = ctx.data.shop.rows.filter((r) => !r.done).length;
@@ -20,8 +21,9 @@ export default function Listen({ ctx, seg: seg0, setSeg }) {
         ['besorgen', <SegLabel icon="bag" text="Besorgen" n={buyN} />, `Besorgen${buyN ? `, ${buyN} offen` : ''}`],
         ['vereinbaren', <SegLabel icon="todo" text="To-dos" n={inboxN} />, `To-dos${inboxN ? `, ${inboxN} offen` : ''}`],
         ['mitnehmen', <SegLabel icon="backpack" text="Mitnehmen" />, 'Mitnehmen'],
+        ['eigene', <SegLabel icon="list" text="Eigene" />, 'Eigene Listen'],
       ]} /></div>
-      {seg === 'einkauf' ? <Einkauf ctx={ctx} /> : seg === 'mitnehmen' ? <Mitnehmen ctx={ctx} /> : seg === 'vereinbaren' ? <Vereinbaren ctx={ctx} /> : <Besorgen ctx={ctx} />}
+      {seg === 'eigene' ? <EigeneListen ctx={ctx} /> : seg === 'einkauf' ? <Einkauf ctx={ctx} /> : seg === 'mitnehmen' ? <Mitnehmen ctx={ctx} /> : seg === 'vereinbaren' ? <Vereinbaren ctx={ctx} /> : <Besorgen ctx={ctx} />}
     </>
   );
 }

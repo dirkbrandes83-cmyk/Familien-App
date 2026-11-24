@@ -112,6 +112,8 @@ function Shell({ me, members }) {
     inbox: useTable('todo_inbox'),
     buy: useTable('buy_items'),
     gifts: useTable('gift_ideas'),
+    lists: useTable('custom_lists'),
+    listItems: useTable('custom_list_items'),
     ...useHomeTables(),
   };
 

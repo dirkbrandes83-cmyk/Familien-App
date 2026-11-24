@@ -15,7 +15,7 @@ export default function Mehr({ ctx }) {
   if (page === 'push') return <Mitteilungen ctx={ctx} onBack={() => setPage(null)} />;
   if (page === 'widget') return <Widget ctx={ctx} onBack={() => setPage(null)} />;
   const backup = async () => {
-    const tables = ['events', 'shopping_items', 'frequent_items', 'pack_rules', 'pack_items', 'todo_inbox', 'buy_items', 'meals', 'recipes', 'chores', 'cleaning_areas', 'cleaning_notes', 'laundry_log', 'caregivers', 'care_needs', 'care_asks', 'calendar_subscriptions', 'settings'];
+    const tables = ['events', 'shopping_items', 'frequent_items', 'pack_rules', 'pack_items', 'todo_inbox', 'buy_items', 'meals', 'recipes', 'chores', 'cleaning_areas', 'cleaning_notes', 'laundry_log', 'caregivers', 'care_needs', 'care_asks', 'calendar_subscriptions', 'settings', 'custom_lists', 'custom_list_items'];
     const out = { exportiert: new Date().toISOString() };
     for (const t of tables) out[t] = (await supabase.from(t).select('*')).data;
     const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });

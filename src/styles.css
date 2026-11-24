@@ -825,3 +825,4 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .li-seg .seg-txt { flex-direction: column; gap: 2px; font-size: 12.5px; position: relative; }
 .li-seg .seg-n2 { position: absolute; top: -4px; right: -14px; }
 .ein-del { align-self: center; background: none; border: none; color: #B91C1C; font-weight: 700; padding: 8px; display: inline-flex; align-items: center; gap: 6px; }
+.li-seg .seg-txt { font-size: 11.5px; letter-spacing: -0.2px; }
