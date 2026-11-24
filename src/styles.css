@@ -865,7 +865,7 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .row-main, .row-title, .h-item-text, .h-tl-title, .h-next-title, .h-next-rtitle, .card-title, .sub, .small, .label,
 .st-note, .st-check span, .wp-item span, .wp-txt, .sheet h2, .h-tile-value, .empty, .field > span { overflow-wrap: anywhere; min-width: 0; }
 .row, .h-item, .h-tl, .card-head, .wp-item, .st-check { min-width: 0; }
-.chip, .pchip, .pl-chip { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.chip, .pchip, .pl-chip { max-width: 100%; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
 .card, .st-card, .wp-slot { min-width: 0; max-width: 100%; }
 .h-tile-value { overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .st-col > .st-fix { flex: 0 0 auto; }
