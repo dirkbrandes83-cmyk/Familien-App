@@ -5,6 +5,7 @@ import { hm, longLabel } from '../lib/dates.js';
 import { KINDS, NICHT } from './common.jsx';
 import { FAECHER, TEST_ARTEN, testTitle } from '../lib/tests.js';
 import { careFromEvent } from './Betreuung.jsx';
+import { istKindertermin } from '../lib/regeln.js';
 
 const REPS = ['keine', 'täglich', 'wöchentlich', 'alle 2 Wochen', 'monatlich', 'jährlich'];
 
@@ -36,13 +37,13 @@ function AboEvent({ ctx, ev, date, onClose }) {
         <div className="sub">{ev.all_day ? 'ganztägig' : `${hm(ev.from_time)}${ev.to_time ? ` – ${hm(ev.to_time)}` : ''}`}{ev.rep !== 'keine' ? ` · ${ev.rep}` : ''}</div>
         {ev.note && <div className="sub" style={{ whiteSpace: 'pre-wrap' }}>{ev.note}</div>}
       </div>
-      {ev.kind === 'termin' && (ev.who || []).some((w) => ctx.member(w)?.kid) && (
+      {ev.kind === 'termin' && istKindertermin({ ...ev, all_day: false }, ctx.members) && (
         <>
           <div className="field"><span>Bringt hin</span><ChipPick options={opts} value={fahrt.bring_by} onPick={(n) => setze('bring_by', n)} /></div>
           <div className="field"><span>Holt ab</span><ChipPick options={opts} value={fahrt.pick_by} onPick={(n) => setze('pick_by', n)} /></div>
         </>
       )}
-      <div className="small">Aus dem Abo „{sub?.name ?? 'Kalender'}“. {(ev.who || []).some((w) => ctx.member(w)?.kid) ? 'Bringen/Abholen speichert die App; ' : ''}Titel, Zeit und Personen änderst du im ursprünglichen Kalender.{hasCare ? ' Betreuung ist schon eingetragen.' : ''}</div>
+      <div className="small">Aus dem Abo „{sub?.name ?? 'Kalender'}“. {istKindertermin({ ...ev, all_day: false }, ctx.members) ? 'Bringen/Abholen speichert die App; ' : ''}Titel, Zeit und Personen änderst du im ursprünglichen Kalender.{hasCare ? ' Betreuung ist schon eingetragen.' : ''}</div>
     </Sheet>
   );
 }
@@ -132,7 +133,7 @@ function EditEvent({ ctx, ev, preset = {}, onClose }) {
   const giftAuto = GIFT_WORDS.test(f.title);
   const giftOn = f.gift ?? giftAuto;
   const giftPossible = f.kind !== 'geburtstag' && f.kind !== 'test' && f.rep === 'keine';
-  const kidEvent = f.kind === 'termin' && f.who.some((w) => ctx.member(w)?.kid);
+  const kidEvent = istKindertermin({ ...f, all_day: false }, ctx.members);
   // Wer kann bringen/abholen? Eltern zuerst, dann die Betreuungspersonen
   const drivers = [...new Set(['Dirk', 'Catrin', ...[...ctx.data.caregivers.rows].sort((a, b) => a.sort - b.sort).map((g) => g.name)])];
   const driverColor = (n) => ctx.members.find((m) => m.name === n);

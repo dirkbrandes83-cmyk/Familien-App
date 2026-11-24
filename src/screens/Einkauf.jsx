@@ -8,7 +8,6 @@ export default function Einkauf({ ctx }) {
   const [draft, setDraft] = useState('');
   const [showDone, setShowDone] = useState(false);
   const [editFreq, setEditFreq] = useState(false);
-  const [hint, setHint] = useState(() => !localStorage.getItem('swipeHint'));
   const [move, setMove] = useState(null); // Artikel, dessen Kategorie geändert wird
 
   const open = data.shop.rows.filter((r) => !r.done);
@@ -81,13 +80,6 @@ export default function Einkauf({ ctx }) {
           <button className="btn dashed" onClick={() => add(standardMissing.map((f) => f.name), 'Wocheneinkauf')}>Standard-Wocheneinkauf hinzufügen ({standardMissing.length})</button>
         )}
       </div>
-
-      {hint && open.length > 0 && (
-        <div className="card" style={{ flexDirection: 'row', alignItems: 'center', padding: '6px 6px 6px 14px', fontSize: 13 }}>
-          <span style={{ flex: '1 1 auto' }}>Tipp: antippen oder nach rechts wischen = erledigt, nach links = löschen</span>
-          <button className="icon-btn" style={{ border: 'none' }} aria-label="Hinweis schließen" onClick={() => { localStorage.setItem('swipeHint', '1'); setHint(false); }}><Icon name="x" size={16} /></button>
-        </div>
-      )}
 
       {open.length === 0 && <div className="card empty">Alles da – die Liste ist leer.</div>}
 

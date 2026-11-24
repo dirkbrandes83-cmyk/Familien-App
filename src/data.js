@@ -59,6 +59,8 @@ export function useHomeTables() {
     meals: useTable('meals', (r) => r.on_date),
     recipes: useTable('recipes'),
     wishes: useTable('meal_wishes'),
+    lists: useTable('custom_lists'),
+    listItems: useTable('custom_list_items'),
     laundry: useTable('laundry_log'),
     chores: useTable('chores'),
     choreChecks: useTable('chore_checks', (r) => `${r.chore_id}|${r.on_date}`),

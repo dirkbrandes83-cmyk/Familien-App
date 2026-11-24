@@ -11,6 +11,7 @@ import { upcomingTests } from '../lib/tests.js';
 import { mealOf, choresToday, toggleChore } from './Zuhause.jsx';
 import { isWeekendSoon } from '../lib/wochenende.js';
 import { ABSCHNITTE } from '../lib/wochenplan.js';
+import { istKindertermin } from '../lib/regeln.js';
 import { EintragSheet } from './Eintrag.jsx';
 import { pushEinschalten, supported, standalone } from './Mitteilungen.jsx';
 
@@ -105,7 +106,7 @@ function AlsNaechstes({ ctx, now }) {
 
 /* ---------- Fahrt-Symbol: 🚗 bringt / holt, offen = orange ---------- */
 function Fahrt({ ev, ctx }) {
-  const kidEv = !ev.all_day && ev.kind === 'termin' && ev.who.some((w) => ctx.member(w)?.kid);
+  const kidEv = istKindertermin(ev, ctx.members);
   if (!kidEv && !ev.bring_by && !ev.pick_by) return null;
   const part = (v, verb, offen) => (v === NICHT ? null : v ? <span key={verb}>{verb} <b>{v}</b></span> : kidEv ? <span key={verb} className="h-fahrt-open">{offen}</span> : null);
   const parts = [part(ev.bring_by, 'bringt', 'bringen offen'), part(ev.pick_by, 'holt', 'abholen offen')].filter(Boolean);

@@ -150,3 +150,67 @@ function ListeSheet({ ctx, liste, onClose }) {
     </Sheet>
   );
 }
+
+// Station: geteilte Listen als Karte; Antippen öffnet die Liste groß zum Abhaken und Ergänzen
+export function StationListen({ ctx }) {
+  const [offen, setOffen] = useState(null);
+  const lists = [...ctx.data.lists.rows].filter((l) => !l.privat).sort((a, b) => a.sort - b.sort || a.created_at.localeCompare(b.created_at));
+  if (!lists.length) return null;
+  const liste = lists.find((l) => l.id === offen);
+  return (
+    <section className="st-card st-fix">
+      <h2>Unsere Listen</h2>
+      {lists.map((l) => {
+        const li = ctx.data.listItems.rows.filter((i) => i.list_id === l.id);
+        return (
+          <button key={l.id} className="st-liste" onClick={() => setOffen(l.id)}>
+            <Icon name="list" size={22} /><span className="st-liste-name">{l.name}</span>
+            <span className="st-progress">{li.filter((i) => i.done).length} von {li.length}</span>
+          </button>
+        );
+      })}
+      {liste && (
+        <div className="sheet-bg" onClick={(e) => { if (e.target === e.currentTarget) setOffen(null); }}>
+          <div className="sheet st-sheet" role="dialog" aria-modal="true" aria-label={liste.name}>
+            <div className="sheet-head"><h2>{liste.name}</h2><button className="icon-btn st-icon" onClick={() => setOffen(null)} aria-label="Schließen"><Icon name="x" /></button></div>
+            <StationListe ctx={ctx} liste={liste} />
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function StationListe({ ctx, liste }) {
+  const [text, setText] = useState('');
+  const L = ctx.data.listItems;
+  const items = L.rows.filter((i) => i.list_id === liste.id).sort((a, b) => Number(a.done) - Number(b.done) || a.sort - b.sort || a.created_at.localeCompare(b.created_at));
+  const toggle = async (i) => {
+    L.local((rows) => rows.map((x) => (x.id === i.id ? { ...x, done: !i.done } : x)));
+    if (!await run(supabase.from('custom_list_items').update({ done: !i.done }).eq('id', i.id), ctx.fail)) L.reload();
+  };
+  const add = async (e) => {
+    e.preventDefault();
+    const t = text.trim();
+    if (!t) return;
+    setText('');
+    const max = L.rows.filter((i) => i.list_id === liste.id).reduce((m, i) => Math.max(m, i.sort), 0);
+    if (await run(supabase.from('custom_list_items').insert({ list_id: liste.id, text: t.slice(0, 120), sort: max + 1 }), ctx.fail)) L.reload();
+  };
+  return (
+    <>
+      <form onSubmit={add} style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+        <input className="input st-input" value={text} onChange={(e) => setText(e.target.value)} placeholder="Etwas ergänzen" aria-label="Neuer Eintrag" />
+        <button className="btn" style={{ flex: 'none', width: 64 }} aria-label="Hinzufügen"><Icon name="plus" /></button>
+      </form>
+      <div className="st-liste-items">
+        {items.map((i) => (
+          <button key={i.id} className="st-check" onClick={() => toggle(i)} aria-pressed={i.done}>
+            <Check on={i.done} /><span className={i.done ? 'done' : ''}>{i.text}</span>
+          </button>
+        ))}
+        {items.length === 0 && <div className="st-empty">Noch leer.</div>}
+      </div>
+    </>
+  );
+}

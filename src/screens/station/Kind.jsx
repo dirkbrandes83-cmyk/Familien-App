@@ -1,4 +1,5 @@
 // Familien-Station: Kinderseite – Einpacken | Stundenplan | Nach der Schule
+import { aemtchenWoche } from '../../lib/regeln.js';
 import { useState } from 'react';
 import { supabase, run } from '../../data.js';
 import { choresToday } from '../Zuhause.jsx';
@@ -92,6 +93,7 @@ export function Kind({ ctx, kid, openKiste }) {
         : <StundenplanKarte ctx={ctx} kid={kid} date={date} />}
       <section className="st-card">
         <h2>{schule ? 'Nach der Schule' : 'Heute'}</h2>
+        <AemtchenSterne ctx={ctx} kid={kid} />
         {heute.length === 0 && !mine.length && !extra.length && <div className="st-empty">Heute nichts weiter.</div>}
         <EvList list={heute} ctx={ctx} empty="" />
         {mine.map((c) => (
@@ -110,6 +112,19 @@ export function Kind({ ctx, kid, openKiste }) {
         )}
       </section>
     </main>
+  );
+}
+
+// Ämtchen-Sterne der Woche: ein Stern pro erledigtem Ämtchen, alles geschafft = kleine Feier
+export function AemtchenSterne({ ctx, kid, klein }) {
+  const { soll, geschafft } = aemtchenWoche(ctx.data.chores.rows, ctx.data.choreChecks.rows, kid.id, ctx.day);
+  if (!soll) return null;
+  const alles = geschafft === soll;
+  return (
+    <div className={`st-sterne${alles ? ' alles' : ''}${klein ? ' klein' : ''}`} aria-label={`Ämtchen diese Woche: ${geschafft} von ${soll}`}>
+      <span className="st-sterne-reihe" aria-hidden="true">{Array.from({ length: Math.min(soll, 14) }, (_, i) => <Icon key={i} name="star" size={klein ? 16 : 22} className={i < geschafft ? 'an' : ''} />)}</span>
+      {!klein && <span>{alles ? 'Alle Ämtchen dieser Woche geschafft!' : `${geschafft} von ${soll} Ämtchen diese Woche`}</span>}
+    </div>
   );
 }
 

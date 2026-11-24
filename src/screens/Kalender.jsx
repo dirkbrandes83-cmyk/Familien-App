@@ -5,6 +5,7 @@ import { EventRow } from './common.jsx';
 import { supabase, run } from '../data.js';
 import { EintragSheet, amText } from './Eintrag.jsx';
 import { besorgenText } from '../lib/aufgaben.js';
+import { terminBetrifft, todoBetrifft, besorgenBetrifft, aemtchenAm } from '../lib/regeln.js';
 import Betreuung, { ReviewBox, careStatus } from './Betreuung.jsx';
 
 export default function Kalender({ ctx, seg = 'termine', setSeg = () => {} }) {
@@ -14,11 +15,11 @@ export default function Kalender({ ctx, seg = 'termine', setSeg = () => {} }) {
   const [month, setMonth] = useState(ctx.day.slice(0, 7));
   const [sel, setSel] = useState(ctx.day);
 
-  const events = who === 'all' ? ctx.data.events.rows : ctx.data.events.rows.filter((e) => e.who.includes('all') || e.who.includes(who));
-  // To-dos, die einem Kalendertag zugeordnet sind (gefiltert wie die Termine)
+  // Personenfilter = Wochensicht dieser Person: ihre Termine, Fahrten, To-dos, Besorgungen und Ämtchen
+  const events = ctx.data.events.rows.filter((e) => terminBetrifft(e, who));
   const todos = [
-    ...ctx.data.inbox.rows.filter((t) => t.am && (who === 'all' || t.owner === who || t.for_who === who || (!t.owner && (t.typ ?? 'termin') === 'termin' && who === 'dirk'))),
-    ...ctx.data.buy.rows.filter((b) => b.am && (who === 'all' || b.for_who === who)).map((b) => ({ ...b, _art: 'buy', title: besorgenText(b), done_at: b.done ? b.done_at || 'ja' : null })),
+    ...ctx.data.inbox.rows.filter((t) => t.am && todoBetrifft(t, who)),
+    ...ctx.data.buy.rows.filter((b) => b.am && besorgenBetrifft(b, who)).map((b) => ({ ...b, _art: 'buy', title: besorgenText(b), done_at: b.done ? b.done_at || 'ja' : null })),
   ];
   const people = [{ id: 'all', name: 'Alle', color: '#1C1917', bg: '#E7E1D8' }, ...ctx.members];
 
@@ -56,15 +57,15 @@ export default function Kalender({ ctx, seg = 'termine', setSeg = () => {} }) {
       </div>
       <ReviewBox ctx={ctx} />
 
-      {view === 'woche' ? <Woche ctx={ctx} events={events} todos={todos} start={weekStart} />
-        : <Monat ctx={ctx} events={events} todos={todos} month={month} setMonth={setMonth} sel={sel} setSel={setSel} />}
+      {view === 'woche' ? <Woche ctx={ctx} events={events} todos={todos} start={weekStart} who={who} />
+        : <Monat ctx={ctx} who={who} events={events} todos={todos} month={month} setMonth={setMonth} sel={sel} setSel={setSel} />}
 
       <div className="small">Neue Familientermine legt ihr hier an. Kalender.digital und andere Abos richtet ihr unter „Mehr“ ein – sie sind nur lesbar.</div>
     </>
   );
 }
 
-function Woche({ ctx, events, todos, start }) {
+function Woche({ ctx, events, todos, start, who }) {
   const end = addDays(start, 6);
   const occ = expand(events, start, end);
   const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
@@ -80,6 +81,7 @@ function Woche({ ctx, events, todos, start }) {
       {days.map((d) => {
         const list = occ.filter((o) => o.date === d);
         const tl = todos.filter((t) => t.am === d);
+        const ae = who !== 'all' ? aemtchenAm(ctx.data.chores.rows, who, d) : [];
         const isToday = d === ctx.day;
         return (
           <section key={d} id={`tag-${d}`} className="card cal-day" style={{ padding: list.length || tl.length ? '12px 16px 4px' : '10px 16px', gap: 2, opacity: d < ctx.day ? 0.6 : 1 }}>
@@ -87,7 +89,8 @@ function Woche({ ctx, events, todos, start }) {
               <span className="label" style={isToday ? { color: '#0F766E' } : undefined}>{isToday ? 'Heute · ' : ''}{longLabel(d)}</span>
               <button className="icon-btn" style={{ width: 36, height: 36, border: 'none' }} aria-label={`Termin am ${longLabel(d)} anlegen`} onClick={() => ctx.openEvent(null, { start_date: d })}><Icon name="plus" size={16} /></button>
             </div>
-            <TagListe ctx={ctx} occ={list} todos={tl} />
+            <TagListe ctx={ctx} occ={list} todos={tl} who={who} />
+            {ae.length > 0 && <div className="cal-aemtchen"><Icon name="todo" size={14} />Ämtchen: {ae.map((c) => c.title).join(', ')}</div>}
           </section>
         );
       })}
@@ -95,7 +98,7 @@ function Woche({ ctx, events, todos, start }) {
   );
 }
 
-function Monat({ ctx, events, todos, month, setMonth, sel, setSel }) {
+function Monat({ ctx, who, events, todos, month, setMonth, sel, setSel }) {
   const first = `${month}-01`;
   const gridStart = mondayOf(first);
   const cells = Array.from({ length: 42 }, (_, i) => addDays(gridStart, i));
@@ -157,16 +160,16 @@ function Monat({ ctx, events, todos, month, setMonth, sel, setSel }) {
           <span className="label">{sel === ctx.day ? 'Heute · ' : ''}{longLabel(sel)}</span>
           <button className="icon-btn" aria-label="Termin an diesem Tag anlegen" onClick={() => ctx.openEvent(null, { start_date: sel })}><Icon name="plus" size={18} /></button>
         </div>
-        {selList.length === 0 && selTodos.length === 0 ? <div className="empty">Nichts geplant.</div> : <TagListe ctx={ctx} occ={selList} todos={selTodos} />}
+        {selList.length === 0 && selTodos.length === 0 ? <div className="empty">Nichts geplant.</div> : <TagListe ctx={ctx} occ={selList} todos={selTodos} who={who} />}
       </section>
     </>
   );
 }
 
 // Termine und To-dos eines Tages nach Uhrzeit gemischt (Ganztägiges zuerst, To-dos ohne Zeit am Ende)
-function TagListe({ ctx, occ, todos }) {
+function TagListe({ ctx, occ, todos, who }) {
   const items = [
-    ...occ.map((o) => ({ t: o.ev.all_day ? '00' : String(o.ev.from_time || '00'), el: <EventRow key={o.ev.id + o.date} ev={o.ev} date={o.date} ctx={ctx} /> })),
+    ...occ.map((o) => ({ t: o.ev.all_day ? '00' : String(o.ev.from_time || '00'), el: <EventRow key={o.ev.id + o.date} ev={o.ev} date={o.date} ctx={ctx} fuer={who} /> })),
     ...todos.map((t) => ({ t: t.um ? String(t.um) : '99', el: <TodoRows key={(t._art || 't') + t.id} ctx={ctx} list={[t]} /> })),
   ].sort((a, b) => a.t.localeCompare(b.t));
   return <>{items.map((x) => x.el)}</>;

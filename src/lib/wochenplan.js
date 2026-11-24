@@ -1,5 +1,6 @@
 // Wochenend-Struktur: jeder freie Tag in vier Abschnitte geteilt.
 // Hier nur reine Logik (testbar); die Anzeige steckt in screens/Wochenplan.jsx.
+import { dabeiVon } from './regeln.js';
 import { expand, hm, weekday, titelAm } from './dates.js';
 
 export const ABSCHNITTE = [
@@ -50,8 +51,7 @@ export function tagesplan({ date, events, plan, rahmen = [], chores = [], meal, 
   // Das Datum steht nur am Eintrag – Wochenplan, Kalender und Station lesen alle von dort.
   for (const t of todos.values()) {
     if (t.am !== date) continue;
-    const dabei = [...new Set([t.owner, t.forWho].filter(Boolean))];
-    slots[t.um ? slotOf(t.um) : (slots[t.abschnitt] ? t.abschnitt : 'vormittag')].push({ art: 'todo', text: t.text, time: t.um ? hm(t.um) : undefined, done: t.done, aufgabe: t, dabei: dabei.length ? dabei : ['all'] });
+    slots[t.um ? slotOf(t.um) : (slots[t.abschnitt] ? t.abschnitt : 'vormittag')].push({ art: 'todo', text: t.text, time: t.um ? hm(t.um) : undefined, done: t.done, aufgabe: t, dabei: dabeiVon(t.owner, t.forWho) });
   }
   for (const p of plan.filter((x) => x.on_date === date)) {
     if (p.todo_ref) continue; // alt: früher eingeplante To-dos – stehen jetzt mit Datum am Eintrag

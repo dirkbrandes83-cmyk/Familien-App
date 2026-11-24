@@ -8,7 +8,9 @@
 import { addDays, expand, hm, weekday } from './dates.js';
 import { muellHeute, BINS } from './home.js';
 
-export const NICHT = 'nicht nötig';
+import { NICHT, istKindertermin as kindertermin } from './regeln.js';
+
+export { NICHT };
 const byDue = (a, b) => String(a.due || '9999').localeCompare(String(b.due || '9999'));
 const now = () => new Date().toISOString();
 // Datenbank erst beim Abhaken laden – so bleibt das Modell ohne Browser testbar
@@ -29,7 +31,7 @@ export function fahrer(ctx, value) {
 // Speicherwert für eine Person (Familie: Name wie bisher, damit Widget und Kalender-Abo passen)
 export const fahrerWert = (ctx, idOderName) => (idOderName === NICHT ? NICHT : ctx.members.find((m) => m.id === idOderName)?.name ?? idOderName);
 
-const istKindertermin = (ctx, ev) => ev.kind === 'termin' && !ev.all_day && ev.who.some((w) => ctx.members.find((m) => m.id === w)?.kid);
+const istKindertermin = (ctx, ev) => kindertermin(ev, ctx.members);
 
 /* ---------- alle Aufgaben ---------- */
 export function aufgaben(ctx, { day = ctx.day, kommend = 3 } = {}) {

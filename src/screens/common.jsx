@@ -1,3 +1,4 @@
+import { fahrtenVon } from '../lib/regeln.js';
 import { Icon, PersonChips } from '../ui.jsx';
 import { hm, weekday, addDays, expand, WDL, titelAm } from '../lib/dates.js';
 import { istSchultag, naechsterSchultag } from '../lib/stundenplan.js';
@@ -20,7 +21,9 @@ export function timeLabel(ev, date) {
   return hm(ev.from_time);
 }
 
-export function EventRow({ ev, date, ctx, showDate }) {
+export function EventRow({ ev, date, ctx, showDate, fuer }) {
+  // Im Personenfilter: Termine, bei denen die Person nur fährt, bekommen einen Hinweis
+  const fahrt = fuer && fuer !== 'all' ? fahrtenVon(ev, fuer) : [];
   const sub = [
     !ev.all_day && ev.to_time ? `bis ${hm(ev.to_time)}` : null,
     ev.kind !== 'termin' && ev.kind !== 'test' ? KINDS[ev.kind] : null,
@@ -34,6 +37,7 @@ export function EventRow({ ev, date, ctx, showDate }) {
       <span className="row-main">
         <span className="row-title">{ev.kind === 'test' ? <span className="test-tag">Test</span> : null}{date ? titelAm(ev, date) : ev.title}</span>
         <PersonChips who={ev.who} members={ctx.members} />
+        {fahrt.length > 0 && <span className="fahrt-tag"><Icon name="car" size={14} />{ctx.member(fuer)?.name} {fahrt.join(' und ')}</span>}
         <BringPick ev={ev} />
         {sub && <span className="small">{sub}</span>}
       </span>

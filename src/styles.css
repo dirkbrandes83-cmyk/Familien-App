@@ -840,3 +840,35 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .wl-tag b { font-size: 14px; }
 .wl-tag span { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .wl-tag.belegt { border-color: var(--line); background: #fff; }
+
+/* Kalender-Wochensicht einer Person */
+.fahrt-tag { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; color: #0F766E; background: #F0FDFA; border-radius: 6px; padding: 1px 6px; align-self: flex-start; }
+.cal-aemtchen { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); padding: 6px 0 8px; border-top: 1px dashed var(--line); overflow-wrap: anywhere; }
+
+/* Station: Ämtchen-Sterne, Essenswünsche, Listen */
+.st-sterne { display: flex; flex-direction: column; gap: 4px; margin: 2px 0 10px; font-weight: 700; color: var(--muted); }
+.st-sterne-reihe { display: flex; flex-wrap: wrap; gap: 2px; color: #D6D3D1; }
+.st-sterne-reihe .an { color: #F59E0B; fill: #F59E0B; }
+.st-sterne.alles { color: #B45309; }
+.st-sterne.klein { display: inline-flex; margin: 0 0 0 8px; vertical-align: -2px; }
+.st-wuensche { display: flex; flex-wrap: wrap; gap: 6px; }
+.st-wunsch { background: #FFF7ED; border-radius: 10px; padding: 4px 10px; font-weight: 600; overflow-wrap: anywhere; }
+.st-liste { display: flex; align-items: center; gap: 10px; width: 100%; background: none; border: none; border-top: 1px solid var(--line); padding: 12px 0; font: inherit; font-size: 19px; font-weight: 700; text-align: left; color: inherit; }
+.st-liste-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.st-liste { padding: 8px 0; font-size: 17px; }
+.st-sheet { max-width: 640px; }
+.st-liste-items { display: flex; flex-direction: column; max-height: 60vh; overflow-y: auto; }
+.li-hinweis { flex-direction: row; align-items: center; padding: 8px 6px 8px 14px; font-size: 13px; gap: 6px; }
+.li-hinweis > span { flex: 1; min-width: 0; }
+
+/* Text bleibt immer im Block: lange Wörter umbrechen, Flex-Kinder dürfen schrumpfen, Chips kürzen */
+.row-main, .row-title, .h-item-text, .h-tl-title, .h-next-title, .h-next-rtitle, .card-title, .sub, .small, .label,
+.st-note, .st-check span, .wp-item span, .wp-txt, .sheet h2, .h-tile-value, .empty, .field > span { overflow-wrap: anywhere; min-width: 0; }
+.row, .h-item, .h-tl, .card-head, .wp-item, .st-check { min-width: 0; }
+.chip, .pchip, .pl-chip { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.card, .st-card, .wp-slot { min-width: 0; max-width: 100%; }
+.h-tile-value { overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.st-col > .st-fix { flex: 0 0 auto; }
+.alle3 > .st-col > .st-card.st-fix { flex: 0 0 auto; max-height: 45%; }
+.btn { overflow-wrap: normal; }
+.btn.small, .icon-btn { white-space: nowrap; }

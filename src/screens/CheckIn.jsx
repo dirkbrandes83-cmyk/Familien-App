@@ -8,6 +8,7 @@ import { muellStatus, BINS } from '../lib/home.js';
 import { rankIdeas } from '../lib/wochenende.js';
 import { aufgaben, offen } from '../lib/aufgaben.js';
 import { toggleVote } from './Wochenende.jsx';
+import { istKindertermin } from '../lib/regeln.js';
 
 const FACES = [[1, '😢', 'schlecht'], [2, '😕', 'nicht so gut'], [3, '😐', 'geht so'], [4, '🙂', 'gut'], [5, '😄', 'super']];
 const STEPS = ['Wer ist dabei?', 'Wie war deine Woche?', 'Das Schönste', 'Die neue Woche', 'Dienste', 'Was steht an?', 'Danke-Runde', 'Unser Vorhaben', 'Nächstes Wochenende', 'Fertig'];
@@ -117,7 +118,7 @@ export default function CheckIn({ ctx, onClose }) {
                     <div className="ci-dayitems">
                       {list.length === 0 && !st && <span className="st-empty">frei</span>}
                       {list.map((o) => {
-                        const kidEv = o.ev.who.some((w) => ctx.member(w)?.kid) && !o.ev.all_day && o.ev.kind === 'termin';
+                        const kidEv = istKindertermin(o.ev, ctx.members);
                         const open = kidEv && (!o.ev.bring_by || !o.ev.pick_by);
                         return (
                           <div key={o.ev.id + d} className={`ci-ev${o.ev.kind === 'test' ? ' test' : ''}`}>

@@ -23,8 +23,21 @@ export default function Listen({ ctx, seg: seg0, setSeg }) {
         ['mitnehmen', <SegLabel icon="backpack" text="Mitnehmen" />, 'Mitnehmen'],
         ['eigene', <SegLabel icon="list" text="Eigene" />, 'Eigene Listen'],
       ]} /></div>
+      <Bedienhinweis />
       {seg === 'eigene' ? <EigeneListen ctx={ctx} /> : seg === 'einkauf' ? <Einkauf ctx={ctx} /> : seg === 'mitnehmen' ? <Mitnehmen ctx={ctx} /> : seg === 'vereinbaren' ? <Vereinbaren ctx={ctx} /> : <Besorgen ctx={ctx} />}
     </>
+  );
+}
+// Eine Bedienregel für alle Listen – einmal erklärt, dann weggeklickt
+function Bedienhinweis() {
+  const [zeigen, setZeigen] = useState(() => { try { return !localStorage.getItem('bedienHinweis'); } catch { return false; } });
+  if (!zeigen) return null;
+  const weg = () => { try { localStorage.setItem('bedienHinweis', '1'); } catch { /* egal */ } setZeigen(false); };
+  return (
+    <div className="card li-hinweis">
+      <span><b>So geht's in allen Listen:</b> Kästchen = abhaken · nach rechts wischen = erledigt · nach links = löschen · bei To-dos und Besorgen öffnet der Text Wann, Wer und Notiz.</span>
+      <button className="icon-btn" style={{ border: 'none' }} aria-label="Hinweis schließen" onClick={weg}><Icon name="x" size={16} /></button>
+    </div>
   );
 }
 function SegLabel({ icon, text, n }) {
@@ -229,7 +242,7 @@ function Vereinbaren({ ctx }) {
     <>
       <section className="card">
         <div className="card-head">
-          <div><div className="card-title">Zu erledigen</div><div className="small">Kästchen = erledigt · Antippen = Wann, Wer, Notiz</div></div>
+          <div className="card-title">Zu erledigen</div>
           <span className="badge">{all.length}</span>
         </div>
         <Seg label="Filter" value={filter} onPick={setFilter} options={[['alle', 'Alle'], ['mir', 'Für mich']]} />
@@ -346,7 +359,6 @@ function Besorgen({ ctx }) {
           );
         })}
       </section>
-      {open.length > 0 && <div className="small">Kästchen = besorgt · Antippen = Wann, Wer, Notiz</div>}
       {kal && <EintragSheet ctx={ctx} todo={kal} onClose={() => setKal(null)} />}
       {sheet && (sheet.typ === 'sonstiges' ? <OtherSheet ctx={ctx} onClose={() => setSheet(null)} /> : <BuySheet ctx={ctx} preset={sheet} onClose={() => setSheet(null)} />)}
     </>

@@ -55,7 +55,7 @@ export function WochenendKarte({ ctx, onOpen, station }) {
   const top = rankIdeas(ctx.data.ideas.rows, ctx.data.ideaVotes.rows, { regen }).slice(0, station ? 2 : 3);
   const plan = ctx.data.weekendLog.rows.filter((l) => days.includes(l.on_date));
   return (
-    <section className={station ? 'st-card' : 'card'}>
+    <section className={station ? 'st-card st-fix' : 'card'}>
       <div className={station ? 'st-cardhead' : 'card-head'}>
         {station ? <h2>Unser Wochenende</h2> : <div className="card-title">Unser Wochenende</div>}
         <button className={station ? 'btn ghost' : 'btn ghost small'} style={{ width: 'auto' }} onClick={onOpen}>Ideenkiste</button>

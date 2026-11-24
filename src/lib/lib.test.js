@@ -264,3 +264,29 @@ test('Dauerkarten: Kommentar zur Einschätzung', async () => {
   const s2 = { id: 'y', praef: { wir: 'option', wir_text: 'x' } };
   assert.deepEqual(aktion('wir', [s2], s2, 'praef', 'option').patch, { praef: {} });
 });
+
+test('Regeln: Kindertermin, wer betroffen ist, Ämtchen-Woche', async () => {
+  const r = await import('./regeln.js');
+  const members = [{ id: 'dirk' }, { id: 'catrin' }, { id: 'emil', kid: true }];
+  const fussball = { kind: 'termin', all_day: false, who: ['emil'], bring_by: 'catrin', pick_by: 'dirk' };
+  assert.ok(r.istKindertermin(fussball, members));
+  assert.ok(!r.istKindertermin({ ...fussball, all_day: true }, members));
+  assert.ok(!r.istKindertermin({ kind: 'termin', all_day: false, who: ['dirk'] }, members));
+  // Catrin fährt nur → Termin gehört trotzdem in ihre Woche
+  assert.ok(r.terminBetrifft(fussball, 'catrin'));
+  assert.deepEqual(r.fahrtenVon(fussball, 'catrin'), ['bringt']);
+  assert.deepEqual(r.fahrtenVon({ ...fussball, pick_by: 'catrin' }, 'catrin'), ['bringt', 'holt']);
+  assert.ok(!r.terminBetrifft({ ...fussball, bring_by: null, pick_by: null }, 'catrin'));
+  assert.ok(r.terminBetrifft({ who: ['all'] }, 'catrin'));
+  // To-dos: Termin vereinbaren ohne Zuständigen landet bei Dirk
+  assert.ok(r.todoBetrifft({ typ: 'termin', owner: null }, 'dirk'));
+  assert.ok(!r.todoBetrifft({ typ: 'anrufen', owner: null }, 'dirk'));
+  assert.ok(r.besorgenBetrifft({ for_who: 'emil' }, 'emil'));
+  assert.deepEqual(r.dabeiVon(null, null), ['all']);
+  assert.deepEqual(r.dabeiVon('dirk', 'dirk'), ['dirk']);
+  // Ämtchen-Woche: Mo + Mi fällig, Mi erledigt; Stand Mittwoch → 1 von 2
+  const chores = [{ id: 'c1', who: 'emil', weekdays: [0, 2] }, { id: 'c2', who: 'jonte', weekdays: [0] }];
+  const checks = [{ chore_id: 'c1', on_date: '2026-11-25' }];
+  assert.deepEqual(r.aemtchenWoche(chores, checks, 'emil', '2026-11-25'), { soll: 2, geschafft: 1 });
+  assert.deepEqual(r.aemtchenWoche(chores, checks, 'emil', '2026-11-23'), { soll: 1, geschafft: 0 });
+});

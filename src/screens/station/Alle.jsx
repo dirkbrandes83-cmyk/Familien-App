@@ -2,7 +2,9 @@
 import { mealOf, muellOf, Bin, choresToday } from '../Zuhause.jsx';
 import { WochenendKarte } from '../Wochenende.jsx';
 import Wochenplan from '../Wochenplan.jsx';
-import { freieZeit, freieTage } from './Kind.jsx';
+import { freieZeit, freieTage, AemtchenSterne } from './Kind.jsx';
+import { aufgaben } from '../../lib/aufgaben.js';
+import { StationListen } from '../EigeneListen.jsx';
 import { muellHeute } from '../../lib/home.js';
 import { Icon, Check } from '../../ui.jsx';
 import { addDays, expand, WDL, weekday } from '../../lib/dates.js';
@@ -33,6 +35,7 @@ export function Alle({ ctx, openIstAlle, openKiste }) {
         <div className="st-col">
           <WerMacht ctx={ctx} />
           <EssenKarte ctx={ctx} />
+          <StationListen ctx={ctx} />
           {einkauf}
         </div>
       </main>
@@ -44,6 +47,7 @@ export function Alle({ ctx, openIstAlle, openKiste }) {
         <section className="st-card st-auto">
           <h2>Termine heute</h2>
           <EvList list={occ.filter((o) => o.date === ctx.day)} ctx={ctx} />
+          <HeuteZuTun ctx={ctx} />
           <h3>Morgen · {WDL[weekday(tomorrow)]}</h3>
           <EvList list={occ.filter((o) => o.date === tomorrow)} ctx={ctx} />
         </section>
@@ -72,6 +76,7 @@ export function Alle({ ctx, openIstAlle, openKiste }) {
       </div>
       <div className="st-col">
         <WochenendKarte ctx={ctx} station onOpen={openKiste} />
+        <StationListen ctx={ctx} />
         {einkauf}
       </div>
     </main>
@@ -81,11 +86,18 @@ export function Alle({ ctx, openIstAlle, openKiste }) {
 function EssenKarte({ ctx }) {
   const tomorrow = addDays(ctx.day, 1);
   const st = muellHeute(muellOf(ctx), ctx.day);
+  const wuensche = ctx.data.wishes.rows.filter((w) => !w.done_at).sort((a, b) => a.created_at.localeCompare(b.created_at)).slice(0, 6);
   return (
     <section className="st-card st-auto">
       <h2>Essen heute</h2>
       <div className="st-meal">{mealOf(ctx, ctx.day).title}</div>
       {mealOf(ctx, tomorrow).planned && <div className="st-empty">Morgen: {mealOf(ctx, tomorrow).title}</div>}
+      {wuensche.length > 0 && (
+        <>
+          <h3>Wünsche</h3>
+          <div className="st-wuensche">{wuensche.map((w) => <span key={w.id} className="st-wunsch">{w.title}{ctx.member(w.who) ? <b style={{ color: ctx.member(w.who).color }}> · {ctx.member(w.who).name}</b> : null}</span>)}</div>
+        </>
+      )}
       {st && (
         <>
           <h3>Müll</h3>
@@ -96,6 +108,22 @@ function EssenKarte({ ctx }) {
         </>
       )}
     </section>
+  );
+}
+
+// Heute eingeplante To-dos und Besorgungen (mit Uhrzeit zuerst)
+function HeuteZuTun({ ctx }) {
+  const list = aufgaben(ctx).filter((a) => (a.art === 'erledigen' || a.art === 'besorgen') && a.am === ctx.day && !a.done)
+    .sort((a, b) => String(a.um || '99').localeCompare(String(b.um || '99')));
+  if (!list.length) return null;
+  return (
+    <>
+      <h3>Heute zu tun</h3>
+      {list.map((a) => {
+        const wer = [a.owner, a.forWho].filter(Boolean).map((id) => ctx.member(id)?.name).filter(Boolean);
+        return <div key={a.key} className="st-note">{a.um ? <b>{a.um.slice(0, 5)} </b> : null}{a.text}{wer.length ? ` · ${[...new Set(wer)].join(', ')}` : ''}</div>;
+      })}
+    </>
   );
 }
 
@@ -110,7 +138,7 @@ function WerMacht({ ctx }) {
           const list = chores.filter((c) => c.who === p.id);
           return (
             <div key={p.id} className="st-kid">
-              <span className="st-kidname" style={{ color: p.color }}>{p.tier ? `${p.tier} ` : ''}{p.name}</span>
+              <span className="st-kidname" style={{ color: p.color }}>{p.tier ? `${p.tier} ` : ''}{p.name}{p.kid && <AemtchenSterne ctx={ctx} kid={p} klein />}</span>
               {list.map((c) => (
                 <button key={c.id} className="st-check" onClick={() => toggleChoreFeier(ctx, c)} aria-pressed={c.done}>
                   <Check on={c.done} /><span className={c.done ? 'done' : ''}>{c.title}</span>
