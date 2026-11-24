@@ -73,7 +73,14 @@ export function aufgaben(ctx, { day = ctx.day, kommend = 3 } = {}) {
   // Müll am Rausstell-Tag
   const m = ctx.data.settings.rows.find((r) => r.key === 'muell')?.value;
   const st = muellHeute(m, day);
-  if (st) out.push({ key: 'muell', art: 'muell', text: `Müll raus: ${st.bins.map((x) => BINS[x]?.label).join(' + ')}`, due: day, owner: m.out_by ?? null, forWho: null, done: false });
+  // Abgehakt wird am Müll-Eintrag selbst (raus_am = Datum), damit es auf allen Geräten erledigt bleibt
+  const setzeMuell = (raus) => db(ctx, (sb) => sb.from('settings').update({ value: { ...m, raus_am: raus } }).eq('key', 'muell'));
+  if (st) out.push({
+    key: 'muell', art: 'muell', text: `Müll raus: ${st.bins.map((x) => BINS[x]?.label).join(' + ')}`, due: day, owner: m.out_by ?? null, forWho: null,
+    done: m.raus_am === day,
+    erledigen: () => setzeMuell(day),
+    zurueck: () => setzeMuell(null),
+  });
 
   // Fahrten der nächsten Tage (offen oder vergeben)
   for (const o of expand(ctx.data.events.rows, day, addDays(day, kommend))) {
