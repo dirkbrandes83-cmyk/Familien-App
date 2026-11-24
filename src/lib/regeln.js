@@ -60,3 +60,9 @@ export function aemtchenWoche(chores, checks, id, bis) {
   }
   return { soll, geschafft };
 }
+
+// Braucht ein Termin ein Geschenk? Gleiche Regel wie in der Datenbank (braucht_geschenk).
+// „Feier“ allein reicht nicht – Gruppenfeiern wie Weihnachtsfeier oder Sommerfest brauchen keins.
+export const GESCHENK_WORTE = /geburtstag|party|einladung|hochzeit|jubil|taufe|einschulung|konfirmation|kommunion|jugendweihe/i;
+export const KEIN_GESCHENK = /weihnachtsfeier|adventsfeier|sommerfest|schulfest|laterne|abschlussfeier|klassenparty|klassenfest|vereinsfeier|betriebs|firmen|team|elternabend/i;
+export const geschenkAuto = (titel) => GESCHENK_WORTE.test(titel || '') && !KEIN_GESCHENK.test(titel || '');

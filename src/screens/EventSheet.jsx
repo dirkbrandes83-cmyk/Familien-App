@@ -5,7 +5,7 @@ import { hm, longLabel } from '../lib/dates.js';
 import { KINDS, NICHT } from './common.jsx';
 import { FAECHER, TEST_ARTEN, testTitle } from '../lib/tests.js';
 import { careFromEvent } from './Betreuung.jsx';
-import { istKindertermin } from '../lib/regeln.js';
+import { istKindertermin, geschenkAuto } from '../lib/regeln.js';
 
 const REPS = ['keine', 'täglich', 'wöchentlich', 'alle 2 Wochen', 'monatlich', 'jährlich'];
 
@@ -22,6 +22,13 @@ function AboEvent({ ctx, ev, date, onClose }) {
   const drivers = [...new Set(['Dirk', 'Catrin', ...[...ctx.data.caregivers.rows].sort((a, b) => a.sort - b.sort).map((g) => g.name)])];
   const driverColor = (n) => ctx.members.find((m) => m.name === n);
   const opts = [...drivers.map((n) => ({ id: n, label: n, color: driverColor(n)?.color, bg: driverColor(n)?.bg })), { id: NICHT, label: 'Nicht nötig' }];
+  const [gift, setGift] = useState(ev.gift ?? geschenkAuto(ev.title));
+  const setzeGeschenk = async (an) => {
+    setGift(an);
+    const v = an === geschenkAuto(ev.title) ? null : an; // null = automatisch nach Titel
+    ctx.data.events.local((rows) => rows.map((e) => (e.id === ev.id ? { ...e, gift: v } : e)));
+    if (await run(supabase.from('events').update({ gift: v }).eq('id', ev.id), ctx.fail)) { ctx.data.buy.reload(); ctx.say(an ? 'Geschenk kommt unter Besorgen' : 'Kein Geschenk nötig'); }
+  };
   const setze = async (feld, n) => {
     const v = fahrt[feld] === n ? null : n;
     setFahrt((x) => ({ ...x, [feld]: v ?? '' }));
@@ -37,6 +44,13 @@ function AboEvent({ ctx, ev, date, onClose }) {
         <div className="sub">{ev.all_day ? 'ganztägig' : `${hm(ev.from_time)}${ev.to_time ? ` – ${hm(ev.to_time)}` : ''}`}{ev.rep !== 'keine' ? ` · ${ev.rep}` : ''}</div>
         {ev.note && <div className="sub" style={{ whiteSpace: 'pre-wrap' }}>{ev.note}</div>}
       </div>
+      {ev.rep === 'keine' && ev.kind !== 'geburtstag' && ev.kind !== 'test' && (
+        <label className="toggle-row">
+          <span><span style={{ fontWeight: 600 }}>🎁 Geschenk besorgen</span>
+            <span className="small" style={{ display: 'block' }}>Aufgabe unter Listen → Besorgen, 4 Wochen vorher</span></span>
+          <input type="checkbox" checked={gift} onChange={(e) => setzeGeschenk(e.target.checked)} style={{ width: 24, height: 24 }} />
+        </label>
+      )}
       {ev.kind === 'termin' && istKindertermin({ ...ev, all_day: false }, ctx.members) && (
         <>
           <div className="field"><span>Bringt hin</span><ChipPick options={opts} value={fahrt.bring_by} onPick={(n) => setze('bring_by', n)} /></div>
@@ -49,7 +63,6 @@ function AboEvent({ ctx, ev, date, onClose }) {
 }
 
 // Bei diesen Wörtern im Titel wird automatisch eine Geschenk-Aufgabe angelegt (wie in der Datenbank)
-const GIFT_WORDS = /geburtstag|party|feier|einladung|hochzeit|jubil|taufe|einschulung|konfirmation|kommunion/i;
 
 function EditEvent({ ctx, ev, preset = {}, onClose }) {
   const editing = !!ev;
@@ -110,7 +123,7 @@ function EditEvent({ ctx, ev, preset = {}, onClose }) {
       if (res && preset.inboxId) await run(supabase.from('todo_inbox').update({ done_at: new Date().toISOString(), event_id: res.id }).eq('id', preset.inboxId), ctx.fail);
     }
     setBusy(false);
-    if (ok) { ctx.say((editing ? 'Termin gespeichert' : 'Termin angelegt') + (giftOn && giftPossible && !(editing && (ev.gift ?? GIFT_WORDS.test(ev.title))) ? ' · Geschenk unter Besorgen' : '')); onClose(); }
+    if (ok) { ctx.say((editing ? 'Termin gespeichert' : 'Termin angelegt') + (giftOn && giftPossible && !(editing && (ev.gift ?? geschenkAuto(ev.title))) ? ' · Geschenk unter Besorgen' : '')); onClose(); }
   };
 
   const remove = async (onlyThis) => {
@@ -130,7 +143,7 @@ function EditEvent({ ctx, ev, preset = {}, onClose }) {
 
   const whoOpts = [{ id: 'all', label: 'Alle', color: '#0F766E', bg: '#CCFBF1' }, ...ctx.members.map((m) => ({ id: m.id, label: m.name, color: m.color, bg: m.bg }))];
   const fixedAllDay = f.kind !== 'termin';
-  const giftAuto = GIFT_WORDS.test(f.title);
+  const giftAuto = geschenkAuto(f.title);
   const giftOn = f.gift ?? giftAuto;
   const giftPossible = f.kind !== 'geburtstag' && f.kind !== 'test' && f.rep === 'keine';
   const kidEvent = istKindertermin({ ...f, all_day: false }, ctx.members);
@@ -211,7 +224,7 @@ function EditEvent({ ctx, ev, preset = {}, onClose }) {
       {giftPossible && (
         <label className="toggle-row">
           <span><span style={{ fontWeight: 600 }}>🎁 Geschenk besorgen</span>
-            <span className="small" style={{ display: 'block' }}>Aufgabe unter Erinnerungen → Besorgen, fällig 2 Tage vorher</span></span>
+            <span className="small" style={{ display: 'block' }}>Aufgabe unter Listen → Besorgen, fällig 2 Tage vorher</span></span>
           <input type="checkbox" checked={giftOn} onChange={(e) => set({ gift: e.target.checked === giftAuto ? null : e.target.checked })} style={{ width: 24, height: 24 }} />
         </label>
       )}

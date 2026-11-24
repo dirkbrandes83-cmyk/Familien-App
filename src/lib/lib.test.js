@@ -290,3 +290,12 @@ test('Regeln: Kindertermin, wer betroffen ist, Ämtchen-Woche', async () => {
   assert.deepEqual(r.aemtchenWoche(chores, checks, 'emil', '2026-11-25'), { soll: 2, geschafft: 1 });
   assert.deepEqual(r.aemtchenWoche(chores, checks, 'emil', '2026-11-23'), { soll: 1, geschafft: 0 });
 });
+
+test('Geschenk: nicht jedes Fest', async () => {
+  const { geschenkAuto } = await import('./regeln.js');
+  assert.ok(geschenkAuto('Geburtstag Paul'));
+  assert.ok(geschenkAuto('Einladung Hochzeit Lea & Tom'));
+  assert.ok(!geschenkAuto('Weihnachtsfeier Schach'));
+  assert.ok(!geschenkAuto('Sommerfest Schule'));
+  assert.ok(!geschenkAuto('Feier im Verein'));
+});
