@@ -40,6 +40,12 @@ export default function Geschenke({ ctx }) {
   const givers = [...new Set(ctx.data.gifts.rows.map((g) => g.von).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'de'));
   const [teilen, setTeilen] = useState(false);
   const [scan, setScan] = useState(false);
+  const [ideen, setIdeen] = useState(null); // { fuer, vorhanden, privat }
+  const ideeAufListe = async (v) => {
+    const p = parseFloat(preisZahl(v.preis).replace(',', '.'));
+    const ok = await run(supabase.from('gift_ideas').insert({ fuer: ideen.fuer, idee: v.produkt.slice(0, 160), preis: Number.isFinite(p) ? p : null, notiz: (v.warum || '').slice(0, 200), anlass: 'Weihnachten', jahr, by_who: ctx.me.id, privat: !!ideen.privat }), ctx.fail);
+    if (ok) ctx.say(`${v.produkt} steht bei ${ideen.fuer}`);
+  };
 
   const step = async (g) => {
     const next = STATUS[g.status].next;
@@ -99,7 +105,10 @@ export default function Geschenke({ ctx }) {
                 </div>
               </Swipe>
             ))}
-            <button className="btn ghost small-btn" style={{ margin: '6px 0 10px' }} onClick={() => setSheet({ fuer: p })}>+ für {p}</button>
+            <div style={{ display: 'flex', gap: 8, margin: '6px 0 10px', flexWrap: 'wrap' }}>
+              <button className="btn ghost small-btn" onClick={() => setSheet({ fuer: p })}>+ für {p}</button>
+              <button className="btn ghost small-btn" onClick={() => setIdeen({ fuer: p, vorhanden: list.map((g) => g.idee).join(', ') })}>✨ Ideen</button>
+            </div>
           </section>
         );
       })}
@@ -122,10 +131,14 @@ export default function Geschenke({ ctx }) {
             </div>
           </Swipe>
         ))}
-        <button className="btn ghost small-btn" style={{ margin: '6px 0 10px' }} onClick={() => setSheet({ privat: true, fuer: ctx.me?.id === 'dirk' ? 'Catrin' : ctx.me?.id === 'catrin' ? 'Dirk' : '' })}>+ geheime Idee</button>
+        <div style={{ display: 'flex', gap: 8, margin: '6px 0 10px', flexWrap: 'wrap' }}>
+          <button className="btn ghost small-btn" onClick={() => setSheet({ privat: true, fuer: ctx.me?.id === 'dirk' ? 'Catrin' : ctx.me?.id === 'catrin' ? 'Dirk' : '' })}>+ geheime Idee</button>
+          {(ctx.me?.id === 'dirk' || ctx.me?.id === 'catrin') && <button className="btn ghost small-btn" onClick={() => setIdeen({ fuer: ctx.me.id === 'dirk' ? 'Catrin' : 'Dirk', vorhanden: geheim.map((g) => g.idee).join(', '), privat: true })}>✨ Ideen</button>}
+        </div>
       </section>
       <div className="small">Nur in der App für Erwachsene – auf dem Familien-iPad nicht sichtbar. Status antippen: Idee → Gekauft → Verpackt. Sterne: ★★★ Herzenswunsch, ★★ wichtig, ★ wäre schön.</div>
       {sheet && <GiftSheet ctx={ctx} gift={sheet} jahr={jahr} names={knownNames} givers={givers} onClose={() => setSheet(null)} />}
+      {ideen && <KaufHilfe ctx={ctx} art="ideen" fuer={ideen.fuer} vorhanden={ideen.vorhanden} onUebernehmen={ideeAufListe} onClose={() => setIdeen(null)} />}
       {scan && <WunschScan ctx={ctx} jahr={jahr} names={knownNames} onClose={() => setScan(false)} />}
       {teilen && <TeilenSheet ctx={ctx} all={all} jahr={jahr} people={people} givers={givers} onClose={() => setTeilen(false)} />}
     </>
@@ -248,6 +261,16 @@ function GiftSheet({ ctx, gift, jahr, names, givers, onClose }) {
   const [privat, setPrivat] = useState(!!gift.privat);
   const eigenes = !editing || gift.by_who === ctx.me?.id;
   const ok = fuer.trim() && idee.trim();
+  const [hilfe, setHilfe] = useState(false);
+  const uebernehmen = (v) => {
+    setIdee(v.produkt.slice(0, 160));
+    const p = preisZahl(v.preis); if (p) setPreis(p);
+    const w = (v.wo || []).find((x) => x.link);
+    if (w) setLink(w.link);
+    if (v.wo?.length) setNotiz([notiz, `bei ${v.wo.map((x) => x.name).filter(Boolean).join(' / ')}`].filter(Boolean).join(' · ').slice(0, 200));
+    setHilfe(false);
+    ctx.say('Übernommen – zum Sichern „Speichern“ tippen');
+  };
   const save = async () => {
     if (!ok) return;
     const p = parseFloat(preis.replace(',', '.'));
@@ -274,6 +297,8 @@ function GiftSheet({ ctx, gift, jahr, names, givers, onClose }) {
       <label className="field"><span>Idee</span>
         <input className="input" value={idee} onChange={(e) => setIdee(e.target.value)} placeholder="z. B. Lego Technic Bagger" maxLength={160} autoFocus={!editing} />
       </label>
+      {fuer.trim() && idee.trim() && <button type="button" className="btn dashed" onClick={() => setHilfe(true)}>✨ KI-Kaufhilfe: Produkte, Preise, Shops</button>}
+      {hilfe && <KaufHilfe ctx={ctx} art="kauf" fuer={fuer.trim()} idee={idee.trim()} budget={preis} notiz={notiz} onUebernehmen={uebernehmen} onClose={() => setHilfe(false)} />}
       <div className="two">
         <label className="field"><span>Preis (optional)</span>
           <input className="input" inputMode="decimal" value={preis} onChange={(e) => setPreis(e.target.value)} placeholder="z. B. 25" />
@@ -302,3 +327,60 @@ function GiftSheet({ ctx, gift, jahr, names, givers, onClose }) {
     </Sheet>
   );
 }
+
+// KI-Kaufhilfe: zu einer Idee konkrete Produkte mit Preisen und Shops (art 'kauf')
+// oder für eine Person neue Ideen (art 'ideen'). Ergebnisse sind Vorschläge – Preise vor dem Kauf prüfen.
+const ALTER = { Emil: '10 Jahre, 5. Klasse', Jonte: '8 Jahre, 2. Klasse' };
+function KaufHilfe({ ctx, art, fuer, idee, budget, notiz, vorhanden, onUebernehmen, onClose }) {
+  const [hinweis, setHinweis] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [res, setRes] = useState(null);
+  const [err, setErr] = useState('');
+  const fragen = async () => {
+    setBusy(true); setErr(''); setRes(null);
+    const { data, error } = await supabase.functions.invoke('geschenk-hilfe', { body: { art, fuer, alter: ALTER[fuer], idee, budget, notiz, vorhanden, hinweis } });
+    setBusy(false);
+    if (error) {
+      let msg = error.message;
+      try { msg = (await error.context.json()).error || msg; } catch { /* Standardtext */ }
+      setErr(msg);
+      return;
+    }
+    if (data?.error) { setErr(data.error); return; }
+    setRes(data);
+  };
+  return (
+    <Sheet title={art === 'ideen' ? `✨ Ideen für ${fuer}` : `✨ Kaufhilfe: ${idee}`} onClose={onClose}
+      actions={!res && <button className="btn" onClick={fragen} disabled={busy}>{busy ? 'Die KI sucht … (bis zu 1 Minute)' : art === 'ideen' ? 'Ideen vorschlagen' : 'Produkte und Preise suchen'}</button>}>
+      {!res && (
+        <label className="field"><span>{art === 'ideen' ? 'Was mag die Person? (optional)' : 'Worauf sollen wir achten? (optional)'}</span>
+          <textarea className="input" rows={2} value={hinweis} onChange={(e) => setHinweis(e.target.value)} maxLength={300}
+            placeholder={art === 'ideen' ? 'z. B. liest gern, mag Dinos, Fußball' : 'z. B. nicht zu laut, gebraucht ist ok, Lieferung bis 20.12.'} />
+        </label>
+      )}
+      {err && <div className="small" style={{ color: '#B91C1C' }}>{err}</div>}
+      {res && (
+        <>
+          {res.kurz && <div className="sub">{res.kurz}</div>}
+          {(res.vorschlaege || []).map((v, i) => (
+            <div key={i} className="kh-vorschlag">
+              <div className="kh-kopf"><b>{v.produkt}</b>{v.preis && <span className="kh-preis">{v.preis}</span>}</div>
+              {v.warum && <div className="small">{v.warum}</div>}
+              {v.achtung && <div className="small" style={{ color: '#B45309' }}>{v.achtung}</div>}
+              {(v.wo || []).length > 0 && (
+                <div className="kh-wo">{v.wo.map((w, j) => (w.link
+                  ? <a key={j} href={w.link} target="_blank" rel="noreferrer" className="chip plain">{w.name || 'Shop'} ↗</a>
+                  : <span key={j} className="chip plain">{w.name}</span>))}</div>
+              )}
+              <button className="btn ghost small" onClick={() => onUebernehmen(v)}>{art === 'ideen' ? '+ Auf die Liste' : 'Übernehmen'}</button>
+            </div>
+          ))}
+          {(res.tipps || []).length > 0 && <div className="small">{res.tipps.map((t, i) => <div key={i}>💡 {t}</div>)}</div>}
+          <div className="small">Vorschläge der KI aus einer Websuche – Preise und Verfügbarkeit vor dem Kauf prüfen.</div>
+          <button className="btn ghost" onClick={() => setRes(null)}>Noch einmal fragen</button>
+        </>
+      )}
+    </Sheet>
+  );
+}
+const preisZahl = (t) => { const m = String(t || '').replace(/\./g, '').match(/(\d+(?:,\d+)?)/); return m ? m[1] : ''; };
