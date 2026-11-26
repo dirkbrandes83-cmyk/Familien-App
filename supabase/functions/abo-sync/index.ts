@@ -48,13 +48,16 @@ async function syncOne(db: any, sub: any, members: any[]) {
   const today = berlinToday();
   const firstSync = !sub.last_sync;
   const feed = parseIcs(text).events.filter((e: any) => isCurrent(e, addDays(today, -1)));
+  // Arbeits-Abos landen privat in work_events (nur die Person sieht sie), alle anderen im Familienkalender
+  const arbeit = !!sub.arbeit_von;
+  const T = arbeit ? "work_events" : "events";
   const want = new Map<string, any>();
   for (const e of feed) {
     const uid = e.ext_uid ?? `${e.title}|${e.start_date}|${e.from_time ?? ""}`;
     const { groups, ext_uid: _u, src: _s, ...row } = e;
-    want.set(`abo:${sub.id}:${uid}`, { ...row, who: whoFor(sub, groups, members) });
+    want.set(`abo:${sub.id}:${uid}`, arbeit ? row : { ...row, who: whoFor(sub, groups, members) });
   }
-  const { data: have, error } = await db.from("events").select("id, ext_uid, exdates, who, " + FIELDS.join(",")).eq("sub_id", sub.id);
+  const { data: have, error } = await db.from(T).select("id, ext_uid, exdates, " + (arbeit ? "" : "who, ") + FIELDS.join(",")).eq("sub_id", sub.id);
   if (error) throw new Error(error.message);
   const haveMap = new Map<string, any>((have ?? []).map((h: any) => [h.ext_uid, h]));
 
@@ -63,20 +66,22 @@ async function syncOne(db: any, sub: any, members: any[]) {
   for (const [key, row] of want) {
     const h = haveMap.get(key);
     if (!h) {
-      inserts.push({ ...row, ext_uid: key, sub_id: sub.id, src: "abo", kind: row.kind ?? "termin", review: !firstSync && (row.rep !== "keine" || row.start_date >= today) });
-    } else if (!same(h, row) || !sameWho(h.who, row.who)) {
-      const { error: e2 } = await db.from("events").update({ ...row }).eq("id", h.id);
+      inserts.push(arbeit
+        ? { ...row, ext_uid: key, sub_id: sub.id, src: "abo", owner: sub.arbeit_von }
+        : { ...row, ext_uid: key, sub_id: sub.id, src: "abo", kind: row.kind ?? "termin", review: !firstSync && (row.rep !== "keine" || row.start_date >= today) });
+    } else if (!same(h, row) || (!arbeit && !sameWho(h.who, row.who))) {
+      const { error: e2 } = await db.from(T).update({ ...row }).eq("id", h.id);
       if (!e2) updated++;
     }
   }
   for (let i = 0; i < inserts.length; i += 200) {
-    const { error: e3 } = await db.from("events").upsert(inserts.slice(i, i + 200), { onConflict: "ext_uid", ignoreDuplicates: true });
+    const { error: e3 } = await db.from(T).upsert(inserts.slice(i, i + 200), { onConflict: "ext_uid", ignoreDuplicates: true });
     if (e3) throw new Error(e3.message);
   }
   // Im Abo gelöscht: nur zukünftige Termine entfernen (Vergangenes bleibt als Verlauf)
   const gone = (have ?? []).filter((h: any) => !want.has(h.ext_uid) && (h.rep !== "keine" || h.start_date >= today)).map((h: any) => h.id);
   if (gone.length) {
-    const { error: e4 } = await db.from("events").delete().in("id", gone);
+    const { error: e4 } = await db.from(T).delete().in("id", gone);
     if (!e4) removed = gone.length;
   }
   return { neu: inserts.length, geaendert: updated, entfernt: removed };

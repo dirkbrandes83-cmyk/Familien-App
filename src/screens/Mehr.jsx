@@ -255,7 +255,7 @@ function FeedLink({ ctx }) {
 function Abos({ ctx, onBack }) {
   const [f, setF] = useState({ name: 'Kalender.digital (Schule)', url: '', who: ['dirk'] });
   const [busy, setBusy] = useState(null);
-  const subs = ctx.data.subs.rows;
+  const subs = ctx.data.subs.rows.filter((x) => !x.arbeit_von); // Dienstkalender stehen im Arbeitsbereich
   const opts = [{ id: 'all', label: 'Alle', color: '#0F766E', bg: '#CCFBF1' }, ...ctx.members.map((m) => ({ id: m.id, label: m.name, color: m.color, bg: m.bg }))];
   const sync = async (id) => {
     setBusy(id);

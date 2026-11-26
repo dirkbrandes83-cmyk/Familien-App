@@ -13,6 +13,7 @@ import { isWeekendSoon } from '../lib/wochenende.js';
 import { ABSCHNITTE } from '../lib/wochenplan.js';
 import { istKindertermin } from '../lib/regeln.js';
 import { EintragSheet } from './Eintrag.jsx';
+import { ArbeitHeute } from './Arbeit.jsx';
 import { pushEinschalten, supported, standalone } from './Mitteilungen.jsx';
 
 const mins = (t) => { const [h, m] = String(t).split(':').map(Number); return h * 60 + m; };
@@ -35,6 +36,7 @@ export default function Heute({ ctx }) {
     <>
       <Hinweise ctx={ctx} onCheckin={() => setCi(true)} />
       <AlsNaechstes ctx={ctx} now={now} />
+      <ArbeitHeute ctx={ctx} />
       <FuerDich ctx={ctx} skip={new Set(nextList(ctx, now).filter((o) => o.date === day).map((o) => o.ev.id))} />
       {abends && <EinpackenMorgen ctx={ctx} />}
       <FamilieHeute ctx={ctx} now={now} short={abends} skip={new Set(nextList(ctx, now).filter((o) => o.date === day).map((o) => o.ev.id))} />
