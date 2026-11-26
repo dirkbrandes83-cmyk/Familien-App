@@ -36,11 +36,17 @@ const time = (t) => (/^\d{2}:\d{2}$/.test(t || '') ? t : null);
 const whoOf = (w) => (w === 'jonte' || w === 'emil' ? [w] : w === 'eltern' ? ['dirk', 'catrin'] : ['jonte', 'emil']);
 const kidsOf = (k) => (k === 'jonte' || k === 'emil' ? [k] : ['jonte', 'emil']);
 
-export default function Scan({ ctx, onClose }) {
-  const [step, setStep] = useState('pick'); // pick | busy | review | done
+// vorab: fertiges Scan-Ergebnis (z. B. vom Kurzbefehl, aus scan_inbox) → direkt prüfen; onSaved: danach erledigt melden
+const itemsAus = (data) => [
+  ...data.termine.filter((t) => valid(t.datum)).map((t, i) => ({ key: `t${i}`, kind: 'termin', on: true, text: t.titel, date: t.datum, from: time(t.von), to: time(t.bis), who: t.wer })),
+  ...data.mitbringen.filter((t) => valid(t.datum)).map((t, i) => ({ key: `m${i}`, kind: 'mit', on: true, text: t.text, date: t.datum, who: t.kind })),
+  ...data.fristen.filter((t) => valid(t.datum)).map((t, i) => ({ key: `f${i}`, kind: 'frist', on: true, text: t.text, date: t.datum, who: 'eltern' })),
+];
+export default function Scan({ ctx, onClose, vorab, onSaved }) {
+  const [step, setStep] = useState(vorab ? 'review' : 'pick'); // pick | busy | review | done
   const [err, setErr] = useState('');
-  const [res, setRes] = useState(null);
-  const [items, setItems] = useState([]);
+  const [res, setRes] = useState(vorab ?? null);
+  const [items, setItems] = useState(() => (vorab ? itemsAus(vorab) : []));
 
   const pick = async (file) => {
     if (!file) return;
@@ -55,11 +61,7 @@ export default function Scan({ ctx, onClose }) {
         throw new Error(msg);
       }
       setRes(data);
-      setItems([
-        ...data.termine.filter((t) => valid(t.datum)).map((t, i) => ({ key: `t${i}`, kind: 'termin', on: true, text: t.titel, date: t.datum, from: time(t.von), to: time(t.bis), who: t.wer })),
-        ...data.mitbringen.filter((t) => valid(t.datum)).map((t, i) => ({ key: `m${i}`, kind: 'mit', on: true, text: t.text, date: t.datum, who: t.kind })),
-        ...data.fristen.filter((t) => valid(t.datum)).map((t, i) => ({ key: `f${i}`, kind: 'frist', on: true, text: t.text, date: t.datum, who: 'eltern' })),
-      ]);
+      setItems(itemsAus(data));
       setStep('review');
     } catch (e) {
       setErr(e.message);
@@ -90,7 +92,7 @@ export default function Scan({ ctx, onClose }) {
     if (todos.length) ok = !!(await run(supabase.from('todo_inbox').insert(todos), ctx.fail)) && ok;
     if (events.length) ok = !!(await run(supabase.from('events').insert(events), ctx.fail)) && ok;
     if (packs.length) ok = !!(await run(supabase.from('pack_items').insert(packs), ctx.fail)) && ok;
-    if (ok) { ctx.say(`${on.length} ${on.length === 1 ? 'Eintrag' : 'Einträge'} übernommen`); onClose(); }
+    if (ok) { ctx.say(`${on.length} ${on.length === 1 ? 'Eintrag' : 'Einträge'} übernommen`); if (onSaved) await onSaved(); onClose(); }
   };
 
   const label = { termin: 'Termin', mit: 'Mitbringen', frist: 'Frist' };
@@ -99,7 +101,10 @@ export default function Scan({ ctx, onClose }) {
 
   return (
     <Sheet title="Elternbrief scannen" onClose={onClose}
-      actions={step === 'review' && <button className="btn" onClick={save} disabled={!chosen}>{chosen ? `${chosen} übernehmen` : 'Nichts ausgewählt'}</button>}>
+      actions={step === 'review' && <>
+        <button className="btn" onClick={save} disabled={!chosen && !onSaved}>{chosen ? `${chosen} übernehmen` : onSaved ? 'Erledigt' : 'Nichts ausgewählt'}</button>
+        {onSaved && <button className="ein-del" onClick={async () => { await onSaved(); ctx.say('Scan verworfen'); onClose(); }}><Icon name="trash" size={16} />Verwerfen</button>}
+      </>}>
       {step === 'pick' && (
         <>
           <div className="sub">Foto vom Brief machen oder ein PDF wählen. Die KI schlägt Termine, Mitbringen und Fristen vor – du prüfst, bevor etwas übernommen wird. Das Bild wird nicht gespeichert.</div>
@@ -139,7 +144,7 @@ export default function Scan({ ctx, onClose }) {
               )}
             </section>
           ))}
-          <div className="small">Termine landen im Kalender, Mitbringen auf der Einpackliste, Fristen unter „Erinnerungen › Erledigen“.</div>
+          <div className="small">Termine landen im Kalender, Mitbringen auf der Einpackliste, Fristen unter „Listen › To-dos“.</div>
         </>
       )}
     </Sheet>

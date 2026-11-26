@@ -36,6 +36,7 @@ export default function Widget({ ctx, onBack }) {
   return (
     <>
       <button className="btn ghost small" style={{ alignSelf: 'flex-start' }} onClick={onBack}><Icon name="left" size={16} />Zurück</button>
+      <SchnellEintragen ctx={ctx} onNeu={load} />
       <section className="card">
         <div className="card-title">Widget „Heute“ für den Home-Bildschirm</div>
         <div className="sub">Zeigt die nächsten Termine, Müll, Einkauf und Einpacken. Es läuft über die kostenlose App <b>Scriptable</b> und kann nur anzeigen, nichts ändern.</div>
@@ -77,12 +78,78 @@ export default function Widget({ ctx, onBack }) {
           <div className="card-title" style={{ padding: '10px 0 4px' }}>Eingerichtete Widgets</div>
           {tokens.map((t) => (
             <div key={t.token} className="row">
-              <span className="row-main"><span className="row-title">{t.label}</span><span className="small">{t.scope === 'einkauf' ? 'darf die Einkaufsliste abgleichen' : 'nur lesen'} · zuletzt: {fmt(t.last_used)}</span></span>
+              <span className="row-main"><span className="row-title">{t.label}</span><span className="small">{t.scope === 'einkauf' ? 'darf die Einkaufsliste abgleichen' : t.scope === 'schnell' ? 'darf eintragen und scannen' : 'nur lesen'} · zuletzt: {fmt(t.last_used)}</span></span>
               <button className="btn ghost small" style={{ color: '#B91C1C' }} onClick={() => revoke(t)}>Sperren</button>
             </div>
           ))}
         </section>
       )}
     </>
+  );
+}
+
+// Schnell-Eintragen ohne die App zu öffnen: iPhone-Kurzbefehle, als Widget auf dem Home-Bildschirm oder per Siri
+const URL_SCHNELL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/schnell`;
+const KURZBEFEHLE = [
+  ['To-do', 'todo', 'To-do für die Familien-App (bei dir)'],
+  ['Arbeit', 'arbeit', 'To-do im Arbeitsbereich (nur für dich)'],
+  ['Einkauf', 'einkauf', 'auf die Einkaufsliste, mehrere mit Komma'],
+];
+function SchnellEintragen({ ctx, onNeu }) {
+  const [key, setKey] = useState(null);
+  const [kopiert, setKopiert] = useState(false);
+  const erstellen = async () => {
+    const dev = /iPad/.test(navigator.userAgent) ? 'iPad' : 'iPhone';
+    const res = await run(supabase.from('widget_tokens').insert({ member_id: ctx.me.id, label: `${dev} · Schnell-Eintragen`, scope: 'schnell' }).select('token').single(), ctx.fail);
+    if (res) { setKey(res.token); onNeu(); }
+  };
+  const url = key ? `${URL_SCHNELL}?key=${key}` : '';
+  const kopieren = async () => {
+    try { await navigator.clipboard.writeText(url); setKopiert(true); } catch { ctx.fail('Kopieren ging nicht – bitte den Link lange antippen.'); }
+  };
+  return (
+    <section className="card">
+      <div className="card-title">Schnell eintragen und scannen – ohne die App zu öffnen</div>
+      <div className="sub">Über Apples <b>Kurzbefehle</b>: Sie liegen als Widget auf dem Home-Bildschirm (ein Tipp, Text eintippen oder diktieren, fertig) und gehen auch per Siri („Hey Siri, To-do“). Gescannte Briefe warten danach in der App unter „Heute“ zum Prüfen.</div>
+      {!key && <button className="btn" onClick={erstellen}>Schnell-Eintragen einrichten</button>}
+      {key && (
+        <>
+          <div className="small"><b>Dein persönlicher Link</b> (nicht weitergeben):</div>
+          <button className="btn" onClick={kopieren}>{kopiert ? 'Link kopiert ✓' : 'Link kopieren'}</button>
+          <input className="input" readOnly value={url} onFocus={(e) => e.target.select()} style={{ fontSize: 11, fontFamily: 'ui-monospace, monospace' }} aria-label="Persönlicher Link" />
+        </>
+      )}
+      <details className="sk-details">
+        <summary>Kurzbefehl „To-do“, „Arbeit“, „Einkauf“ anlegen</summary>
+        <ol className="sub sk-liste">
+          <li>App <b>Kurzbefehle</b> › <b>+</b> › Name oben: z. B. „To-do“.</li>
+          <li>Aktion <b>„Nach Eingabe fragen“</b> – Frage: „Was ist zu tun?“</li>
+          <li>Aktion <b>„Inhalte von URL abrufen“</b> – URL: deinen Link einfügen. Auf „&gt;“ tippen: Methode <b>POST</b>, Anfragetext <b>JSON</b>, zwei Felder (Text):
+            <br />• <code>art</code> = {KURZBEFEHLE.map((k) => <code key={k[1]}>{k[1]}</code>).reduce((a, x) => [a, ' / ', x])}
+            <br />• <code>text</code> = Variable „Bereitgestellte Eingabe“</li>
+          <li>Aktion <b>„Wörterbuchwert abrufen“</b> – Schlüssel <code>msg</code>, dann <b>„Mitteilung anzeigen“</b> mit diesem Wert.</li>
+          <li>Für „Arbeit“ und „Einkauf“: Kurzbefehl duplizieren und nur <code>art</code> und den Namen ändern.</li>
+        </ol>
+        <div className="small">{KURZBEFEHLE.map((k) => `${k[0]}: ${k[2]}`).join(' · ')}</div>
+      </details>
+      <details className="sk-details">
+        <summary>Kurzbefehl „Scannen“ anlegen</summary>
+        <ol className="sub sk-liste">
+          <li>Neuer Kurzbefehl „Scannen“ › Aktion <b>„Foto aufnehmen“</b>.</li>
+          <li><b>„Bild konvertieren“</b> in JPEG, dann <b>„Bildgröße ändern“</b> auf Breite 1600.</li>
+          <li><b>„Base64-codieren“</b> – über „&gt;“ Zeilenumbrüche: <b>Keine</b>.</li>
+          <li><b>„Inhalte von URL abrufen“</b> – dein Link, POST, JSON mit drei Feldern: <code>art</code> = <code>scan</code>, <code>media_type</code> = <code>image/jpeg</code>, <code>data</code> = Variable „Base64-codiert“.</li>
+          <li><b>„Wörterbuchwert abrufen“</b> <code>msg</code> › <b>„Mitteilung anzeigen“</b>. Das Auslesen dauert 10–30 Sekunden.</li>
+        </ol>
+      </details>
+      <details className="sk-details">
+        <summary>Als Widget auf den Home-Bildschirm</summary>
+        <ol className="sub sk-liste">
+          <li>Home-Bildschirm lange drücken › <b>+</b> › <b>Kurzbefehle</b> › mittlere Größe (4 Knöpfe) › hinzufügen.</li>
+          <li>Widget antippen und halten › „Widget bearbeiten“ › Ordner mit deinen vier Kurzbefehlen wählen.</li>
+          <li>Ein Tipp auf „To-do“ öffnet nur das Eingabefeld – die Familien-App muss nicht starten.</li>
+        </ol>
+      </details>
+    </section>
   );
 }

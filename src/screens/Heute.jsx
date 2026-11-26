@@ -13,6 +13,7 @@ import { isWeekendSoon } from '../lib/wochenende.js';
 import { ABSCHNITTE } from '../lib/wochenplan.js';
 import { istKindertermin } from '../lib/regeln.js';
 import { EintragSheet } from './Eintrag.jsx';
+import Scan from './Scan.jsx';
 import { pushEinschalten, supported, standalone } from './Mitteilungen.jsx';
 
 const mins = (t) => { const [h, m] = String(t).split(':').map(Number); return h * 60 + m; };
@@ -35,6 +36,7 @@ export default function Heute({ ctx }) {
     <>
       <Hinweise ctx={ctx} onCheckin={() => setCi(true)} />
       <AlsNaechstes ctx={ctx} now={now} />
+      <ScanInbox ctx={ctx} />
       <FuerDich ctx={ctx} skip={new Set(nextList(ctx, now).filter((o) => o.date === day).map((o) => o.ev.id))} />
       {abends && <EinpackenMorgen ctx={ctx} />}
       <FamilieHeute ctx={ctx} now={now} short={abends} skip={new Set(nextList(ctx, now).filter((o) => o.date === day).map((o) => o.ev.id))} />
@@ -47,6 +49,28 @@ export default function Heute({ ctx }) {
 
 /* ---------- schmale Hinweise: Check-in, Wochenende ---------- */
 const pushFrage = () => { try { return supported() && standalone() && Notification.permission === 'default' && localStorage.getItem('push-frage') !== 'nein'; } catch { return false; } };
+// Per Kurzbefehl gescannte Briefe warten hier, bis sie geprüft sind
+function ScanInbox({ ctx }) {
+  const [offen, setOffen] = useState(null);
+  const list = (ctx.data.scans?.rows || []).filter((x) => !x.erledigt && x.member_id === ctx.me.id);
+  if (!list.length) return null;
+  const fertig = async (x) => {
+    ctx.data.scans.local((rows) => rows.map((r) => (r.id === x.id ? { ...r, erledigt: true } : r)));
+    await run(supabase.from('scan_inbox').update({ erledigt: true }).eq('id', x.id), ctx.fail);
+  };
+  return (
+    <>
+      {list.map((x) => (
+        <button key={x.id} className="h-hint" onClick={() => setOffen(x)}>
+          <span className="h-hint-l"><Icon name="form" size={18} />Gescannt: {x.result?.zusammenfassung?.slice(0, 80) || 'Brief'} – prüfen</span>
+          <Icon name="chev" size={16} />
+        </button>
+      ))}
+      {offen && <Scan ctx={ctx} vorab={offen.result} onSaved={() => fertig(offen)} onClose={() => setOffen(null)} />}
+    </>
+  );
+}
+
 function Hinweise({ ctx, onCheckin }) {
   const [push, setPush] = useState(pushFrage);
   const so = weekday(ctx.day) === 6 && !ctx.data.checkins.rows.find((r) => r.sonntag === ctx.day)?.fertig;

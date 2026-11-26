@@ -909,3 +909,9 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .modus-arbeit .tab.on { color: #4338CA; }
 .modus-arbeit .plus-btn { background: #4338CA; }
 .ar-privat { background: #FAF7F2; }
+
+/* Schnell-Eintragen: Anleitung */
+.sk-details { border-top: 1px solid var(--line); padding-top: 8px; }
+.sk-details summary { font-weight: 700; cursor: pointer; padding: 4px 0; }
+.sk-liste { margin: 6px 0; padding-left: 20px; line-height: 1.55; overflow-wrap: anywhere; }
+.sk-liste code, .sk-details code { background: #F5F5F4; border-radius: 4px; padding: 0 4px; font-size: 13px; }
