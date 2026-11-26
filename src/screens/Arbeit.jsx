@@ -57,7 +57,7 @@ export function ArbeitHeuteSeite({ ctx }) {
         {faellig.map((t) => (
           <div key={t.id} className="row">
             <button className="row-check" aria-label={`${t.title} erledigt`} onClick={() => abhakenArbeit(ctx, t)}><Check on={false} /></button>
-            <button className="row-open" onClick={() => setTodo(t)}><span className="row-main"><span className="row-title">{t.title}</span>{t.due && <span className="small">bis {shortLabel(t.due)}</span>}</span></button>
+            <button className="row-open" onClick={() => setTodo(t)}><span className="row-main"><span className="row-title">{t.title}</span>{(t.due || t.kategorie) && <span className="small">{[t.kategorie, t.due && `bis ${shortLabel(t.due)}`].filter(Boolean).join(' · ')}</span>}</span></button>
           </div>
         ))}
       </section>
@@ -80,35 +80,58 @@ export function ArbeitHeuteSeite({ ctx }) {
   );
 }
 
+// Kategorien der Arbeits-To-dos (aus den vorhandenen Einträgen, alphabetisch)
+export const kategorienVon = (todos) => [...new Set(todos.map((t) => t.kategorie).filter(Boolean))].sort((x, y) => x.localeCompare(y, 'de'));
+
 function ArbeitTodos({ ctx }) {
   const [todo, setTodo] = useState(null);
+  const [filter, setFilter] = useState('alle');
   const todos = ctx.data.workTodos.rows;
+  const kats = kategorienVon(todos);
   const offen = todos.filter((t) => !t.done_at).sort((a, b) => String(a.am || a.due || '9999').localeCompare(String(b.am || b.due || '9999')) || a.created_at.localeCompare(b.created_at));
   const abhaken = (t) => abhakenArbeit(ctx, t);
+  const zeigen = filter === 'alle' ? offen : offen.filter((t) => (t.kategorie || '') === (filter === 'ohne' ? '' : filter));
+  // Gruppen: bei „Alle“ nach Kategorie, Einträge ohne Kategorie zum Schluss
+  const gruppen = filter === 'alle'
+    ? [...kats.map((k) => [k, zeigen.filter((t) => t.kategorie === k)]), ['', zeigen.filter((t) => !t.kategorie)]].filter(([, l]) => l.length)
+    : [[filter === 'ohne' ? '' : filter, zeigen]];
+  const Zeile = (t) => {
+    const faellig = (t.due && t.due <= ctx.day) || (t.am && t.am <= ctx.day);
+    return (
+      <Swipe key={t.id} onRight={() => abhaken(t)} onLeft={() => loeschen(ctx, t)}>
+        <div className="row">
+          <button className="row-check" aria-label={`${t.title} erledigt`} onClick={() => abhaken(t)}><Check on={false} /></button>
+          <button className="row-open" onClick={() => setTodo(t)}>
+            <span className="row-main">
+              <span className="row-title">{t.title}</span>
+              {(t.am || t.due || t.note) && <span className="small">{[t.am && `${shortLabel(t.am)}${t.um ? ` ${hm(t.um)}` : ''}`, t.due && <b key="d" style={{ color: faellig ? '#B45309' : undefined }}>bis {shortLabel(t.due)}</b>, t.note].filter(Boolean).reduce((acc, x, i) => (i ? [...acc, ' · ', x] : [x]), [])}</span>}
+            </span>
+          </button>
+        </div>
+      </Swipe>
+    );
+  };
   return (
     <>
+      {kats.length > 0 && (
+        <div className="chips ar-kats" role="group" aria-label="Nach Kategorie filtern">
+          {[['alle', `Alle ${offen.length}`], ...kats.map((k) => [k, `${k} ${offen.filter((t) => t.kategorie === k).length}`]), ...(offen.some((t) => !t.kategorie) ? [['ohne', 'Ohne']] : [])].map(([id, l]) => (
+            <button key={id} className={`chip${filter === id ? ' on' : ''}`} aria-pressed={filter === id} onClick={() => setFilter(id)}>{l}</button>
+          ))}
+        </div>
+      )}
       <section className="card tight">
         <div className="card-head" style={{ padding: '10px 0 6px' }}>
-          <div className="card-title">To-dos Arbeit</div>
-          <button className="icon-btn" aria-label="Neues Arbeits-To-do" onClick={() => setTodo({})}><Icon name="plus" size={18} /></button>
+          <div className="card-title">{filter === 'alle' ? 'To-dos Arbeit' : filter === 'ohne' ? 'Ohne Kategorie' : filter}</div>
+          <button className="icon-btn" aria-label="Neues Arbeits-To-do" onClick={() => setTodo({ kategorie: filter !== 'alle' && filter !== 'ohne' ? filter : null })}><Icon name="plus" size={18} /></button>
         </div>
-        {offen.length === 0 && <div className="empty" style={{ padding: '8px 0' }}>Nichts offen.</div>}
-        {offen.map((t) => {
-          const faellig = (t.due && t.due <= ctx.day) || (t.am && t.am <= ctx.day);
-          return (
-            <Swipe key={t.id} onRight={() => abhaken(t)} onLeft={() => loeschen(ctx, t)}>
-              <div className="row">
-                <button className="row-check" aria-label={`${t.title} erledigt`} onClick={() => abhaken(t)}><Check on={false} /></button>
-                <button className="row-open" onClick={() => setTodo(t)}>
-                  <span className="row-main">
-                    <span className="row-title">{t.title}</span>
-                    {(t.am || t.due || t.note) && <span className="small">{[t.am && `${shortLabel(t.am)}${t.um ? ` ${hm(t.um)}` : ''}`, t.due && <b key="d" style={{ color: faellig ? '#B45309' : undefined }}>bis {shortLabel(t.due)}</b>, t.note].filter(Boolean).reduce((a, x, i) => (i ? [...a, ' · ', x] : [x]), [])}</span>}
-                  </span>
-                </button>
-              </div>
-            </Swipe>
-          );
-        })}
+        {zeigen.length === 0 && <div className="empty" style={{ padding: '8px 0' }}>Nichts offen.</div>}
+        {gruppen.map(([k, l]) => (
+          <div key={k || '-'}>
+            {filter === 'alle' && kats.length > 0 && <div className="label ar-kat-label">{k || 'Ohne Kategorie'}</div>}
+            {l.map(Zeile)}
+          </div>
+        ))}
       </section>
       {todo && <TodoSheet ctx={ctx} t={todo} onClose={() => setTodo(null)} />}
     </>
@@ -182,11 +205,12 @@ async function loeschen(ctx, t) {
 
 export function TodoSheet({ ctx, t, onClose }) {
   const neu = !t.id;
-  const [f, setF] = useState({ title: t.title ?? '', am: t.am ?? '', um: t.um ? hm(t.um) : '', due: t.due ?? '', note: t.note ?? '' });
+  const [f, setF] = useState({ title: t.title ?? '', am: t.am ?? '', um: t.um ? hm(t.um) : '', due: t.due ?? '', note: t.note ?? '', kategorie: t.kategorie ?? '' });
+  const kats = kategorienVon(ctx.data.workTodos.rows);
   const set = (p) => setF((x) => ({ ...x, ...p }));
   const speichern = async () => {
     if (!f.title.trim()) return;
-    const row = { title: f.title.trim().slice(0, 160), am: f.am || null, um: f.am && f.um ? f.um : null, due: f.due || null, note: f.note.trim() || null };
+    const row = { title: f.title.trim().slice(0, 160), am: f.am || null, um: f.am && f.um ? f.um : null, due: f.due || null, note: f.note.trim() || null, kategorie: f.kategorie.trim().slice(0, 40) || null };
     const ok = neu ? await run(supabase.from('work_todos').insert({ ...row, owner: ctx.me.id }), ctx.fail) : await run(supabase.from('work_todos').update(row).eq('id', t.id), ctx.fail);
     if (ok) { ctx.data.workTodos.reload(); onClose(); }
   };
@@ -197,6 +221,14 @@ export function TodoSheet({ ctx, t, onClose }) {
         {!neu && <button className="ein-del" onClick={() => { loeschen(ctx, t); onClose(); }}><Icon name="trash" size={16} />Löschen</button>}
       </>}>
       <label className="field"><span>Was?</span><input className="input" value={f.title} onChange={(e) => set({ title: e.target.value })} autoFocus={neu} maxLength={160} placeholder="z. B. LEBs Klasse 6b korrigieren" /></label>
+      <div className="field"><span>Kategorie</span>
+        {kats.length > 0 && (
+          <div className="chips">
+            {kats.map((k) => <button key={k} type="button" className={`chip${f.kategorie === k ? ' on' : ''}`} aria-pressed={f.kategorie === k} onClick={() => set({ kategorie: f.kategorie === k ? '' : k })}>{k}</button>)}
+          </div>
+        )}
+        <input className="input" value={f.kategorie} onChange={(e) => set({ kategorie: e.target.value })} maxLength={40} placeholder={kats.length ? 'oder neue Kategorie' : 'z. B. Jahrgang 6, Deutsch, Schulentwicklung'} style={{ marginTop: kats.length ? 8 : 0 }} />
+      </div>
       <div className="two">
         <label className="field"><span>An welchem Tag? (optional)</span><input className="input" type="date" value={f.am} onChange={(e) => set({ am: e.target.value })} /></label>
         <label className="field"><span>Uhrzeit</span><input className="input" type="time" value={f.um} disabled={!f.am} onChange={(e) => set({ um: e.target.value })} /></label>
