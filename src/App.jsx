@@ -8,6 +8,7 @@ import Heute from './screens/Heute.jsx';
 import Kalender from './screens/Kalender.jsx';
 import Listen from './screens/Erinnerungen.jsx';
 import Planen from './screens/Planen.jsx';
+import { ArbeitHeuteSeite, ArbeitKalenderSeite, ArbeitTodosSeite, TerminSheet, TodoSheet } from './screens/Arbeit.jsx';
 import Mehr from './screens/Mehr.jsx';
 import EventSheet from './screens/EventSheet.jsx';
 import Station from './screens/station/Station.jsx';
@@ -21,7 +22,12 @@ const TABS = [
   ['planen', 'Planen', 'balloon'],
   ['zuhause', 'Zuhause', 'house'],
 ];
-const TAB_IDS = TABS.map((t) => t[0]);
+const ARBEIT_TABS = [
+  ['a-heute', 'Heute', 'home'],
+  ['a-kalender', 'Kalender', 'cal'],
+  ['a-todos', 'To-dos', 'todo'],
+];
+const TAB_IDS = [...TABS, ...ARBEIT_TABS].map((t) => t[0]);
 // Alte Ziele (vor dem Umbau) auf die neue Struktur abbilden
 const ALT = {
   einkauf: ['listen', 'einkauf'], erinn: ['listen'],
@@ -85,6 +91,9 @@ function Shell({ me, members }) {
   const setLiSeg = (v) => { setLiSegRaw(v); try { localStorage.setItem('listen-seg', v); } catch { /* egal */ } };
   const [plSeg, setPlSeg] = useState('wochenende');
   const [plus, setPlus] = useState(false);
+  // Zentrale Trennung: Privat (Familie) oder Arbeit (nur ich) – pro Gerät gemerkt
+  const [modus, setModusRaw] = useState(() => merk('modus', 'privat'));
+  const [arbeitSheet, setArbeitSheet] = useState(null); // 'termin' | 'todo'
   const [zhSeg, setZhSeg] = useState('aemtchen');
   const [calSeg, setCalSeg] = useState('termine');
   const [mehr, setMehr] = useState(false);
@@ -142,16 +151,30 @@ function Shell({ me, members }) {
   const openInbox = data.inbox.rows.filter((r) => !r.done_at && (!r.owner || r.owner === me.id)).length;
   const openBuy = data.buy.rows.filter((r) => !r.done).length;
   const toReview = data.events.rows.filter((e) => e.review).length;
-  const titles = { heute: `Hallo ${me.name}`, kalender: 'Kalender', listen: 'Listen', planen: 'Planen', zuhause: 'Zuhause' };
+  const titles = { heute: `Hallo ${me.name}`, kalender: 'Kalender', listen: 'Listen', planen: 'Planen', zuhause: 'Zuhause', 'a-heute': 'Arbeit', 'a-kalender': 'Termine', 'a-todos': 'To-dos' };
+  const darfArbeit = !me.kid;
+  const arbeit = darfArbeit && modus === 'arbeit';
+  const tabs = arbeit ? ARBEIT_TABS : TABS;
+  const aktiv = tabs.some((t) => t[0] === tab) ? tab : tabs[0][0];
+  const setModus = (m) => {
+    setModusRaw(m); try { localStorage.setItem('modus', m); } catch { /* egal */ }
+    setMehr(false); setPlus(false); setTab(m === 'arbeit' ? 'a-heute' : 'heute');
+  };
 
   return (
-    <div className="app">
+    <div className={`app${arbeit ? ' modus-arbeit' : ''}`}>
       <header className="head">
         <div className="head-row">
           <div>
             <div className="date">{longLabel(day)}</div>
-            <h1>{mehr ? 'Mehr' : titles[tab]}</h1>
+            <h1>{mehr ? 'Mehr' : titles[aktiv]}</h1>
           </div>
+          {darfArbeit && !mehr && (
+            <div className="modus" role="group" aria-label="Bereich wählen">
+              <button className={!arbeit ? 'on' : ''} aria-pressed={!arbeit} aria-label="Privat" onClick={() => setModus('privat')}><Icon name="house" size={18} /></button>
+              <button className={arbeit ? 'on' : ''} aria-pressed={arbeit} aria-label="Arbeit" onClick={() => setModus('arbeit')}><Icon name="briefcase" size={18} /></button>
+            </div>
+          )}
           {!mehr && (
             <button className="icon-btn plus-btn" aria-label="Eintragen" aria-expanded={plus} onClick={() => setPlus(!plus)}><Icon name={plus ? 'x' : 'plus'} /></button>
           )}
@@ -162,11 +185,11 @@ function Shell({ me, members }) {
         </div>
         {plus && !mehr && (
           <div className="plus-menu" role="menu">
-            {[['cal', 'Termin', () => ctx.openEvent(null, { start_date: day })],
+            {(arbeit ? [['cal', 'Termin Arbeit', () => setArbeitSheet('termin')], ['todo', 'To-do Arbeit', () => setArbeitSheet('todo')]] : [['cal', 'Termin', () => ctx.openEvent(null, { start_date: day })],
               ['cart', 'Einkauf', () => ctx.go('listen', 'einkauf')],
               ['todo', 'To-do', () => ctx.go('listen', 'vereinbaren')],
               ['bag', 'Besorgen', () => ctx.go('listen', 'besorgen')],
-              ['form', 'Elternbrief scannen', () => ctx.openScan()]].map(([ic, l, fn]) => (
+              ['form', 'Elternbrief scannen', () => ctx.openScan()]]).map(([ic, l, fn]) => (
               <button key={l} role="menuitem" className="plus-item" onClick={() => { setPlus(false); fn(); }}><Icon name={ic} size={18} />{l}</button>
             ))}
           </div>
@@ -175,19 +198,25 @@ function Shell({ me, members }) {
 
       <main className="main">
         {mehr ? <Mehr ctx={ctx} onClose={() => setMehr(false)} />
-          : tab === 'heute' ? <Heute ctx={ctx} />
-          : tab === 'kalender' ? <Kalender ctx={ctx} seg={calSeg} setSeg={setCalSeg} />
-          : tab === 'zuhause' ? <Zuhause ctx={ctx} seg={zhSeg} setSeg={setZhSeg} />
-          : tab === 'planen' ? <Planen ctx={ctx} seg={plSeg} setSeg={setPlSeg} />
+          : aktiv === 'a-heute' ? <ArbeitHeuteSeite ctx={ctx} />
+          : aktiv === 'a-kalender' ? <ArbeitKalenderSeite ctx={ctx} />
+          : aktiv === 'a-todos' ? <ArbeitTodosSeite ctx={ctx} />
+          : aktiv === 'heute' ? <Heute ctx={ctx} />
+          : aktiv === 'kalender' ? <Kalender ctx={ctx} seg={calSeg} setSeg={setCalSeg} />
+          : aktiv === 'zuhause' ? <Zuhause ctx={ctx} seg={zhSeg} setSeg={setZhSeg} />
+          : aktiv === 'planen' ? <Planen ctx={ctx} seg={plSeg} setSeg={setPlSeg} />
           : <Listen ctx={ctx} seg={liSeg} setSeg={setLiSeg} />}
       </main>
+      {arbeitSheet === 'termin' && <TerminSheet ctx={ctx} ev={{ start_date: day }} onClose={() => setArbeitSheet(null)} />}
+      {arbeitSheet === 'todo' && <TodoSheet ctx={ctx} t={{}} onClose={() => setArbeitSheet(null)} />}
 
       <nav className="tabs" aria-label="Bereiche">
         <div className="tabs-inner">
-          {TABS.map(([id, label, icon]) => {
-            const n = id === 'listen' ? openShop + openInbox + openBuy : id === 'kalender' ? toReview : 0;
+          {tabs.map(([id, label, icon]) => {
+            const n = id === 'listen' ? openShop + openInbox + openBuy : id === 'kalender' ? toReview
+              : id === 'a-todos' ? data.workTodos.rows.filter((t) => !t.done_at && ((t.am && t.am <= day) || (t.due && t.due <= day))).length : 0;
             return (
-              <button key={id} className={`tab${tab === id && !mehr ? ' on' : ''}`} aria-current={tab === id && !mehr ? 'page' : undefined}
+              <button key={id} className={`tab${aktiv === id && !mehr ? ' on' : ''}`} aria-current={aktiv === id && !mehr ? 'page' : undefined}
                 onClick={() => { setMehr(false); setPlus(false); setTab(id); }}>
                 <Icon name={icon} size={24} />
                 {label}

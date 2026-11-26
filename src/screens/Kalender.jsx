@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { Icon, Seg, Check } from '../ui.jsx';
 import { addDays, expand, mondayOf, longLabel, parse, iso, MONTHS, WD, weekday, titelAm } from '../lib/dates.js';
 import { EventRow } from './common.jsx';
-import Arbeit from './Arbeit.jsx';
 import { supabase, run } from '../data.js';
 import { EintragSheet, amText } from './Eintrag.jsx';
 import { besorgenText } from '../lib/aufgaben.js';
@@ -25,10 +24,8 @@ export default function Kalender({ ctx, seg = 'termine', setSeg = () => {} }) {
   const people = [{ id: 'all', name: 'Alle', color: '#1C1917', bg: '#E7E1D8' }, ...ctx.members];
 
   const openCare = ctx.data.care.rows.filter((c) => c.on_date >= ctx.day && careStatus(ctx.data.asks.rows.filter((a) => a.need_id === c.id)) !== 'gesichert').length;
-  const arbeit = !ctx.me?.kid && !!ctx.data.workEvents;
-  const bereich = <Seg label="Bereich" value={seg} onPick={setSeg} options={[['termine', 'Termine'], ['betreuung', `Betreuung${openCare ? ` ${openCare}` : ''}`], ...(arbeit ? [['arbeit', 'Arbeit']] : [])]} />;
+  const bereich = <Seg label="Bereich" value={seg} onPick={setSeg} options={[['termine', 'Termine'], ['betreuung', `Betreuung${openCare ? ` ${openCare}` : ''}`]]} />;
   if (seg === 'betreuung') return <><div className="cal-bar"><div className="cal-row">{bereich}</div></div><Betreuung ctx={ctx} /></>;
-  if (seg === 'arbeit' && arbeit) return <><div className="cal-bar"><div className="cal-row">{bereich}</div></div><Arbeit ctx={ctx} /></>;
 
   const isThis = weekStart === mondayOf(ctx.day);
   const s = parse(weekStart), e = parse(addDays(weekStart, 6));

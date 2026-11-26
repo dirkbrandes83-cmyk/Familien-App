@@ -5,37 +5,88 @@ import { addDays, mondayOf, parse, shortLabel, longLabel, hm, expand, WD, weekda
 
 // Arbeitsbereich: private To-dos und Termine (nur ich sehe sie).
 // Termine mit „Für die Familie wichtig“ erscheinen zusätzlich im Familienkalender (die Datenbank spiegelt sie).
-export default function Arbeit({ ctx }) {
-  const [start, setStart] = useState(mondayOf(ctx.day));
-  const [termin, setTermin] = useState(null);
-  const [todo, setTodo] = useState(null);
+const familieSetzen = async (ctx, ev, an) => {
+  ctx.data.workEvents.local((rows) => rows.map((x) => (x.id === ev.id ? { ...x, familie: an } : x)));
+  if (await run(supabase.from('work_events').update({ familie: an }).eq('id', ev.id), ctx.fail)) ctx.say(an ? 'Steht jetzt auch im Familienkalender' : 'Nur noch im Arbeitsbereich');
+  else ctx.data.workEvents.reload();
+};
+const abhakenArbeit = async (ctx, t) => {
+  const v = t.done_at ? null : new Date().toISOString();
+  ctx.data.workTodos.local((rows) => rows.map((x) => (x.id === t.id ? { ...x, done_at: v } : x)));
+  if (!await run(supabase.from('work_todos').update({ done_at: v }).eq('id', t.id), ctx.fail)) ctx.data.workTodos.reload();
+  else if (v) ctx.say('Erledigt', () => abhakenArbeit(ctx, { ...t, done_at: v }));
+};
+
+// Seiten im Arbeitsmodus
+export function ArbeitTodosSeite({ ctx }) {
+  return <ArbeitTodos ctx={ctx} />;
+}
+export function ArbeitKalenderSeite({ ctx }) {
   const [abo, setAbo] = useState(false);
-  const evs = ctx.data.workEvents.rows;
-  const todos = ctx.data.workTodos.rows;
-  const occ = expand(evs, start, addDays(start, 6));
-  const tage = Array.from({ length: 7 }, (_, i) => addDays(start, i));
-  const offen = todos.filter((t) => !t.done_at).sort((a, b) => String(a.am || a.due || '9999').localeCompare(String(b.am || b.due || '9999')) || a.created_at.localeCompare(b.created_at));
-  const isThis = start === mondayOf(ctx.day);
-  const s = parse(start), e = parse(addDays(start, 6));
-
-  const familie = async (ev, an) => {
-    ctx.data.workEvents.local((rows) => rows.map((x) => (x.id === ev.id ? { ...x, familie: an } : x)));
-    if (await run(supabase.from('work_events').update({ familie: an }).eq('id', ev.id), ctx.fail)) ctx.say(an ? 'Steht jetzt auch im Familienkalender' : 'Nur noch im Arbeitsbereich');
-    else ctx.data.workEvents.reload();
-  };
-  const abhaken = async (t) => {
-    const v = t.done_at ? null : new Date().toISOString();
-    ctx.data.workTodos.local((rows) => rows.map((x) => (x.id === t.id ? { ...x, done_at: v } : x)));
-    if (!await run(supabase.from('work_todos').update({ done_at: v }).eq('id', t.id), ctx.fail)) ctx.data.workTodos.reload();
-    else if (v) ctx.say('Erledigt', () => abhaken({ ...t, done_at: v }));
-  };
-
   return (
     <>
-      <div className="card tight ar-kopf">
-        <span><Icon name="lock" size={16} /> Nur für dich sichtbar · „Familie“ zeigt einen Termin auch im Familienkalender</span>
-      </div>
+      <ArbeitTermine ctx={ctx} />
+      <button className="btn ghost" onClick={() => setAbo(!abo)}><Icon name="cal" size={18} />Dienstkalender abonnieren</button>
+      {abo && <ArbeitsAbo ctx={ctx} />}
+    </>
+  );
+}
 
+// Arbeit heute: Termine, fällige To-dos – und was privat heute ansteht (damit nichts kollidiert)
+export function ArbeitHeuteSeite({ ctx }) {
+  const [todo, setTodo] = useState(null);
+  const occ = expand(ctx.data.workEvents.rows, ctx.day, ctx.day);
+  const woche = expand(ctx.data.workEvents.rows, addDays(ctx.day, 1), addDays(ctx.day, 6));
+  const faellig = ctx.data.workTodos.rows.filter((t) => !t.done_at && ((t.am && t.am <= ctx.day) || (t.due && t.due <= addDays(ctx.day, 1))));
+  const privat = expand(ctx.data.events.rows.filter((e) => e.src !== 'arbeit' && ((e.who || []).includes(ctx.me.id) || (e.who || []).includes('all') || e.bring_by === ctx.me.name || e.pick_by === ctx.me.name)), ctx.day, ctx.day);
+  return (
+    <>
+      <section className="card tight">
+        <div className="h-label" style={{ padding: '12px 0 4px' }}>Termine heute</div>
+        {occ.length === 0 && <div className="empty" style={{ padding: '6px 0 12px' }}>Keine Arbeitstermine heute.</div>}
+        {occ.map((o) => (
+          <div key={o.ev.id} className="row ar-ev">
+            <span className="time">{o.ev.all_day ? 'ganzt.' : hm(o.ev.from_time)}</span>
+            <span className="row-main"><span className="row-title">{o.ev.title}</span>{(o.ev.to_time || o.ev.note) && <span className="small">{[o.ev.to_time && `bis ${hm(o.ev.to_time)}`, o.ev.note].filter(Boolean).join(' · ')}</span>}</span>
+          </div>
+        ))}
+      </section>
+      <section className="card tight">
+        <div className="h-label" style={{ padding: '12px 0 4px' }}>Fällig</div>
+        {faellig.length === 0 && <div className="empty" style={{ padding: '6px 0 12px' }}>Nichts fällig.</div>}
+        {faellig.map((t) => (
+          <div key={t.id} className="row">
+            <button className="row-check" aria-label={`${t.title} erledigt`} onClick={() => abhakenArbeit(ctx, t)}><Check on={false} /></button>
+            <button className="row-open" onClick={() => setTodo(t)}><span className="row-main"><span className="row-title">{t.title}</span>{t.due && <span className="small">bis {shortLabel(t.due)}</span>}</span></button>
+          </div>
+        ))}
+      </section>
+      {woche.length > 0 && (
+        <section className="card tight">
+          <div className="h-label" style={{ padding: '12px 0 4px' }}>Nächste Tage</div>
+          {woche.slice(0, 6).map((o) => <div key={o.ev.id + o.date} className="small ar-zeile"><b>{shortLabel(o.date)} {o.ev.all_day ? '' : hm(o.ev.from_time)}</b> {o.ev.title}</div>)}
+          <div style={{ height: 8 }} />
+        </section>
+      )}
+      {privat.length > 0 && (
+        <section className="card tight ar-privat">
+          <div className="h-label" style={{ padding: '12px 0 4px' }}>Privat heute</div>
+          {privat.map((o) => <div key={o.ev.id} className="small ar-zeile"><b>{o.ev.all_day ? 'ganzt.' : hm(o.ev.from_time)}</b> {o.ev.title}</div>)}
+          <div style={{ height: 8 }} />
+        </section>
+      )}
+      {todo && <TodoSheet ctx={ctx} t={todo} onClose={() => setTodo(null)} />}
+    </>
+  );
+}
+
+function ArbeitTodos({ ctx }) {
+  const [todo, setTodo] = useState(null);
+  const todos = ctx.data.workTodos.rows;
+  const offen = todos.filter((t) => !t.done_at).sort((a, b) => String(a.am || a.due || '9999').localeCompare(String(b.am || b.due || '9999')) || a.created_at.localeCompare(b.created_at));
+  const abhaken = (t) => abhakenArbeit(ctx, t);
+  return (
+    <>
       <section className="card tight">
         <div className="card-head" style={{ padding: '10px 0 6px' }}>
           <div className="card-title">To-dos Arbeit</div>
@@ -59,7 +110,24 @@ export default function Arbeit({ ctx }) {
           );
         })}
       </section>
+      {todo && <TodoSheet ctx={ctx} t={todo} onClose={() => setTodo(null)} />}
+    </>
+  );
+}
 
+function ArbeitTermine({ ctx }) {
+  const [start, setStart] = useState(mondayOf(ctx.day));
+  const [termin, setTermin] = useState(null);
+  const [todo, setTodo] = useState(null);
+  const todos = ctx.data.workTodos.rows;
+  const occ = expand(ctx.data.workEvents.rows, start, addDays(start, 6));
+  const tage = Array.from({ length: 7 }, (_, i) => addDays(start, i));
+  const isThis = start === mondayOf(ctx.day);
+  const s = parse(start), e = parse(addDays(start, 6));
+  const familie = (ev, an) => familieSetzen(ctx, ev, an);
+  const abhaken = (t) => abhakenArbeit(ctx, t);
+  return (
+    <>
       <section className="card tight">
         <div className="card-head" style={{ padding: '10px 0 6px' }}>
           <div className="card-title">Termine Arbeit</div>
@@ -100,9 +168,6 @@ export default function Arbeit({ ctx }) {
         })}
         {occ.length === 0 && !todos.some((t) => t.am && t.am >= start && t.am <= addDays(start, 6)) && <div className="empty" style={{ padding: '8px 0' }}>Keine Arbeitstermine in dieser Woche.</div>}
       </section>
-
-      <button className="btn ghost" onClick={() => setAbo(!abo)}><Icon name="cal" size={18} />Dienstkalender abonnieren</button>
-      {abo && <ArbeitsAbo ctx={ctx} />}
       {termin && <TerminSheet ctx={ctx} ev={termin} onClose={() => setTermin(null)} />}
       {todo && <TodoSheet ctx={ctx} t={todo} onClose={() => setTodo(null)} />}
     </>
@@ -115,7 +180,7 @@ async function loeschen(ctx, t) {
   else ctx.data.workTodos.reload();
 }
 
-function TodoSheet({ ctx, t, onClose }) {
+export function TodoSheet({ ctx, t, onClose }) {
   const neu = !t.id;
   const [f, setF] = useState({ title: t.title ?? '', am: t.am ?? '', um: t.um ? hm(t.um) : '', due: t.due ?? '', note: t.note ?? '' });
   const set = (p) => setF((x) => ({ ...x, ...p }));
@@ -142,7 +207,7 @@ function TodoSheet({ ctx, t, onClose }) {
   );
 }
 
-function TerminSheet({ ctx, ev, onClose }) {
+export function TerminSheet({ ctx, ev, onClose }) {
   const neu = !ev.id;
   const [f, setF] = useState({ title: ev.title ?? '', start_date: ev.start_date ?? ctx.day, all_day: !!ev.all_day, from_time: ev.from_time ? hm(ev.from_time) : '', to_time: ev.to_time ? hm(ev.to_time) : '', note: ev.note ?? '', familie: !!ev.familie });
   const set = (p) => setF((x) => ({ ...x, ...p }));
@@ -221,27 +286,3 @@ function ArbeitsAbo({ ctx }) {
   );
 }
 
-// Für „Heute“: meine Arbeit heute (Termine + fällige To-dos), kompakt
-export function ArbeitHeute({ ctx }) {
-  const [auf, setAuf] = useState(false);
-  if (!ctx.data.workEvents) return null;
-  const occ = expand(ctx.data.workEvents.rows, ctx.day, ctx.day);
-  const todos = ctx.data.workTodos.rows.filter((t) => !t.done_at && ((t.am && t.am <= ctx.day) || (t.due && t.due <= addDays(ctx.day, 1))));
-  if (!occ.length && !todos.length) return null;
-  return (
-    <section className="card tight">
-      <button className="ar-heute" aria-expanded={auf} onClick={() => setAuf(!auf)}>
-        <span className="h-label" style={{ margin: 0 }}>Arbeit heute</span>
-        <span className="small">{[occ.length && `${occ.length} Termin${occ.length > 1 ? 'e' : ''}`, todos.length && `${todos.length} To-do${todos.length > 1 ? 's' : ''}`].filter(Boolean).join(' · ')}</span>
-        <Icon name="chev" size={16} style={{ transform: auf ? 'rotate(90deg)' : undefined }} />
-      </button>
-      {auf && (
-        <div style={{ paddingBottom: 8 }}>
-          {occ.map((o) => <div key={o.ev.id} className="small ar-zeile"><b>{o.ev.all_day ? 'ganzt.' : hm(o.ev.from_time)}</b> {o.ev.title}</div>)}
-          {todos.map((t) => <div key={t.id} className="small ar-zeile">☐ {t.title}{t.due ? ` · bis ${shortLabel(t.due)}` : ''}</div>)}
-          <button className="h-more" onClick={() => ctx.go('kalender', 'arbeit')}>Zum Arbeitsbereich</button>
-        </div>
-      )}
-    </section>
-  );
-}

@@ -898,3 +898,14 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .ar-heute { display: flex; align-items: center; gap: 10px; width: 100%; background: none; border: none; padding: 12px 0; font: inherit; color: inherit; text-align: left; }
 .ar-heute .small { flex: 1; }
 .ar-zeile { padding: 3px 0; overflow-wrap: anywhere; }
+
+/* Privat / Arbeit umschalten */
+.modus { display: flex; background: #EFEAE2; border-radius: 999px; padding: 3px; gap: 2px; flex: none; }
+.modus button { width: 38px; height: 34px; border: none; background: none; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; color: var(--muted); }
+.modus button.on { background: #fff; color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.modus-arbeit .head { background: #EEF2FF; }
+.modus-arbeit .modus { background: #E0E7FF; }
+.modus-arbeit .modus button.on { color: #3730A3; }
+.modus-arbeit .tab.on { color: #4338CA; }
+.modus-arbeit .plus-btn { background: #4338CA; }
+.ar-privat { background: #FAF7F2; }
