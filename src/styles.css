@@ -146,6 +146,7 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .gift-status[data-s="gekauft"] { background: #DBEAFE; color: #1D4ED8; }
 .gift-status[data-s="verpackt"] { background: #DCFCE7; color: #15803D; }
 .gift-status[data-s="weitergegeben"] { background: #F3E8FF; color: #7E22CE; }
+.gift-status[data-s="aussortiert"] { background: #F1F5F9; color: #64748B; }
 .small-btn { min-height: 40px; font-size: 14px; }
 /* Station: alles auf einer Seite – die Seite scrollt nicht, volle Karten scrollen innen */
 .st { min-height: 0; padding: calc(env(safe-area-inset-top) + 16px) 24px calc(env(safe-area-inset-bottom) + 24px); display: flex; flex-direction: column; gap: 14px; font-size: 18px; user-select: none; -webkit-user-select: none; height: 100dvh; overflow: hidden; padding-bottom: calc(env(safe-area-inset-bottom) + 16px); }

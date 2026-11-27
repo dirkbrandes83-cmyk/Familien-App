@@ -8,7 +8,8 @@ const STATUS = {
   idee: { label: 'Idee', icon: '💡', next: 'gekauft' },
   gekauft: { label: 'Gekauft', icon: '🛍️', next: 'verpackt' },
   verpackt: { label: 'Verpackt', icon: '🎁', next: 'weitergegeben' },
-  weitergegeben: { label: 'Weitergegeben', icon: '🤝', next: 'idee' },
+  weitergegeben: { label: 'Weitergegeben', icon: '🤝', next: 'aussortiert' },
+  aussortiert: { label: 'Aussortiert', icon: '🗃️', next: 'idee' },
 };
 // Wunschpriorität: 1 = Herzenswunsch, 2 = wichtig, 3 = wäre schön
 export const PRIO = { 1: { label: 'Herzenswunsch', kurz: '★★★' }, 2: { label: 'wichtig', kurz: '★★' }, 3: { label: 'wäre schön', kurz: '★' } };
@@ -35,7 +36,7 @@ export default function Geschenke({ ctx }) {
     return a.localeCompare(b, 'de');
   });
   const n = (s) => all.filter((g) => g.status === s).length;
-  const summe = all.filter((g) => g.status !== 'idee' && g.preis).reduce((a, g) => a + Number(g.preis), 0);
+  const summe = all.filter((g) => !['idee', 'aussortiert'].includes(g.status) && g.preis).reduce((a, g) => a + Number(g.preis), 0);
   const knownNames = [...new Set([...memberNames, ...ctx.data.gifts.rows.map((g) => g.fuer)])];
   // Wer schenkt? (z. B. Großeltern) – alle bisher benutzten Namen
   const givers = [...new Set(ctx.data.gifts.rows.map((g) => g.von).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'de'));
@@ -65,7 +66,7 @@ export default function Geschenke({ ctx }) {
         <button className="icon-btn" aria-label="Jahr zurück" onClick={() => setJahr(jahr - 1)}>‹</button>
         <div style={{ flex: 1, textAlign: 'center' }}>
           <div style={{ fontWeight: 700, fontSize: 18 }}>🎄 Weihnachten {jahr}</div>
-          <div className="small">{all.length ? `${n('idee')} Ideen · ${n('gekauft')} gekauft · ${n('verpackt')} verpackt${n('weitergegeben') ? ` · ${n('weitergegeben')} weitergegeben` : ''}${summe ? ` · ${euro(summe)}` : ''}` : 'Noch nichts eingetragen'}</div>
+          <div className="small">{all.length ? `${n('idee')} Ideen · ${n('gekauft')} gekauft · ${n('verpackt')} verpackt${n('weitergegeben') ? ` · ${n('weitergegeben')} weitergegeben` : ''}${n('aussortiert') ? ` · ${n('aussortiert')} aussortiert` : ''}${summe ? ` · ${euro(summe)}` : ''}` : 'Noch nichts eingetragen'}</div>
         </div>
         <button className="icon-btn" aria-label="Jahr vor" onClick={() => setJahr(jahr + 1)}>›</button>
       </div>
@@ -84,14 +85,15 @@ export default function Geschenke({ ctx }) {
         </section>
       )}
       {people.map((p) => {
-        const list = all.filter((g) => g.fuer === p).sort((a, b) => (a.prio ?? 9) - (b.prio ?? 9) || a.created_at.localeCompare(b.created_at));
+        const list = all.filter((g) => g.fuer === p).sort((a, b) => (a.status === 'aussortiert') - (b.status === 'aussortiert') || (a.prio ?? 9) - (b.prio ?? 9) || a.created_at.localeCompare(b.created_at));
         const m = ctx.members.find((x) => x.name === p);
-        const fertig = list.every((g) => g.status === 'verpackt' || g.status === 'weitergegeben');
+        const aktiv = list.filter((g) => g.status !== 'aussortiert');
+        const fertig = aktiv.length > 0 && aktiv.every((g) => g.status === 'verpackt' || g.status === 'weitergegeben');
         return (
           <section key={p} className="card tight">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0 4px' }}>
               <h3 style={{ margin: 0, color: m?.color }}>{p}</h3>
-              <span className="small">{fertig ? (list.every((g) => g.status === 'weitergegeben') ? 'alles weitergegeben ✓' : 'alles verpackt ✓') : `${list.filter((g) => g.status !== 'idee').length}/${list.length} besorgt`}</span>
+              <span className="small">{fertig ? (aktiv.every((g) => g.status === 'weitergegeben') ? 'alles weitergegeben ✓' : 'alles verpackt ✓') : `${aktiv.filter((g) => g.status !== 'idee').length}/${aktiv.length} besorgt`}</span>
             </div>
             {list.map((g) => (
               <Swipe key={g.id} onRight={() => step(g)} rightLabel={STATUS[STATUS[g.status].next].label} onLeft={() => del(g)}>
@@ -100,7 +102,7 @@ export default function Geschenke({ ctx }) {
                     <span aria-hidden="true">{STATUS[g.status].icon}</span><span>{STATUS[g.status].label}</span>
                   </button>
                   <button className="row-main" style={{ textAlign: 'left', background: 'none', border: 0, padding: 0, font: 'inherit', color: 'inherit' }} onClick={() => setSheet(g)}>
-                    <span className="row-title" style={{ textDecoration: ['verpackt','weitergegeben'].includes(g.status) ? 'line-through' : undefined, opacity: ['verpackt','weitergegeben'].includes(g.status) ? 0.6 : 1 }}>{g.prio && <span className={`gift-prio p${g.prio}`} title={PRIO[g.prio].label}>{PRIO[g.prio].kurz}</span>}{g.idee}</span>
+                    <span className="row-title" style={{ textDecoration: ['verpackt','weitergegeben','aussortiert'].includes(g.status) ? 'line-through' : undefined, opacity: ['verpackt','weitergegeben','aussortiert'].includes(g.status) ? 0.6 : 1 }}>{g.prio && <span className={`gift-prio p${g.prio}`} title={PRIO[g.prio].label}>{PRIO[g.prio].kurz}</span>}{g.idee}</span>
                     {(g.preis || g.notiz || g.link || g.von) && <span className="small">{[g.von ? `von ${g.von}` : null, g.preis ? euro(g.preis) : null, g.notiz || null, g.link ? '🔗 Link' : null].filter(Boolean).join(' · ')}</span>}
                   </button>
                 </div>
@@ -137,7 +139,7 @@ export default function Geschenke({ ctx }) {
           {(ctx.me?.id === 'dirk' || ctx.me?.id === 'catrin') && <button className="btn ghost small-btn" onClick={() => setIdeen({ fuer: ctx.me.id === 'dirk' ? 'Catrin' : 'Dirk', vorhanden: geheim.map((g) => g.idee).join(', '), privat: true })}>✨ Ideen</button>}
         </div>
       </section>
-      <div className="small">Nur in der App für Erwachsene – auf dem Familien-iPad nicht sichtbar. Status antippen: Idee → Gekauft → Verpackt → Weitergegeben. Sterne: ★★★ Herzenswunsch, ★★ wichtig, ★ wäre schön.</div>
+      <div className="small">Nur in der App für Erwachsene – auf dem Familien-iPad nicht sichtbar. Status antippen: Idee → Gekauft → Verpackt → Weitergegeben → Aussortiert – oder im Geschenk direkt wählen. Sterne: ★★★ Herzenswunsch, ★★ wichtig, ★ wäre schön.</div>
       {sheet && <GiftSheet ctx={ctx} gift={sheet} jahr={jahr} names={knownNames} givers={givers} onClose={() => setSheet(null)} />}
       {ideen && <KaufHilfe ctx={ctx} art="ideen" fuer={ideen.fuer} vorhanden={ideen.vorhanden} onUebernehmen={ideeAufListe} onClose={() => setIdeen(null)} />}
       {scan && <WunschScan ctx={ctx} jahr={jahr} names={knownNames} onClose={() => setScan(false)} />}
@@ -260,6 +262,7 @@ function GiftSheet({ ctx, gift, jahr, names, givers, onClose }) {
   const [von, setVon] = useState(gift.von ?? '');
   const [prio, setPrio] = useState(gift.prio ?? null);
   const [privat, setPrivat] = useState(!!gift.privat);
+  const [status, setStatus] = useState(gift.status ?? 'idee');
   const eigenes = !editing || gift.by_who === ctx.me?.id;
   const ok = fuer.trim() && idee.trim();
   const [hilfe, setHilfe] = useState(false);
@@ -275,7 +278,7 @@ function GiftSheet({ ctx, gift, jahr, names, givers, onClose }) {
   const save = async () => {
     if (!ok) return;
     const p = parseFloat(preis.replace(',', '.'));
-    const row = { fuer: fuer.trim(), idee: idee.trim(), preis: Number.isFinite(p) ? p : null, link: link.trim(), notiz: notiz.trim(), von: von.trim() || null, prio, ...(eigenes ? { privat } : {}) };
+    const row = { fuer: fuer.trim(), idee: idee.trim(), preis: Number.isFinite(p) ? p : null, link: link.trim(), notiz: notiz.trim(), von: von.trim() || null, prio, status, ...(eigenes ? { privat } : {}) };
     const res = editing
       ? await run(supabase.from('gift_ideas').update(row).eq('id', gift.id), ctx.fail)
       : await run(supabase.from('gift_ideas').insert({ ...row, anlass: 'Weihnachten', jahr, by_who: ctx.me.id }), ctx.fail);
@@ -311,6 +314,11 @@ function GiftSheet({ ctx, gift, jahr, names, givers, onClose }) {
       {eigenes && (
         <label className="gift-privat"><input type="checkbox" checked={privat} onChange={(e) => setPrivat(e.target.checked)} /> 🔒 Nur für mich sichtbar</label>
       )}
+      {editing && <div className="field"><span>Status</span>
+        <div className="chips">{Object.entries(STATUS).map(([k, v]) => (
+          <button key={k} className={`chip${status === k ? ' on' : ''}`} aria-pressed={status === k} onClick={() => setStatus(k)}>{v.icon} {v.label}</button>
+        ))}</div>
+      </div>}
       <div className="field"><span>Wie wichtig ist der Wunsch?</span>
         <div className="chips">{[1, 2, 3].map((n) => (
           <button key={n} className={`chip gift-prio-chip${prio === n ? ' on' : ''}`} aria-pressed={prio === n} onClick={() => setPrio(prio === n ? null : n)}>
