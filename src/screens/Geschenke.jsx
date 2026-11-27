@@ -7,7 +7,8 @@ import { fileToPayload } from './Scan.jsx';
 const STATUS = {
   idee: { label: 'Idee', icon: '💡', next: 'gekauft' },
   gekauft: { label: 'Gekauft', icon: '🛍️', next: 'verpackt' },
-  verpackt: { label: 'Verpackt', icon: '🎁', next: 'idee' },
+  verpackt: { label: 'Verpackt', icon: '🎁', next: 'weitergegeben' },
+  weitergegeben: { label: 'Weitergegeben', icon: '🤝', next: 'idee' },
 };
 // Wunschpriorität: 1 = Herzenswunsch, 2 = wichtig, 3 = wäre schön
 export const PRIO = { 1: { label: 'Herzenswunsch', kurz: '★★★' }, 2: { label: 'wichtig', kurz: '★★' }, 3: { label: 'wäre schön', kurz: '★' } };
@@ -64,7 +65,7 @@ export default function Geschenke({ ctx }) {
         <button className="icon-btn" aria-label="Jahr zurück" onClick={() => setJahr(jahr - 1)}>‹</button>
         <div style={{ flex: 1, textAlign: 'center' }}>
           <div style={{ fontWeight: 700, fontSize: 18 }}>🎄 Weihnachten {jahr}</div>
-          <div className="small">{all.length ? `${n('idee')} Ideen · ${n('gekauft')} gekauft · ${n('verpackt')} verpackt${summe ? ` · ${euro(summe)}` : ''}` : 'Noch nichts eingetragen'}</div>
+          <div className="small">{all.length ? `${n('idee')} Ideen · ${n('gekauft')} gekauft · ${n('verpackt')} verpackt${n('weitergegeben') ? ` · ${n('weitergegeben')} weitergegeben` : ''}${summe ? ` · ${euro(summe)}` : ''}` : 'Noch nichts eingetragen'}</div>
         </div>
         <button className="icon-btn" aria-label="Jahr vor" onClick={() => setJahr(jahr + 1)}>›</button>
       </div>
@@ -85,12 +86,12 @@ export default function Geschenke({ ctx }) {
       {people.map((p) => {
         const list = all.filter((g) => g.fuer === p).sort((a, b) => (a.prio ?? 9) - (b.prio ?? 9) || a.created_at.localeCompare(b.created_at));
         const m = ctx.members.find((x) => x.name === p);
-        const fertig = list.every((g) => g.status === 'verpackt');
+        const fertig = list.every((g) => g.status === 'verpackt' || g.status === 'weitergegeben');
         return (
           <section key={p} className="card tight">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0 4px' }}>
               <h3 style={{ margin: 0, color: m?.color }}>{p}</h3>
-              <span className="small">{fertig ? 'alles verpackt ✓' : `${list.filter((g) => g.status !== 'idee').length}/${list.length} besorgt`}</span>
+              <span className="small">{fertig ? (list.every((g) => g.status === 'weitergegeben') ? 'alles weitergegeben ✓' : 'alles verpackt ✓') : `${list.filter((g) => g.status !== 'idee').length}/${list.length} besorgt`}</span>
             </div>
             {list.map((g) => (
               <Swipe key={g.id} onRight={() => step(g)} rightLabel={STATUS[STATUS[g.status].next].label} onLeft={() => del(g)}>
@@ -99,7 +100,7 @@ export default function Geschenke({ ctx }) {
                     <span aria-hidden="true">{STATUS[g.status].icon}</span><span>{STATUS[g.status].label}</span>
                   </button>
                   <button className="row-main" style={{ textAlign: 'left', background: 'none', border: 0, padding: 0, font: 'inherit', color: 'inherit' }} onClick={() => setSheet(g)}>
-                    <span className="row-title" style={{ textDecoration: g.status === 'verpackt' ? 'line-through' : undefined, opacity: g.status === 'verpackt' ? 0.6 : 1 }}>{g.prio && <span className={`gift-prio p${g.prio}`} title={PRIO[g.prio].label}>{PRIO[g.prio].kurz}</span>}{g.idee}</span>
+                    <span className="row-title" style={{ textDecoration: ['verpackt','weitergegeben'].includes(g.status) ? 'line-through' : undefined, opacity: ['verpackt','weitergegeben'].includes(g.status) ? 0.6 : 1 }}>{g.prio && <span className={`gift-prio p${g.prio}`} title={PRIO[g.prio].label}>{PRIO[g.prio].kurz}</span>}{g.idee}</span>
                     {(g.preis || g.notiz || g.link || g.von) && <span className="small">{[g.von ? `von ${g.von}` : null, g.preis ? euro(g.preis) : null, g.notiz || null, g.link ? '🔗 Link' : null].filter(Boolean).join(' · ')}</span>}
                   </button>
                 </div>
@@ -136,7 +137,7 @@ export default function Geschenke({ ctx }) {
           {(ctx.me?.id === 'dirk' || ctx.me?.id === 'catrin') && <button className="btn ghost small-btn" onClick={() => setIdeen({ fuer: ctx.me.id === 'dirk' ? 'Catrin' : 'Dirk', vorhanden: geheim.map((g) => g.idee).join(', '), privat: true })}>✨ Ideen</button>}
         </div>
       </section>
-      <div className="small">Nur in der App für Erwachsene – auf dem Familien-iPad nicht sichtbar. Status antippen: Idee → Gekauft → Verpackt. Sterne: ★★★ Herzenswunsch, ★★ wichtig, ★ wäre schön.</div>
+      <div className="small">Nur in der App für Erwachsene – auf dem Familien-iPad nicht sichtbar. Status antippen: Idee → Gekauft → Verpackt → Weitergegeben. Sterne: ★★★ Herzenswunsch, ★★ wichtig, ★ wäre schön.</div>
       {sheet && <GiftSheet ctx={ctx} gift={sheet} jahr={jahr} names={knownNames} givers={givers} onClose={() => setSheet(null)} />}
       {ideen && <KaufHilfe ctx={ctx} art="ideen" fuer={ideen.fuer} vorhanden={ideen.vorhanden} onUebernehmen={ideeAufListe} onClose={() => setIdeen(null)} />}
       {scan && <WunschScan ctx={ctx} jahr={jahr} names={knownNames} onClose={() => setScan(false)} />}
