@@ -68,7 +68,7 @@ export function WochenendKarte({ ctx, onOpen, station }) {
           return (
             <div key={d} className="wk-day">
               <b>{WDL[weekday(d)]}</b>
-              <span className="wk-weather">{info ? <><Icon name={info.icon} size={22} /> {w.tmax}°</> : '…'}{w && w.regen >= 30 ? <> · <Icon name="drop" size={16} />{w.regen} %</> : ''}</span>
+              {info && <span className="wk-weather"><Icon name={info.icon} size={22} /> {w.tmax}°{w.regen >= 30 ? <> · <Icon name="drop" size={16} />{w.regen} %</> : ''}</span>}
               <span className="small">{busy.length ? `${busy.length} ${busy.length === 1 ? 'Termin' : 'Termine'}` : 'noch frei'}</span>
             </div>
           );

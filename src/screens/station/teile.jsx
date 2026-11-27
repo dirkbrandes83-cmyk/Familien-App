@@ -14,8 +14,21 @@ export function timeOf(ev) {
   return hm(ev.from_time);
 }
 
-export function EvList({ list: all, ctx, empty = 'Nichts geplant.' }) {
-  const list = all.filter((o) => o.ev.kind !== 'test'); // Tests stehen im Stundenplan
+// vorbeiAusblenden: heute schon beendete Termine weglassen (Ende bzw. Beginn + 1 Std. vorbei)
+// Doppelte Einträge (gleicher Titel, Tag und Beginn – z. B. zweimal eingeplant) nur einmal zeigen
+export function EvList({ list: all, ctx, empty = 'Nichts geplant.', vorbeiAusblenden = false }) {
+  const jetzt = new Date();
+  const min = jetzt.getHours() * 60 + jetzt.getMinutes();
+  const m = (t) => { const [h, mi] = String(t).split(':').map(Number); return h * 60 + mi; };
+  const vorbei = (o) => vorbeiAusblenden && o.date === ctx.day && !o.ev.all_day && o.ev.from_time && (o.ev.to_time ? m(o.ev.to_time) : m(o.ev.from_time) + 60) <= min;
+  const gesehen = new Set();
+  const list = all.filter((o) => {
+    if (o.ev.kind === 'test' || vorbei(o)) return false; // Tests stehen im Stundenplan
+    const k = `${o.date}|${o.ev.title}|${o.ev.from_time ?? ''}`;
+    if (gesehen.has(k)) return false;
+    gesehen.add(k);
+    return true;
+  });
   if (!list.length) return <div className="st-empty">{empty}</div>;
   return list.map((o) => (
     <div key={o.ev.id + o.date} className="st-ev">

@@ -46,7 +46,7 @@ export function Alle({ ctx, openIstAlle, openKiste }) {
       <div className="st-col">
         <section className="st-card st-auto">
           <h2>Termine heute</h2>
-          <EvList list={occ.filter((o) => o.date === ctx.day)} ctx={ctx} />
+          <EvList list={occ.filter((o) => o.date === ctx.day)} ctx={ctx} vorbeiAusblenden empty="Heute steht nichts mehr an." />
           <HeuteZuTun ctx={ctx} />
           <h3>Morgen · {WDL[weekday(tomorrow)]}</h3>
           <EvList list={occ.filter((o) => o.date === tomorrow)} ctx={ctx} />
