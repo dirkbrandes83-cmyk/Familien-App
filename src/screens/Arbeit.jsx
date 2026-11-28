@@ -22,6 +22,12 @@ const abhakenArbeit = async (ctx, t) => {
 
 // Kalender-Termine ohne Stundenplan (Untis-Stunden stehen unter „Stunden“)
 const kalenderTermine = (ctx) => ctx.data.workEvents.rows.filter((e) => !istStunde(ctx, e));
+// Ausgeklappte Termine ohne Doppelte (z. B. „Weihnachtsferien“ zweimal im Schulkalender), Ganztägiges zuerst
+const termineIm = (ctx, von, bis) => {
+  const gesehen = new Set();
+  return expand(kalenderTermine(ctx), von, bis).filter((o) => { const k = `${o.date}|${o.ev.title.trim().toLowerCase()}|${o.ev.from_time ?? ''}`; if (gesehen.has(k)) return false; gesehen.add(k); return true; })
+    .sort((a, b) => a.date.localeCompare(b.date) || (b.ev.all_day ? 1 : 0) - (a.ev.all_day ? 1 : 0) || String(a.ev.from_time || '').localeCompare(String(b.ev.from_time || '')));
+};
 const aboFarbeArbeit = (ctx, ev) => (ev.sub_id ? ctx.data.subs.rows.find((x) => x.id === ev.sub_id)?.farbe : null) || null;
 
 // Seiten im Arbeitsmodus
@@ -45,8 +51,8 @@ export function ArbeitHeuteSeite({ ctx }) {
   const [termin, setTermin] = useState(null);
   const breit = useBreit();
   const farbe = (ev) => aboFarbeArbeit(ctx, ev);
-  const occ = expand(kalenderTermine(ctx), ctx.day, ctx.day);
-  const woche = expand(kalenderTermine(ctx), addDays(ctx.day, 1), addDays(ctx.day, 6));
+  const occ = termineIm(ctx, ctx.day, ctx.day);
+  const woche = termineIm(ctx, addDays(ctx.day, 1), addDays(ctx.day, 6));
   const faellig = ctx.data.workTodos.rows.filter((t) => !t.done_at && ((t.am && t.am <= ctx.day) || (t.due && t.due <= addDays(ctx.day, 1))));
   const privat = expand(ctx.data.events.rows.filter((e) => e.src !== 'arbeit' && ((e.who || []).includes(ctx.me.id) || (e.who || []).includes('all') || e.bring_by === ctx.me.name || e.pick_by === ctx.me.name)), ctx.day, ctx.day);
   return (
@@ -176,8 +182,8 @@ function TerminZeile({ ctx, o, onOpen }) {
         <span className="row-main"><span className="row-title">{o.ev.title}</span>
           {(o.ev.to_time || o.ev.note || erin.length > 0 || art) && <span className="small">{[o.ev.to_time && `bis ${hm(o.ev.to_time)}`, art && `🗣 ${BESPRECHUNG[art].label}${themen ? ` · ${themen} Themen` : ''}`, erin.length > 0 && (offen ? `🔔 ${offen} offen` : '🔔 erledigt'), o.ev.note].filter(Boolean).join(' · ')}</span>}</span>
       </button>
-      <button className={`ar-fam${o.ev.familie ? ' an' : ''}`} aria-pressed={o.ev.familie} aria-label={o.ev.familie ? 'Aus dem Familienkalender nehmen' : 'Auch im Familienkalender zeigen'} onClick={() => familieSetzen(ctx, o.ev, !o.ev.familie)}>
-        <Icon name="users" size={15} />Familie
+      <button className={`ar-fam mini${o.ev.familie ? ' an' : ''}`} aria-pressed={o.ev.familie} aria-label={o.ev.familie ? 'Aus dem Familienkalender nehmen' : 'Auch im Familienkalender zeigen'} title={o.ev.familie ? 'Steht im Familienkalender' : 'Im Familienkalender zeigen'} onClick={() => familieSetzen(ctx, o.ev, !o.ev.familie)}>
+        <Icon name="users" size={16} />
       </button>
     </div>
   );
@@ -192,7 +198,7 @@ function ArbeitMonat({ ctx }) {
   const gridStart = mondayOf(first);
   const cells = Array.from({ length: 42 }, (_, i) => addDays(gridStart, i));
   const shown = cells.slice(35).some((d) => d.slice(0, 7) === month) ? cells : cells.slice(0, 35);
-  const occ = expand(kalenderTermine(ctx), shown[0], shown[shown.length - 1]);
+  const occ = termineIm(ctx, shown[0], shown[shown.length - 1]);
   const byDay = {};
   for (const o of occ) (byDay[o.date] ||= []).push(o);
   const todos = ctx.data.workTodos.rows;
@@ -222,7 +228,7 @@ function ArbeitMonat({ ctx }) {
                 <span className="mnum">{parse(d).getDate()}</span>
                 <span className="mevs">
                   {fristTage.has(d) && <span className="mev"><i><b style={{ background: '#B91C1C' }} /></i>Frist</span>}
-                  {list.slice(0, 4).map((o) => <span key={o.ev.id} className="mev"><i><b style={{ background: aboFarbeArbeit(ctx, o.ev) || '#4338CA' }} /></i>{o.ev.title}</span>)}
+                  {list.slice(0, 4).map((o) => <span key={o.ev.id} className={`mev${o.ev.end_date && o.date !== o.ev.start_date && weekday(o.date) !== 0 ? ' weiter' : ''}`}><i><b style={{ background: aboFarbeArbeit(ctx, o.ev) || '#4338CA' }} /></i>{o.ev.title}</span>)}
                   {list.length > 4 && <span className="mev more">+{list.length - 4}</span>}
                   {todoTage.has(d) && <span className="mev todo"><i><b style={{ background: '#B45309' }} /></i>To-do</span>}
                 </span>
@@ -258,7 +264,7 @@ function ArbeitWoche({ ctx }) {
   const [termin, setTermin] = useState(null);
   const [todo, setTodo] = useState(null);
   const todos = ctx.data.workTodos.rows;
-  const occ = expand(kalenderTermine(ctx), start, addDays(start, 6));
+  const occ = termineIm(ctx, start, addDays(start, 6));
   const tage = Array.from({ length: 7 }, (_, i) => addDays(start, i));
   const isThis = start === mondayOf(ctx.day);
   const s = parse(start), e = parse(addDays(start, 6));
