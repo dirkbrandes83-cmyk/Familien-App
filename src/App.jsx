@@ -8,6 +8,7 @@ import Heute from './screens/Heute.jsx';
 import Kalender from './screens/Kalender.jsx';
 import Listen from './screens/Erinnerungen.jsx';
 import Planen from './screens/Planen.jsx';
+import IcsEinfuegen from './screens/IcsEinfuegen.jsx';
 import { StundenplanSeite, OrgaSeite } from './screens/ArbeitOrga.jsx';
 import { ArbeitHeuteSeite, ArbeitKalenderSeite, ArbeitTodosSeite, TerminSheet, TodoSheet } from './screens/Arbeit.jsx';
 import Mehr from './screens/Mehr.jsx';
@@ -96,6 +97,7 @@ function Shell({ me, members }) {
   const [plus, setPlus] = useState(false);
   // Zentrale Trennung: Privat (Familie) oder Arbeit (nur ich) – pro Gerät gemerkt
   const [modus, setModusRaw] = useState(() => merk('modus', 'privat'));
+  const [ics, setIcs] = useState(false);
   const [arbeitSheet, setArbeitSheet] = useState(null); // 'termin' | 'todo'
   const [zhSeg, setZhSeg] = useState('aemtchen');
   const [calSeg, setCalSeg] = useState('termine');
@@ -196,11 +198,11 @@ function Shell({ me, members }) {
         </div>
         {plus && !mehr && (
           <div className="plus-menu" role="menu">
-            {(arbeit ? [['cal', 'Termin Arbeit', () => setArbeitSheet('termin')], ['todo', 'To-do Arbeit', () => setArbeitSheet('todo')]] : [['cal', 'Termin', () => ctx.openEvent(null, { start_date: day })],
+            {(arbeit ? [['cal', 'Termin Arbeit', () => setArbeitSheet('termin')], ['todo', 'To-do Arbeit', () => setArbeitSheet('todo')], ['copy', 'Kalender-Datei einfügen', () => setIcs(true)]] : [['cal', 'Termin', () => ctx.openEvent(null, { start_date: day })],
               ['cart', 'Einkauf', () => ctx.go('listen', 'einkauf')],
               ['todo', 'To-do', () => ctx.go('listen', 'vereinbaren')],
               ['bag', 'Besorgen', () => ctx.go('listen', 'besorgen')],
-              ['form', 'Elternbrief scannen', () => ctx.openScan()]]).map(([ic, l, fn]) => (
+              ['form', 'Elternbrief scannen', () => ctx.openScan()], ['copy', 'Kalender-Datei einfügen', () => setIcs(true)]]).map(([ic, l, fn]) => (
               <button key={l} role="menuitem" className="plus-item" onClick={() => { setPlus(false); fn(); }}><Icon name={ic} size={18} />{l}</button>
             ))}
           </div>
@@ -220,6 +222,7 @@ function Shell({ me, members }) {
           : aktiv === 'planen' ? <Planen ctx={ctx} seg={plSeg} setSeg={setPlSeg} />
           : <Listen ctx={ctx} seg={liSeg} setSeg={setLiSeg} />}
       </main>
+      {ics && <IcsEinfuegen ctx={ctx} arbeit={arbeit} onClose={() => setIcs(false)} />}
       {arbeitSheet === 'termin' && <TerminSheet ctx={ctx} ev={{ start_date: day }} onClose={() => setArbeitSheet(null)} />}
       {arbeitSheet === 'todo' && <TodoSheet ctx={ctx} t={{}} onClose={() => setArbeitSheet(null)} />}
 
