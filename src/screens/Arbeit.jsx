@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { supabase, run } from '../data.js';
 import { Icon, Check, Sheet, Swipe } from '../ui.jsx';
-import { UnterrichtHeute, FristenHeute, TeamThemen, istTeam, themenVon } from './ArbeitOrga.jsx';
+import { UnterrichtHeute, FristenHeute, TeamThemen, istTeam, themenVon, istStunde } from './ArbeitOrga.jsx';
 import { FarbWahl, ABO_FARBEN } from './common.jsx';
 import { addDays, mondayOf, parse, shortLabel, longLabel, hm, expand, WD, weekday, MONTHS } from '../lib/dates.js';
 import { Seg, useBreit } from '../ui.jsx';
@@ -20,6 +20,8 @@ const abhakenArbeit = async (ctx, t) => {
   else if (v) ctx.say('Erledigt', () => abhakenArbeit(ctx, { ...t, done_at: v }));
 };
 
+// Kalender-Termine ohne Stundenplan (Untis-Stunden stehen unter „Stunden“)
+const kalenderTermine = (ctx) => ctx.data.workEvents.rows.filter((e) => !istStunde(ctx, e));
 const aboFarbeArbeit = (ctx, ev) => (ev.sub_id ? ctx.data.subs.rows.find((x) => x.id === ev.sub_id)?.farbe : null) || null;
 
 // Seiten im Arbeitsmodus
@@ -43,8 +45,8 @@ export function ArbeitHeuteSeite({ ctx }) {
   const [termin, setTermin] = useState(null);
   const breit = useBreit();
   const farbe = (ev) => aboFarbeArbeit(ctx, ev);
-  const occ = expand(ctx.data.workEvents.rows, ctx.day, ctx.day);
-  const woche = expand(ctx.data.workEvents.rows, addDays(ctx.day, 1), addDays(ctx.day, 6));
+  const occ = expand(kalenderTermine(ctx), ctx.day, ctx.day);
+  const woche = expand(kalenderTermine(ctx), addDays(ctx.day, 1), addDays(ctx.day, 6));
   const faellig = ctx.data.workTodos.rows.filter((t) => !t.done_at && ((t.am && t.am <= ctx.day) || (t.due && t.due <= addDays(ctx.day, 1))));
   const privat = expand(ctx.data.events.rows.filter((e) => e.src !== 'arbeit' && ((e.who || []).includes(ctx.me.id) || (e.who || []).includes('all') || e.bring_by === ctx.me.name || e.pick_by === ctx.me.name)), ctx.day, ctx.day);
   return (
@@ -190,7 +192,7 @@ function ArbeitMonat({ ctx }) {
   const gridStart = mondayOf(first);
   const cells = Array.from({ length: 42 }, (_, i) => addDays(gridStart, i));
   const shown = cells.slice(35).some((d) => d.slice(0, 7) === month) ? cells : cells.slice(0, 35);
-  const occ = expand(ctx.data.workEvents.rows, shown[0], shown[shown.length - 1]);
+  const occ = expand(kalenderTermine(ctx), shown[0], shown[shown.length - 1]);
   const byDay = {};
   for (const o of occ) (byDay[o.date] ||= []).push(o);
   const todos = ctx.data.workTodos.rows;
@@ -256,7 +258,7 @@ function ArbeitWoche({ ctx }) {
   const [termin, setTermin] = useState(null);
   const [todo, setTodo] = useState(null);
   const todos = ctx.data.workTodos.rows;
-  const occ = expand(ctx.data.workEvents.rows, start, addDays(start, 6));
+  const occ = expand(kalenderTermine(ctx), start, addDays(start, 6));
   const tage = Array.from({ length: 7 }, (_, i) => addDays(start, i));
   const isThis = start === mondayOf(ctx.day);
   const s = parse(start), e = parse(addDays(start, 6));
@@ -493,6 +495,7 @@ function ArbeitsAbo({ ctx }) {
           <button className="btn small" disabled={busy} onClick={() => sync(x.id)}>{busy ? '…' : 'Abgleichen'}</button>
           <button className="btn ghost small" style={{ color: '#B91C1C' }} onClick={async () => { if (window.confirm(`Abo „${x.name}“ und seine Termine entfernen?`) && await run(supabase.from('calendar_subscriptions').delete().eq('id', x.id), ctx.fail)) { ctx.data.subs.reload(); ctx.data.workEvents.reload(); } }}>Entfernen</button>
         </div>
+        <label className="gift-privat" style={{ margin: '2px 0 4px' }}><input type="checkbox" checked={x.art === 'stundenplan'} onChange={async (e) => { const art = e.target.checked ? 'stundenplan' : 'termine'; ctx.data.subs.local((rows) => rows.map((r) => (r.id === x.id ? { ...r, art } : r))); if (!await run(supabase.from('calendar_subscriptions').update({ art }).eq('id', x.id), ctx.fail)) ctx.data.subs.reload(); else ctx.say(art === 'stundenplan' ? 'Erscheint jetzt unter „Stunden“' : 'Erscheint jetzt im Kalender'); }} /> Ist ein Stundenplan (z. B. Untis) – unter „Stunden“ statt im Kalender zeigen</label>
         <FarbWahl value={x.farbe} onPick={async (c) => { ctx.data.subs.local((rows) => rows.map((r) => (r.id === x.id ? { ...r, farbe: c } : r))); if (!await run(supabase.from('calendar_subscriptions').update({ farbe: c }).eq('id', x.id), ctx.fail)) ctx.data.subs.reload(); }} />
         </div>
       ))}

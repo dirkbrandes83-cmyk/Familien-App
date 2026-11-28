@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { supabase, run } from '../data.js';
 import { Icon, Check, Sheet, Seg, useBreit } from '../ui.jsx';
+import { TerminSheet } from './Arbeit.jsx';
 import { addDays, mondayOf, shortLabel, hm, expand, WD, WDL, weekday, diffDays } from '../lib/dates.js';
 
 // Arbeitsbereich, Teil 2: Stundenplan, Fristen mit Vorlauf-To-dos, Besprechungsprotokolle.
@@ -10,6 +11,22 @@ const minuten = (t) => { const [h, m] = String(t).split(':').map(Number); return
 const jetztMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
 const stundenAm = (rows, d) => rows.filter((s) => s.wochentag === weekday(d) + 1).sort((a, b) => a.von.localeCompare(b.von));
 const faelltAus = (s, d) => (s.ausfall || []).includes(d);
+// Stundenplan-Abos (z. B. Untis): ihre Termine erscheinen nicht im Kalender, sondern hier
+export const stundenplanAbos = (ctx) => new Set(ctx.data.subs.rows.filter((x) => x.art === 'stundenplan').map((x) => x.id));
+export const istStunde = (ctx, ev) => !!ev.sub_id && stundenplanAbos(ctx).has(ev.sub_id);
+// Untis-Notiz „B2.5 · 6a; 6b Bs; Kl“ → Raum und Klassen
+const ausUntis = (o) => {
+  const note = o.ev.note || '';
+  const [vorn, hinten] = note.includes(' · ') ? note.split(' · ') : ['', note];
+  const klassen = (hinten.match(/\b\d{1,2}[a-zA-Z]{1,2}\b/g) || []).join(', ');
+  return { id: `${o.ev.id}|${o.date}`, von: o.ev.from_time || '00:00', bis: o.ev.to_time || o.ev.from_time || '00:00', fach: o.ev.title, klasse: klassen || null, raum: vorn || null, notiz: null, ausfall: [], _ev: o.ev, _date: o.date };
+};
+// Alle Stunden eines Datums: aus dem Untis-Abo plus selbst eingetragene
+export function stundenAmDatum(ctx, d) {
+  const abos = stundenplanAbos(ctx);
+  const untis = abos.size ? expand(ctx.data.workEvents.rows.filter((e) => e.sub_id && abos.has(e.sub_id) && !e.all_day), d, d).map(ausUntis) : [];
+  return [...untis, ...stundenAm(ctx.data.workStunden.rows, d)].sort((a, b) => String(a.von).localeCompare(String(b.von)));
+}
 const zeit = (s) => `${hm(s.von)}–${hm(s.bis)}`;
 const ortVon = (s) => [s.klasse, s.raum && `Raum ${s.raum}`].filter(Boolean).join(' · ');
 
@@ -18,7 +35,7 @@ const ortVon = (s) => [s.klasse, s.raum && `Raum ${s.raum}`].filter(Boolean).joi
 // Karte für „Arbeit → Heute“: Unterricht des Tages, aktuelle/nächste Stunde hervorgehoben
 export function UnterrichtHeute({ ctx }) {
   const [sheet, setSheet] = useState(null);
-  const heute = stundenAm(ctx.data.workStunden.rows, ctx.day);
+  const heute = stundenAmDatum(ctx, ctx.day);
   if (!heute.length) return null;
   const min = jetztMin();
   const aktiv = heute.filter((s) => !faelltAus(s, ctx.day));
@@ -48,7 +65,7 @@ export function UnterrichtHeute({ ctx }) {
         );
       })}
       <div style={{ height: 6 }} />
-      {sheet && <StundeSheet ctx={ctx} s={sheet} datum={ctx.day} onClose={() => setSheet(null)} />}
+      {sheet && (sheet._ev ? <TerminSheet ctx={ctx} ev={sheet._ev} datum={sheet._date} onClose={() => setSheet(null)} /> : <StundeSheet ctx={ctx} s={sheet} datum={ctx.day} onClose={() => setSheet(null)} />)}
     </section>
   );
 }
@@ -60,29 +77,49 @@ export function StundenplanSeite({ ctx }) {
 }
 
 // iPad: ganze Woche als Raster Mo–Fr
+function WochenNav({ ctx, montag, setMontag, basis }) {
+  const f = addDays(montag, 4);
+  return (
+    <div className="cal-row cal-week sp-nav">
+      <button className="icon-btn" aria-label="Vorige Woche" onClick={() => setMontag(addDays(montag, -7))}><Icon name="left" size={18} /></button>
+      <button className="cal-range" onClick={() => setMontag(basis)} disabled={montag === basis}>{montag === basis ? (basis === mondayOf(ctx.day) ? 'Diese Woche' : 'Nächste Woche') : `${shortLabel(montag).split(' ')[1]} – ${shortLabel(f).split(' ')[1]} · zurück`}</button>
+      <button className="icon-btn" aria-label="Nächste Woche" onClick={() => setMontag(addDays(montag, 7))}><Icon name="chev" size={18} /></button>
+    </div>
+  );
+}
+const basisMontag = (ctx) => (weekday(ctx.day) > 4 ? addDays(mondayOf(ctx.day), 7) : mondayOf(ctx.day));
+const oeffnen = (ctx, setSheet, s, datum) => setSheet(s._ev ? { ev: s._ev, datum: s._date } : { s, datum });
+function SheetFuer({ ctx, sheet, onClose }) {
+  if (!sheet) return null;
+  if (sheet.ev) return <TerminSheet ctx={ctx} ev={sheet.ev} datum={sheet.datum} onClose={onClose} />;
+  return <StundeSheet ctx={ctx} s={sheet.s} datum={sheet.datum} onClose={onClose} />;
+}
+
 function StundenplanWoche({ ctx }) {
   const [sheet, setSheet] = useState(null);
-  const rows = ctx.data.workStunden.rows;
-  const montag = weekday(ctx.day) > 4 ? addDays(mondayOf(ctx.day), 7) : mondayOf(ctx.day);
+  const basis = basisMontag(ctx);
+  const [montag, setMontag] = useState(basis);
   return (
     <>
+      <WochenNav ctx={ctx} montag={montag} setMontag={setMontag} basis={basis} />
       <div className="sp-woche">
         {[0, 1, 2, 3, 4].map((i) => {
           const datum = addDays(montag, i);
-          const list = stundenAm(rows, datum);
+          const list = stundenAmDatum(ctx, datum);
           return (
             <section key={i} className={`card tight sp-tag${datum === ctx.day ? ' heute' : ''}`}>
               <div className="card-head" style={{ padding: '10px 0 6px' }}>
                 <div className="card-title">{WD[i]} <span className="small">{shortLabel(datum).split(' ')[1]}</span></div>
-                <button className="icon-btn" aria-label={`Neue Stunde am ${WDL[i]}`} onClick={() => setSheet({ s: { wochentag: i + 1 }, datum: null })}><Icon name="plus" size={18} /></button>
+                <button className="icon-btn" aria-label={`Eigene Stunde am ${WDL[i]}`} onClick={() => setSheet({ s: { wochentag: i + 1 }, datum: null })}><Icon name="plus" size={18} /></button>
               </div>
               {list.length === 0 && <div className="small" style={{ padding: '4px 0 10px' }}>frei</div>}
               {list.map((s) => (
-                <button key={s.id} className={`sp-block${faelltAus(s, datum) ? ' aus' : ''}`} onClick={() => setSheet({ s, datum })}>
+                <button key={s.id} className={`sp-block${faelltAus(s, datum) ? ' aus' : ''}${s._ev ? '' : ' manuell'}`} onClick={() => oeffnen(ctx, setSheet, s, datum)}>
                   <span className="sp-zeit">{zeit(s)}</span>
                   <b>{s.fach}</b>
                   {ortVon(s) && <span className="small">{ortVon(s)}</span>}
                   {s.notiz && <span className="small">📝 {s.notiz}</span>}
+                  {erinnerungen(ctx, s) && <span className="small">{erinnerungen(ctx, s)}</span>}
                 </button>
               ))}
               <div style={{ height: 8 }} />
@@ -90,7 +127,7 @@ function StundenplanWoche({ ctx }) {
           );
         })}
       </div>
-      {sheet && <StundeSheet ctx={ctx} s={sheet.s} datum={sheet.datum} onClose={() => setSheet(null)} />}
+      <SheetFuer ctx={ctx} sheet={sheet} onClose={() => setSheet(null)} />
     </>
   );
 }
@@ -99,38 +136,45 @@ function StundenplanTag({ ctx }) {
   const heuteWt = Math.min(weekday(ctx.day), 4);
   const [tag, setTag] = useState(heuteWt);
   const [sheet, setSheet] = useState(null);
-  const rows = ctx.data.workStunden.rows;
-  // Datum dieses Wochentags in der laufenden (am Wochenende: nächsten) Woche
-  const montag = weekday(ctx.day) > 4 ? addDays(mondayOf(ctx.day), 7) : mondayOf(ctx.day);
+  const basis = basisMontag(ctx);
+  const [montag, setMontag] = useState(basis);
   const datum = addDays(montag, tag);
-  const list = stundenAm(rows, datum);
-  const proTag = (i) => rows.filter((s) => s.wochentag === i + 1).length;
+  const list = stundenAmDatum(ctx, datum);
+  const proTag = (i) => stundenAmDatum(ctx, addDays(montag, i)).length;
+  const untis = stundenplanAbos(ctx).size > 0;
   return (
     <>
+      <WochenNav ctx={ctx} montag={montag} setMontag={setMontag} basis={basis} />
       <div className="li-seg"><Seg label="Wochentag" value={tag} onPick={setTag}
         options={[0, 1, 2, 3, 4].map((i) => [i, <span key={i} className="seg-txt">{WD[i]}<small className="sp-n">{proTag(i) || ''}</small></span>, `${WDL[i]}, ${proTag(i)} Stunden`])} /></div>
       <section className="card tight">
         <div className="card-head" style={{ padding: '10px 0 6px' }}>
           <div className="card-title">{WDL[tag]} <span className="small">{shortLabel(datum).split(' ')[1]}</span></div>
-          <button className="icon-btn" aria-label="Neue Stunde" onClick={() => setSheet({ wochentag: tag + 1 })}><Icon name="plus" size={18} /></button>
+          <button className="icon-btn" aria-label="Eigene Stunde eintragen" onClick={() => setSheet({ s: { wochentag: tag + 1 }, datum: null })}><Icon name="plus" size={18} /></button>
         </div>
-        {list.length === 0 && <div className="empty" style={{ padding: '8px 0 12px' }}>Noch keine Stunden. Mit + eintragen.</div>}
+        {list.length === 0 && <div className="empty" style={{ padding: '8px 0 12px' }}>{untis ? 'Keine Stunden.' : 'Noch keine Stunden. Mit + eintragen.'}</div>}
         {list.map((s) => (
-          <button key={s.id} className="row sp-row" onClick={() => setSheet(s)}>
+          <button key={s.id} className="row sp-row" onClick={() => oeffnen(ctx, setSheet, s, datum)}>
             <span className="time">{hm(s.von)}<span className="small" style={{ display: 'block', fontWeight: 500 }}>{hm(s.bis)}</span></span>
             <span className="row-main">
               <span className="row-title" style={{ textDecoration: faelltAus(s, datum) ? 'line-through' : undefined }}>{s.fach}{faelltAus(s, datum) && ' – fällt aus'}</span>
-              {(ortVon(s) || s.notiz) && <span className="small">{[ortVon(s), s.notiz && `📝 ${s.notiz}`].filter(Boolean).join(' · ')}</span>}
+              {(ortVon(s) || s.notiz || erinnerungen(ctx, s)) && <span className="small">{[ortVon(s), s.notiz && `📝 ${s.notiz}`, erinnerungen(ctx, s)].filter(Boolean).join(' · ')}</span>}
             </span>
           </button>
         ))}
         <div style={{ height: 6 }} />
       </section>
-      <div className="small" style={{ padding: '0 4px' }}>Tipp: Zeiten, die du schon benutzt hast, kannst du beim Eintragen antippen. Ausfall gilt nur für den einen Tag.</div>
-      {sheet && <StundeSheet ctx={ctx} s={sheet} datum={sheet.id ? addDays(montag, sheet.wochentag - 1) : null} onClose={() => setSheet(null)} />}
+      <div className="small" style={{ padding: '0 4px' }}>{untis ? 'Stunden kommen aus Untis. Antippen für Erinnerungen wie „Material vorbereiten“. Mit + trägst du eigene Stunden ein.' : 'Tipp: Zeiten, die du schon benutzt hast, kannst du beim Eintragen antippen.'}</div>
+      <SheetFuer ctx={ctx} sheet={sheet} onClose={() => setSheet(null)} />
     </>
   );
 }
+// „🔔 1“ wenn zu dieser Untis-Stunde Erinnerungen offen sind
+const erinnerungen = (ctx, s) => {
+  if (!s._ev) return null;
+  const n = ctx.data.workTodos.rows.filter((t) => t.termin_id === s._ev.id && !t.done_at && (!t.termin_am || t.termin_am === s._date)).length;
+  return n ? `🔔 ${n}` : null;
+};
 
 function StundeSheet({ ctx, s, datum, onClose }) {
   const neu = !s.id;
