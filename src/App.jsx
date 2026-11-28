@@ -9,6 +9,7 @@ import Kalender from './screens/Kalender.jsx';
 import Listen from './screens/Erinnerungen.jsx';
 import Planen from './screens/Planen.jsx';
 import IcsEinfuegen from './screens/IcsEinfuegen.jsx';
+import { KlassenSeite } from './screens/Klasse.jsx';
 import { StundenplanSeite, OrgaSeite } from './screens/ArbeitOrga.jsx';
 import { ArbeitHeuteSeite, ArbeitKalenderSeite, ArbeitTodosSeite, TerminSheet, TodoSheet } from './screens/Arbeit.jsx';
 import Mehr from './screens/Mehr.jsx';
@@ -30,6 +31,7 @@ const ARBEIT_TABS = [
   ['a-todos', 'To-dos', 'todo'],
   ['a-stunden', 'Stunden', 'clock'],
   ['a-orga', 'Orga', 'briefcase'],
+  ['a-klasse', 'Klasse', 'users'],
 ];
 const TAB_IDS = [...TABS, ...ARBEIT_TABS].map((t) => t[0]);
 // Alte Ziele (vor dem Umbau) auf die neue Struktur abbilden
@@ -136,6 +138,10 @@ function Shell({ me, members }) {
     workRegeln: useTable('work_regeln'),
     workKursnotizen: useTable('work_kursnotizen'),
     workAenderungen: useTable('work_aenderungen'),
+    workKlassen: useTable('work_klassen'),
+    workSchueler: useTable('work_schueler'),
+    workRuecklauf: useTable('work_ruecklauf'),
+    workRuecklaufStatus: useTable('work_ruecklauf_status', (r) => `${r.ruecklauf_id}|${r.schueler_id}`),
     ...useHomeTables(),
   };
 
@@ -164,7 +170,7 @@ function Shell({ me, members }) {
   const openInbox = data.inbox.rows.filter((r) => !r.done_at && (!r.owner || r.owner === me.id)).length;
   const openBuy = data.buy.rows.filter((r) => !r.done).length;
   const toReview = data.events.rows.filter((e) => e.review).length;
-  const titles = { heute: `Hallo ${me.name}`, kalender: 'Kalender', listen: 'Listen', planen: 'Planen', zuhause: 'Zuhause', 'a-heute': 'Arbeit', 'a-kalender': 'Termine', 'a-todos': 'To-dos', 'a-stunden': 'Stundenplan', 'a-orga': 'Orga' };
+  const titles = { heute: `Hallo ${me.name}`, kalender: 'Kalender', listen: 'Listen', planen: 'Planen', zuhause: 'Zuhause', 'a-heute': 'Arbeit', 'a-kalender': 'Termine', 'a-todos': 'To-dos', 'a-stunden': 'Stundenplan', 'a-orga': 'Orga', 'a-klasse': 'Klassenleitung' };
   const darfArbeit = !me.kid;
   const arbeit = darfArbeit && modus === 'arbeit';
   const tabs = arbeit ? ARBEIT_TABS : TABS;
@@ -215,6 +221,7 @@ function Shell({ me, members }) {
           : aktiv === 'a-kalender' ? <ArbeitKalenderSeite ctx={ctx} />
           : aktiv === 'a-stunden' ? <StundenplanSeite ctx={ctx} />
           : aktiv === 'a-orga' ? <OrgaSeite ctx={ctx} />
+          : aktiv === 'a-klasse' ? <KlassenSeite ctx={ctx} />
           : aktiv === 'a-todos' ? <ArbeitTodosSeite ctx={ctx} />
           : aktiv === 'heute' ? <Heute ctx={ctx} />
           : aktiv === 'kalender' ? <Kalender ctx={ctx} seg={calSeg} setSeg={setCalSeg} />

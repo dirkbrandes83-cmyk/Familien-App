@@ -1027,3 +1027,19 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .sk-tabelle { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 14px; }
 .sk-tabelle th, .sk-tabelle td { text-align: left; vertical-align: top; padding: 6px 4px; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
 .sk-tabelle th { font-size: 12px; color: var(--muted); }
+/* Klassenleitung */
+.kl-seite { display: flex; flex-direction: column; gap: 14px; }
+.kl-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.kl-kind { display: inline-flex; align-items: center; gap: 4px; min-width: 44px; justify-content: center; padding: 6px 10px; border-radius: 10px; background: #EEF2FF; font-weight: 700; font-size: 14px; letter-spacing: .02em; }
+.kl-kind.mit-x button { background: none; border: 0; padding: 2px; display: inline-flex; color: var(--muted); }
+.kl-grid.gross { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 8px; margin-top: 8px; }
+.kl-kind.tap { min-height: 52px; font-size: 16px; border: 2px solid transparent; background: #F1F5F9; color: inherit; font-family: inherit; }
+.kl-kind.tap.da { background: #DCFCE7; border-color: #16A34A; color: #15803D; }
+.kl-kind.tap.da::before { content: '✓'; margin-right: 3px; }
+.kl-zahl { flex: none; font-weight: 800; font-size: 15px; color: #B45309; padding-left: 8px; }
+.kl-zahl.fertig { color: #15803D; }
+.kl-rl { width: 100%; text-align: left; }
+.kl-stand { font-size: 16px; padding: 2px 0 4px; }
+.kl-fehlt { font-size: 15px; font-weight: 600; color: #B45309; padding: 2px 0 8px; }
+.kl-alt summary { cursor: pointer; padding: 6px 0; }
+@media (min-width: 1100px) { .kl-seite { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); align-items: start; } .kl-kopf { grid-column: 1 / -1; } }

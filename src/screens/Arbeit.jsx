@@ -3,6 +3,7 @@ import { supabase, run } from '../data.js';
 import { Icon, Check, Sheet, Swipe } from '../ui.jsx';
 import { UnterrichtHeute, FristenHeute, TeamThemen, besprechungVon, themenVon, istStunde, offeneZahl, BESPRECHUNG, KursNotizen, UntisAenderungen, untisName, untisNamen } from './ArbeitOrga.jsx';
 import { FarbWahl, ABO_FARBEN } from './common.jsx';
+import { RuecklaufHeute } from './Klasse.jsx';
 import { addDays, mondayOf, parse, shortLabel, longLabel, hm, expand, WD, weekday, MONTHS } from '../lib/dates.js';
 import { Seg, useBreit } from '../ui.jsx';
 
@@ -78,6 +79,7 @@ export function ArbeitHeuteSeite({ ctx }) {
         ))}
       </section>
       <FristenHeute ctx={ctx} />
+      <RuecklaufHeute ctx={ctx} onOpen={() => ctx.go('a-klasse')} />
       </div>
       <div className="ar-col">
       {woche.length > 0 && (
