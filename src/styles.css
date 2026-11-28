@@ -1012,3 +1012,4 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 }
 .sp-nav { margin-bottom: -4px; }
 .sp-block.manuell { background: #F1F5F9; }
+.kz-zeile { display: grid; grid-template-columns: 110px 1fr; gap: 10px; align-items: center; padding: 4px 0; font-weight: 600; }

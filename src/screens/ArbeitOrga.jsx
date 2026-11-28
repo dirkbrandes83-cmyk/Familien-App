@@ -14,17 +14,25 @@ const faelltAus = (s, d) => (s.ausfall || []).includes(d);
 // Stundenplan-Abos (z. B. Untis): ihre Termine erscheinen nicht im Kalender, sondern hier
 export const stundenplanAbos = (ctx) => new Set(ctx.data.subs.rows.filter((x) => x.art === 'stundenplan').map((x) => x.id));
 export const istStunde = (ctx, ev) => !!ev.sub_id && stundenplanAbos(ctx).has(ev.sub_id);
+// Untis-Kürzel → lesbare Namen (eigene Anpassungen in settings „untis_namen“)
+export const UNTIS_NAMEN = { LZ: 'Lernzeit', VER: 'Vertretung', Coach: 'Coaching', 'WP Hand': 'Wahlpflicht Hand' };
+export const untisNamen = (ctx) => ({ ...UNTIS_NAMEN, ...(ctx.data.settings.rows.find((x) => x.key === 'untis_namen')?.value || {}) });
+export function untisName(namen, t) {
+  if (namen[t]) return namen[t];
+  const p = /^P-(.+)$/.exec(t); // P-Treppenhaus → Aufsicht Treppenhaus
+  return p ? `Aufsicht ${p[1]}` : t;
+}
 // Untis-Notiz „B2.5 · 6a; 6b Bs; Kl“ → Raum und Klassen
-const ausUntis = (o) => {
+const ausUntis = (namen) => (o) => {
   const note = o.ev.note || '';
   const [vorn, hinten] = note.includes(' · ') ? note.split(' · ') : ['', note];
   const klassen = (hinten.match(/\b\d{1,2}[a-zA-Z]{1,2}\b/g) || []).join(', ');
-  return { id: `${o.ev.id}|${o.date}`, von: o.ev.from_time || '00:00', bis: o.ev.to_time || o.ev.from_time || '00:00', fach: o.ev.title, klasse: klassen || null, raum: vorn || null, notiz: null, ausfall: [], _ev: o.ev, _date: o.date };
+  return { id: `${o.ev.id}|${o.date}`, von: o.ev.from_time || '00:00', bis: o.ev.to_time || o.ev.from_time || '00:00', fach: untisName(namen, o.ev.title), kuerzel: o.ev.title, klasse: klassen || null, raum: vorn || null, notiz: null, ausfall: [], _ev: o.ev, _date: o.date };
 };
 // Alle Stunden eines Datums: aus dem Untis-Abo plus selbst eingetragene
 export function stundenAmDatum(ctx, d) {
   const abos = stundenplanAbos(ctx);
-  const untis = abos.size ? expand(ctx.data.workEvents.rows.filter((e) => e.sub_id && abos.has(e.sub_id) && !e.all_day), d, d).map(ausUntis) : [];
+  const untis = abos.size ? expand(ctx.data.workEvents.rows.filter((e) => e.sub_id && abos.has(e.sub_id) && !e.all_day), d, d).map(ausUntis(untisNamen(ctx))) : [];
   return [...untis, ...stundenAm(ctx.data.workStunden.rows, d)].sort((a, b) => String(a.von).localeCompare(String(b.von)));
 }
 const zeit = (s) => `${hm(s.von)}–${hm(s.bis)}`;
@@ -127,6 +135,7 @@ function StundenplanWoche({ ctx }) {
           );
         })}
       </div>
+      <KuerzelPflege ctx={ctx} />
       <SheetFuer ctx={ctx} sheet={sheet} onClose={() => setSheet(null)} />
     </>
   );
@@ -164,11 +173,43 @@ function StundenplanTag({ ctx }) {
         ))}
         <div style={{ height: 6 }} />
       </section>
+      <KuerzelPflege ctx={ctx} />
       <div className="small" style={{ padding: '0 4px' }}>{untis ? 'Stunden kommen aus Untis. Antippen für Erinnerungen wie „Material vorbereiten“. Mit + trägst du eigene Stunden ein.' : 'Tipp: Zeiten, die du schon benutzt hast, kannst du beim Eintragen antippen.'}</div>
       <SheetFuer ctx={ctx} sheet={sheet} onClose={() => setSheet(null)} />
     </>
   );
 }
+// Untis-Kürzel umbenennen
+function KuerzelPflege({ ctx }) {
+  const [offen, setOffen] = useState(false);
+  const abos = stundenplanAbos(ctx);
+  const namen = untisNamen(ctx);
+  const kuerzel = [...new Set(ctx.data.workEvents.rows.filter((e) => e.sub_id && abos.has(e.sub_id)).map((e) => e.title))].sort((a, b) => a.localeCompare(b, 'de'));
+  const [f, setF] = useState({});
+  if (!kuerzel.length) return null;
+  const speichern = async () => {
+    const eigen = { ...(ctx.data.settings.rows.find((x) => x.key === 'untis_namen')?.value || {}) };
+    for (const [k, v] of Object.entries(f)) { if (v.trim()) eigen[k] = v.trim().slice(0, 60); else eigen[k] = k; }
+    ctx.data.settings.local((rows) => [...rows.filter((x) => x.key !== 'untis_namen'), { key: 'untis_namen', value: eigen }]);
+    if (await run(supabase.from('settings').upsert({ key: 'untis_namen', value: eigen }), ctx.fail)) { ctx.say('Namen gespeichert'); setOffen(false); setF({}); } else ctx.data.settings.reload();
+  };
+  if (!offen) return <button className="btn ghost small" style={{ alignSelf: 'flex-start' }} onClick={() => setOffen(true)}>Untis-Kürzel umbenennen</button>;
+  return (
+    <section className="card tight">
+      <div className="card-title" style={{ padding: '12px 0 6px' }}>Untis-Kürzel</div>
+      {kuerzel.map((k) => (
+        <label key={k} className="kz-zeile"><span>{k}</span>
+          <input className="input" value={f[k] ?? untisName(namen, k)} onChange={(e) => setF({ ...f, [k]: e.target.value })} maxLength={60} />
+        </label>
+      ))}
+      <div className="chips" style={{ padding: '8px 0 12px' }}>
+        <button className="btn small" onClick={speichern} disabled={!Object.keys(f).length}>Speichern</button>
+        <button className="btn ghost small" onClick={() => { setOffen(false); setF({}); }}>Abbrechen</button>
+      </div>
+    </section>
+  );
+}
+
 // „🔔 1“ wenn zu dieser Untis-Stunde Erinnerungen offen sind
 const erinnerungen = (ctx, s) => {
   if (!s._ev) return null;
