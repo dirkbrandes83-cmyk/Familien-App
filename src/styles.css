@@ -1006,7 +1006,7 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
   .ar-split .mev { font-size: 12px; gap: 4px; }
   .ar-split .mev i b { height: 13px; }
   .ar-split .month.mtext .mcell .mnum { font-size: 16px; }
-  .ar-woche { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  .ar-woche { grid-template-columns: repeat(5, minmax(0, 1fr)) repeat(2, minmax(0, .6fr)); }
   .ar-woche .ar-tag { min-height: 160px; }
   .sp-woche { gap: 12px; }
 }
