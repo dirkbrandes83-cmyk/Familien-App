@@ -59,6 +59,7 @@ export function UnterrichtHeute({ ctx }) {
           <b>{fokus.fach}</b>
           <span>{[ortVon(fokus), jetzt ? `bis ${hm(fokus.bis)}` : zeit(fokus)].filter(Boolean).join(' · ')}</span>
           {fokus.notiz && <span className="small">📝 {fokus.notiz}</span>}
+          {fokus._ev && kursNotizen(ctx, fokus._ev, ctx.day).map((n) => <span key={n.id} className="small">📝 {n.text}</span>)}
         </div>
       )}
       {!fokus && <div className="empty" style={{ padding: '4px 0 8px' }}>Unterricht für heute geschafft.</div>}
@@ -109,6 +110,7 @@ function StundenplanWoche({ ctx }) {
   const [montag, setMontag] = useState(basis);
   return (
     <>
+      <UntisAenderungen ctx={ctx} />
       <WochenNav ctx={ctx} montag={montag} setMontag={setMontag} basis={basis} />
       <div className="sp-woche">
         {[0, 1, 2, 3, 4].map((i) => {
@@ -153,6 +155,7 @@ function StundenplanTag({ ctx }) {
   const untis = stundenplanAbos(ctx).size > 0;
   return (
     <>
+      <UntisAenderungen ctx={ctx} />
       <WochenNav ctx={ctx} montag={montag} setMontag={setMontag} basis={basis} />
       <div className="li-seg"><Seg label="Wochentag" value={tag} onPick={setTag}
         options={[0, 1, 2, 3, 4].map((i) => [i, <span key={i} className="seg-txt">{WD[i]}<small className="sp-n">{proTag(i) || ''}</small></span>, `${WDL[i]}, ${proTag(i)} Stunden`])} /></div>
@@ -214,7 +217,8 @@ function KuerzelPflege({ ctx }) {
 const erinnerungen = (ctx, s) => {
   if (!s._ev) return null;
   const n = ctx.data.workTodos.rows.filter((t) => t.termin_id === s._ev.id && !t.done_at && (!t.termin_am || t.termin_am === s._date)).length;
-  return n ? `🔔 ${n}` : null;
+  const k = s._date >= ctx.day ? kursNotizen(ctx, s._ev, s._date).length : 0;
+  return [n && `🔔 ${n}`, k && `📝 ${k}`].filter(Boolean).join(' ') || null;
 };
 
 function StundeSheet({ ctx, s, datum, onClose }) {
@@ -324,6 +328,7 @@ function FristenListe({ ctx }) {
         {erledigt.length > 0 && <button className="btn ghost small" style={{ margin: '6px 0 10px' }} onClick={() => setAlte(!alte)}>{alte ? 'Erledigte ausblenden' : `${erledigt.length} erledigte zeigen`}</button>}
         {alte && erledigt.map((x) => <FristZeile key={x.id} ctx={ctx} x={x} onOpen={() => setSheet(x)} />)}
       </section>
+      <RegelnKarte ctx={ctx} />
       {sheet && <FristSheet ctx={ctx} x={sheet} onClose={() => setSheet(null)} />}
     </>
   );
@@ -665,5 +670,145 @@ function TeamSeite({ ctx }) {
         </Sheet>
       )}
     </>
+  );
+}
+
+/* ---------- Kurs-Notizen (Untis-Fach + Klassen) ---------- */
+
+const klassenAus = (note) => ((String(note || '').split(' · ')[1] || '').match(/\b\d{1,2}[a-zA-Z]{1,2}\b/g) || []).join(', ');
+export const kursVon = (ev) => `${ev.title}|${klassenAus(ev.note)}`;
+// offene Notizen eines Kurses, die vor oder an diesem Tag angelegt wurden
+export const kursNotizen = (ctx, ev, datum) => {
+  const k = kursVon(ev);
+  return ctx.data.workKursnotizen.rows.filter((n) => n.kurs === k && !n.erledigt_at && (!datum || n.created_at.slice(0, 10) <= datum));
+};
+
+export function KursNotizen({ ctx, ev, datum }) {
+  const [text, setText] = useState('');
+  const k = kursVon(ev);
+  const [name, klassen] = [untisName(untisNamen(ctx), ev.title), k.split('|')[1]];
+  const alle = ctx.data.workKursnotizen.rows.filter((n) => n.kurs === k).sort((a, b) => (a.erledigt_at ? 1 : 0) - (b.erledigt_at ? 1 : 0) || a.created_at.localeCompare(b.created_at));
+  const sichtbar = alle.filter((n) => !n.erledigt_at || n.erledigt_at.slice(0, 10) >= ctx.day);
+  const add = async (e) => {
+    e.preventDefault(); if (!text.trim()) return;
+    if (await run(supabase.from('work_kursnotizen').insert({ owner: ctx.me.id, kurs: k, text: text.trim().slice(0, 500) }), ctx.fail)) { setText(''); ctx.data.workKursnotizen.reload(); }
+  };
+  const toggle = async (n) => {
+    const v = n.erledigt_at ? null : new Date().toISOString();
+    ctx.data.workKursnotizen.local((rows) => rows.map((x) => (x.id === n.id ? { ...x, erledigt_at: v } : x)));
+    if (!await run(supabase.from('work_kursnotizen').update({ erledigt_at: v }).eq('id', n.id), ctx.fail)) ctx.data.workKursnotizen.reload();
+  };
+  const weg = async (n) => {
+    ctx.data.workKursnotizen.local((rows) => rows.filter((x) => x.id !== n.id));
+    if (!await run(supabase.from('work_kursnotizen').delete().eq('id', n.id), ctx.fail)) ctx.data.workKursnotizen.reload();
+  };
+  return (
+    <div className="field"><span>Notizen zum Kurs {name}{klassen ? ` · ${klassen}` : ''}</span>
+      {sichtbar.length === 0 && <div className="small" style={{ padding: '2px 0 4px' }}>Erscheinen in den nächsten Stunden dieses Kurses, bis du sie abhakst.</div>}
+      {sichtbar.map((n) => (
+        <div key={n.id} className="row" style={{ minHeight: 42 }}>
+          <button className="row-check" aria-label={`${n.text} erledigt`} onClick={() => toggle(n)}><Check on={!!n.erledigt_at} /></button>
+          <span className="row-main"><span className="row-title" style={{ textDecoration: n.erledigt_at ? 'line-through' : undefined }}>{n.text}</span><span className="small">notiert {shortLabel(n.created_at.slice(0, 10))}</span></span>
+          <button className="icon-btn" aria-label="Notiz löschen" onClick={() => weg(n)}><Icon name="x" size={16} /></button>
+        </div>
+      ))}
+      <form className="thema-neu" onSubmit={add}>
+        <input className="input" value={text} onChange={(e) => setText(e.target.value)} maxLength={500} placeholder="z. B. Nächstes Mal: Kapitel 3 weiter" aria-label="Neue Kurs-Notiz" />
+        <button className="icon-btn" aria-label="Notiz speichern" disabled={!text.trim()}><Icon name="plus" size={18} /></button>
+      </form>
+      {datum && datum >= ctx.day && <div className="small" style={{ marginTop: 4 }}>Stunde am {shortLabel(datum)}</div>}
+    </div>
+  );
+}
+
+/* ---------- Untis-Änderungen ---------- */
+
+export function UntisAenderungen({ ctx }) {
+  const offen = ctx.data.workAenderungen.rows.filter((a) => !a.gesehen_at && a.datum >= ctx.day).sort((a, b) => a.datum.localeCompare(b.datum) || a.created_at.localeCompare(b.created_at));
+  if (!offen.length) return null;
+  const gesehen = async () => {
+    const jetzt = new Date().toISOString();
+    const ids = offen.map((a) => a.id);
+    ctx.data.workAenderungen.local((rows) => rows.map((x) => (ids.includes(x.id) ? { ...x, gesehen_at: jetzt } : x)));
+    if (!await run(supabase.from('work_aenderungen').update({ gesehen_at: jetzt }).in('id', ids), ctx.fail)) ctx.data.workAenderungen.reload();
+  };
+  return (
+    <section className="card tight untis-aend">
+      <div className="card-head" style={{ padding: '10px 0 4px' }}>
+        <div className="h-label">⚠️ Untis-Änderungen</div>
+        <button className="btn ghost small" onClick={gesehen}>Gesehen</button>
+      </div>
+      {offen.slice(0, 8).map((a) => <div key={a.id} className="small ar-zeile">{a.text}</div>)}
+      {offen.length > 8 && <div className="small ar-zeile">… und {offen.length - 8} weitere</div>}
+      <div style={{ height: 8 }} />
+    </section>
+  );
+}
+
+/* ---------- Regeln: Erinnerungen & Fristen automatisch ---------- */
+
+export function RegelnKarte({ ctx }) {
+  const [offen, setOffen] = useState(false);
+  const [f, setF] = useState({ art: 'erinnerung', muster: '', text: '', tage: 2 });
+  const regeln = ctx.data.workRegeln.rows.slice().sort((a, b) => a.art.localeCompare(b.art) || a.created_at.localeCompare(b.created_at));
+  const lesbar = (m) => m.replace(/\\m|\\M/g, '').replace(/\(([^)]*)\)schluss/g, (_, x) => x.split('|').map((w) => `${w}schluss`).join('|')).split('|').join(' · ');
+  const anlegen = async () => {
+    const woerter = f.muster.split(/[,;]/).map((w) => w.trim()).filter(Boolean).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    if (!woerter.length) return;
+    const row = { owner: ctx.me.id, art: f.art, muster: woerter.join('|').slice(0, 200), text: f.art === 'frist' ? null : (f.text.trim() || 'Vorbereiten').slice(0, 120), tage: f.art === 'frist' ? 0 : Math.max(0, Math.min(120, Number(f.tage) || 0)) };
+    if (await run(supabase.from('work_regeln').insert(row), ctx.fail)) { setF({ art: 'erinnerung', muster: '', text: '', tage: 2 }); ctx.data.workRegeln.reload(); }
+  };
+  const setAktiv = async (r) => {
+    ctx.data.workRegeln.local((rows) => rows.map((x) => (x.id === r.id ? { ...x, aktiv: !r.aktiv } : x)));
+    if (!await run(supabase.from('work_regeln').update({ aktiv: !r.aktiv }).eq('id', r.id), ctx.fail)) ctx.data.workRegeln.reload();
+  };
+  const weg = async (r) => {
+    if (await run(supabase.from('work_regeln').delete().eq('id', r.id), ctx.fail)) ctx.data.workRegeln.reload();
+  };
+  const anwenden = async () => {
+    const { data, error } = await supabase.rpc('regeln_anwenden');
+    if (error) { ctx.fail(error); return; }
+    ctx.data.workTodos.reload(); ctx.data.workFristen.reload();
+    ctx.say(data ? `${data} neu angelegt` : 'Nichts Neues – alles schon da');
+  };
+  return (
+    <section className="card tight">
+      <button className="card-head regel-kopf" style={{ padding: '10px 0 6px' }} onClick={() => setOffen(!offen)} aria-expanded={offen}>
+        <div className="card-title">Automatik-Regeln <span className="small">({regeln.filter((r) => r.aktiv).length} aktiv)</span></div>
+        <span style={{ display: 'inline-flex', transform: offen ? 'rotate(180deg)' : undefined }}><Icon name="down" size={18} /></span>
+      </button>
+      {!offen && <div className="small" style={{ paddingBottom: 10 }}>Neue Termine aus dem Schulkalender bekommen passende Erinnerungen oder werden zur Frist.</div>}
+      {offen && (
+        <>
+          {regeln.map((r) => (
+            <div key={r.id} className="row" style={{ minHeight: 48, opacity: r.aktiv ? 1 : 0.5 }}>
+              <button className="row-check" aria-label={r.aktiv ? 'Regel ausschalten' : 'Regel einschalten'} onClick={() => setAktiv(r)}><Check on={r.aktiv} /></button>
+              <span className="row-main">
+                <span className="row-title">{r.art === 'frist' ? '⏳ wird Frist' : `🔔 ${r.text}${r.tage ? ` · ${r.tage} T. vorher` : ' · am Tag'}`}</span>
+                <span className="small">wenn im Titel: {lesbar(r.muster)}</span>
+              </span>
+              <button className="icon-btn" aria-label="Regel löschen" onClick={() => weg(r)}><Icon name="x" size={16} /></button>
+            </div>
+          ))}
+          <div className="regel-neu">
+            <div className="chips">{[['erinnerung', '🔔 Erinnerung'], ['frist', '⏳ Frist']].map(([k, l]) => <button key={k} type="button" className={`chip${f.art === k ? ' on' : ''}`} onClick={() => setF({ ...f, art: k })}>{l}</button>)}</div>
+            <input className="input" value={f.muster} onChange={(e) => setF({ ...f, muster: e.target.value })} placeholder="Wenn im Titel … (mehrere mit Komma: Konferenz, ESL)" aria-label="Stichwörter" />
+            {f.art === 'erinnerung' && (
+              <div className="frist-schritt">
+                <input className="input" value={f.text} onChange={(e) => setF({ ...f, text: e.target.value })} placeholder="Erinnerung, z. B. Unterlagen sichten" maxLength={120} />
+                <input className="input" type="number" min="0" max="120" inputMode="numeric" value={f.tage} onChange={(e) => setF({ ...f, tage: e.target.value })} aria-label="Tage vorher" />
+                <span className="small">T. vorher</span>
+                <span />
+              </div>
+            )}
+            <div className="chips">
+              <button className="btn small" disabled={!f.muster.trim()} onClick={anlegen}>Regel anlegen</button>
+              <button className="btn ghost small" onClick={anwenden}>Auf kommende Termine anwenden</button>
+            </div>
+          </div>
+          <div className="small" style={{ padding: '6px 0 12px' }}>Neue Termine aus Abos bekommen das automatisch. Wird ein Termin verschoben, wandern Frist und Erinnerungen mit.</div>
+        </>
+      )}
+    </section>
   );
 }

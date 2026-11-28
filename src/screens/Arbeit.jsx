@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { supabase, run } from '../data.js';
 import { Icon, Check, Sheet, Swipe } from '../ui.jsx';
-import { UnterrichtHeute, FristenHeute, TeamThemen, besprechungVon, themenVon, istStunde, offeneZahl, BESPRECHUNG } from './ArbeitOrga.jsx';
+import { UnterrichtHeute, FristenHeute, TeamThemen, besprechungVon, themenVon, istStunde, offeneZahl, BESPRECHUNG, KursNotizen, UntisAenderungen, untisName, untisNamen } from './ArbeitOrga.jsx';
 import { FarbWahl, ABO_FARBEN } from './common.jsx';
 import { addDays, mondayOf, parse, shortLabel, longLabel, hm, expand, WD, weekday, MONTHS } from '../lib/dates.js';
 import { Seg, useBreit } from '../ui.jsx';
@@ -58,6 +58,7 @@ export function ArbeitHeuteSeite({ ctx }) {
   return (
     <div className="ar-dash">
       <div className="ar-col">
+      <UntisAenderungen ctx={ctx} />
       <UnterrichtHeute ctx={ctx} />
       <section className="card tight">
         <div className="h-label" style={{ padding: '12px 0 4px' }}>Termine heute</div>
@@ -398,6 +399,7 @@ export function TerminSheet({ ctx, ev: ev0, datum: datum0, onClose }) {
   const ev = (ev0.id && ctx.data.workEvents.rows.find((x) => x.id === ev0.id)) || ev0;
   const datum = datum0 || ev.start_date || ctx.day;
   const abo = !!ev.sub_id;
+  const stunde = istStunde(ctx, ev);
   const [f, setF] = useState({ title: ev.title ?? '', start_date: ev.start_date ?? ctx.day, all_day: !!ev.all_day, from_time: ev.from_time ? hm(ev.from_time) : '', to_time: ev.to_time ? hm(ev.to_time) : '', note: ev.note ?? '', familie: !!ev.familie, art: neu ? null : besprechungVon(ev) });
   const [vorab, setVorab] = useState([]); // bei neuen Terminen: Erinnerungen, die beim Speichern angelegt werden
   const set = (p) => setF((x) => ({ ...x, ...p }));
@@ -425,7 +427,7 @@ export function TerminSheet({ ctx, ev: ev0, datum: datum0, onClose }) {
     if (await run(supabase.from('work_events').delete().eq('id', ev.id), ctx.fail)) { ctx.data.workEvents.reload(); ctx.data.events.reload(); ctx.say('Termin gelöscht'); onClose(); }
   };
   return (
-    <Sheet title={neu ? 'Arbeitstermin' : abo ? ev.title : longLabel(datum)} onClose={onClose}
+    <Sheet title={neu ? 'Arbeitstermin' : stunde ? untisName(untisNamen(ctx), ev.title) : abo ? ev.title : longLabel(datum)} onClose={onClose}
       actions={<>
         {abo ? <button className="btn" onClick={onClose}>Fertig</button> : <button className="btn" disabled={!ok} onClick={speichern}>{neu ? 'Eintragen' : 'Speichern'}</button>}
         {!neu && !abo && <button className="ein-del" onClick={loesch}><Icon name="trash" size={16} />Löschen</button>}
@@ -453,11 +455,12 @@ export function TerminSheet({ ctx, ev: ev0, datum: datum0, onClose }) {
           </label>
         </>
       )}
-      <div className="field"><span>Besprechung mit Themenliste</span>
+      {stunde && <KursNotizen ctx={ctx} ev={ev} datum={datum} />}
+      {!stunde && <div className="field"><span>Besprechung mit Themenliste</span>
         <div className="chips">{[[null, 'Keine'], ['team', 'Teamsitzung'], ['esl', 'ESL']].map(([k, l]) => (
           <button key={l} type="button" className={`chip${f.art === k ? ' on' : ''}`} aria-pressed={f.art === k} onClick={() => artSetzen(k)}>{l}</button>
         ))}</div>
-      </div>
+      </div>}
       {f.art && !neu && <TeamThemen ctx={ctx} ev={{ ...ev, besprechung: f.art }} datum={datum} />}
       {!neu && <TerminErinnerungen ctx={ctx} ev={ev} datum={datum} />}
       {neu && (

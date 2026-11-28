@@ -38,6 +38,17 @@ function whoFor(sub: any, groups: string[], members: any[]) {
   return ids.size === members.length ? ["all"] : [...ids];
 }
 
+// Stundenplan-Abos (Untis): Änderungen der nächsten 14 Tage als Meldung festhalten
+const UNTIS: Record<string, string> = { LZ: "Lernzeit", VER: "Vertretung", Coach: "Coaching", "WP Hand": "Wahlpflicht Hand" };
+const WDK = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+function stundeText(e: any, namen: Record<string, string>) {
+  const d = new Date(`${e.start_date}T12:00:00Z`);
+  const t = String(e.title ?? "");
+  const name = namen[t] ?? UNTIS[t] ?? (t.startsWith("P-") ? `Aufsicht ${t.slice(2)}` : t);
+  const raum = String(e.note ?? "").includes(" · ") ? ` (${String(e.note).split(" · ")[0]})` : "";
+  return `${WDK[d.getUTCDay()]} ${e.start_date.slice(8, 10)}.${e.start_date.slice(5, 7)}. ${e.from_time ? String(e.from_time).slice(0, 5) + " " : ""}${name}${raum}`;
+}
+
 async function syncOne(db: any, sub: any, members: any[]) {
   let url = String(sub.url).trim();
   if (url.startsWith("webcal://")) url = "https://" + url.slice(9);
@@ -63,13 +74,19 @@ async function syncOne(db: any, sub: any, members: any[]) {
 
   const inserts: any[] = [];
   let updated = 0, removed = 0;
+  const melden = arbeit && sub.art === "stundenplan" && !firstSync;
+  const bis = addDays(today, 14);
+  const imFenster = (e: any) => e && e.start_date >= today && e.start_date <= bis;
+  const neu: any[] = [], weg: any[] = [], geaendert: [any, any][] = [];
   for (const [key, row] of want) {
     const h = haveMap.get(key);
     if (!h) {
+      if (melden && imFenster(row)) neu.push(row);
       inserts.push(arbeit
         ? { ...row, ext_uid: key, sub_id: sub.id, src: "abo", owner: sub.arbeit_von }
         : { ...row, ext_uid: key, sub_id: sub.id, src: "abo", kind: row.kind ?? "termin", review: !firstSync && (row.rep !== "keine" || row.start_date >= today) });
     } else if (!same(h, row) || (!arbeit && !sameWho(h.who, row.who))) {
+      if (melden && (imFenster(h) || imFenster(row))) geaendert.push([h, row]);
       const { error: e2 } = await db.from(T).update({ ...row }).eq("id", h.id);
       if (!e2) updated++;
     }
@@ -79,7 +96,26 @@ async function syncOne(db: any, sub: any, members: any[]) {
     if (e3) throw new Error(e3.message);
   }
   // Im Abo gelöscht: nur zukünftige Termine entfernen (Vergangenes bleibt als Verlauf)
-  const gone = (have ?? []).filter((h: any) => !want.has(h.ext_uid) && (h.rep !== "keine" || h.start_date >= today)).map((h: any) => h.id);
+  const goneRows = (have ?? []).filter((h: any) => !want.has(h.ext_uid) && (h.rep !== "keine" || h.start_date >= today));
+  const gone = goneRows.map((h: any) => h.id);
+  if (melden) for (const h of goneRows) if (imFenster(h)) weg.push(h);
+  if (melden && (neu.length || weg.length || geaendert.length)) {
+    const { data: st } = await db.from("settings").select("value").eq("key", "untis_namen").maybeSingle();
+    const namen = st?.value ?? {};
+    const k = (e: any) => `${e.start_date}|${e.title}|${String(e.from_time ?? "").slice(0, 5)}`;
+    // gleiche Stunde nur mit neuer Kennung → keine Meldung
+    const wegK = new Set(weg.map(k)), neuK = new Set(neu.map(k));
+    const zeilen: { datum: string; text: string }[] = [];
+    for (const e of neu) if (!wegK.has(k(e))) zeilen.push({ datum: e.start_date, text: `Neu: ${stundeText(e, namen)}` });
+    for (const e of weg) if (!neuK.has(k(e))) zeilen.push({ datum: e.start_date, text: `Entfällt: ${stundeText(e, namen)}` });
+    for (const [a, b] of geaendert) {
+      const zeitAnders = a.start_date !== b.start_date || String(a.from_time ?? "").slice(0, 5) !== String(b.from_time ?? "").slice(0, 5) || a.title !== b.title;
+      const raumAnders = String(a.note ?? "").split(" · ")[0] !== String(b.note ?? "").split(" · ")[0];
+      if (zeitAnders) zeilen.push({ datum: b.start_date, text: `Geändert: ${stundeText(a, namen)} → ${stundeText(b, namen)}` });
+      else if (raumAnders) zeilen.push({ datum: b.start_date, text: `Raum: ${stundeText(b, namen)}` });
+    }
+    if (zeilen.length) await db.from("work_aenderungen").insert(zeilen.slice(0, 40).map((z) => ({ ...z, owner: sub.arbeit_von })));
+  }
   if (gone.length) {
     const { error: e4 } = await db.from(T).delete().in("id", gone);
     if (!e4) removed = gone.length;

@@ -94,6 +94,8 @@ const KURZBEFEHLE = [
   ['To-do', 'todo', 'To-do für die Familien-App (bei dir)'],
   ['Arbeit', 'arbeit', 'To-do im Arbeitsbereich (nur für dich)'],
   ['Einkauf', 'einkauf', 'auf die Einkaufsliste, mehrere mit Komma'],
+  ['Thema ESL', 'esl', 'Thema für die nächste ESL (Arbeit)'],
+  ['Thema Team', 'team', 'Thema für die nächste Teamsitzung (Arbeit)'],
 ];
 function SchnellEintragen({ ctx, onNeu }) {
   const [key, setKey] = useState(null);
@@ -120,7 +122,7 @@ function SchnellEintragen({ ctx, onNeu }) {
         </>
       )}
       <details className="sk-details">
-        <summary>Kurzbefehl „To-do“, „Arbeit“, „Einkauf“ anlegen</summary>
+        <summary>Kurzbefehle anlegen (To-do, Arbeit, Einkauf, Themen ESL/Team)</summary>
         <ol className="sub sk-liste">
           <li>App <b>Kurzbefehle</b> › <b>+</b> › Name oben: z. B. „To-do“.</li>
           <li>Aktion <b>„Nach Eingabe fragen“</b> – Frage: „Was ist zu tun?“</li>
@@ -128,7 +130,7 @@ function SchnellEintragen({ ctx, onNeu }) {
             <br />• <code>art</code> = {KURZBEFEHLE.map((k) => <code key={k[1]}>{k[1]}</code>).reduce((a, x) => [a, ' / ', x])}
             <br />• <code>text</code> = Variable „Bereitgestellte Eingabe“</li>
           <li>Aktion <b>„Wörterbuchwert abrufen“</b> – Schlüssel <code>msg</code>, dann <b>„Mitteilung anzeigen“</b> mit diesem Wert.</li>
-          <li>Für „Arbeit“ und „Einkauf“: Kurzbefehl duplizieren und nur <code>art</code> und den Namen ändern.</li>
+          <li>Für die anderen: Kurzbefehl duplizieren und nur <code>art</code> und den Namen ändern. Siri: „Hey Siri, Thema ESL“.</li>
         </ol>
         <div className="small">{KURZBEFEHLE.map((k) => `${k[0]}: ${k[2]}`).join(' · ')}</div>
       </details>

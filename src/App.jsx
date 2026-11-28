@@ -131,6 +131,9 @@ function Shell({ me, members }) {
     workFristen: useTable('work_fristen'),
     workProtokolle: useTable('work_protokolle'),
     workThemen: useTable('work_themen'),
+    workRegeln: useTable('work_regeln'),
+    workKursnotizen: useTable('work_kursnotizen'),
+    workAenderungen: useTable('work_aenderungen'),
     ...useHomeTables(),
   };
 

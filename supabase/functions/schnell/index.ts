@@ -1,6 +1,7 @@
 // Schnell-Eintragen von außen (iPhone-Kurzbefehl / Home-Bildschirm-Widget), ohne die App zu öffnen.
 // Schlüssel: widget_tokens mit scope 'schnell' (gehört einer Person), per Header x-key oder ?key=.
 // POST { art: 'todo' | 'arbeit' | 'einkauf', text }      → Einträge (mehrere per Zeile oder Komma)
+// POST { art: 'esl' | 'team' | 'thema', text }           → Themen für ESL / Teamsitzung
 // POST { art: 'scan', media_type, data (base64) }       → KI liest aus, Ergebnis wartet in der App zum Prüfen
 // Antwort immer { ok, msg } – msg ist ein kurzer Satz für die Kurzbefehl-Anzeige.
 import { createClient } from "jsr:@supabase/supabase-js@2";
@@ -62,6 +63,18 @@ Deno.serve(async (req) => {
       const { error } = await db.from(art === "arbeit" ? "work_todos" : "todo_inbox").insert(rows);
       if (error) throw error;
       return json({ ok: true, msg: `${titel.length === 1 ? `„${titel[0]}“` : `${titel.length} To-dos`} ${art === "arbeit" ? "bei Arbeit" : "in der Familien-App"} eingetragen` });
+    }
+
+    // Themen für Besprechungen: art 'esl' oder 'team' – oder 'thema' mit „ESL: …“ / „Team: …“ am Anfang
+    if (art === "esl" || art === "team" || art === "thema") {
+      let liste = zeilen(text);
+      let wohin = art === "thema" ? "team" : art;
+      const m = art === "thema" && liste[0] ? liste[0].match(/^\s*(esl|team|jahrgangsteam|teamsitzung)\s*[:\-–]\s*(.*)$/i) : null;
+      if (m) { wohin = m[1].toLowerCase() === "esl" ? "esl" : "team"; liste = [m[2], ...liste.slice(1)].filter(Boolean); }
+      if (!liste.length) return json({ ok: false, msg: "Kein Thema angekommen." }, 400);
+      const { error } = await db.from("work_themen").insert(liste.map((t) => ({ owner: me.id, text: t.slice(0, 300), art: wohin })));
+      if (error) throw error;
+      return json({ ok: true, msg: `${liste.length === 1 ? `„${liste[0]}“` : `${liste.length} Themen`} für ${wohin === "esl" ? "die ESL" : "die Teamsitzung"} notiert` });
     }
 
     if (art === "einkauf") {

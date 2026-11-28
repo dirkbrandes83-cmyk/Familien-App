@@ -7,6 +7,8 @@ const KINDS = [
   ['abend', 'Abends um 19:30', 'Termine morgen, Einpacken, Müll (dienstags)'],
   ['vereinbaren', 'Neues unter „Erledigen“', 'sofort – an wen es betrifft'],
   ['wunsch', 'Neuer Essenswunsch', 'sofort – nur für Catrin'],
+  ['dienst', 'Dienst-Briefing um 18:00', 'Stunden, Termine, Erinnerungen und Fristen für den nächsten Schultag'],
+  ['untis', 'Untis-Änderungen', 'Vertretung, Ausfall, Raumwechsel – stündlich gesammelt (6–21 Uhr)'],
 ];
 
 function b64ToBytes(b64) {
@@ -79,7 +81,15 @@ export default function Mitteilungen({ ctx, onBack }) {
     else ctx.say('Probe verschickt – gleich sollte sie erscheinen');
   };
 
-  const kinds = KINDS.filter(([k]) => (k === 'wunsch' ? ctx.me.id === 'catrin' : true));
+  const arbeit = ctx.data.subs?.rows.some((x) => x.arbeit_von === ctx.me.id);
+  const kinds = KINDS.filter(([k]) => (k === 'wunsch' ? ctx.me.id === 'catrin' : k === 'dienst' || k === 'untis' ? arbeit : true));
+  const dienstProbe = async () => {
+    setBusy(true);
+    const { data, error } = await supabase.functions.invoke('mitteilungen', { body: { art: 'dienst-probe' } });
+    setBusy(false);
+    const n = data?.dienst?.[ctx.me.id];
+    setMsg(error ? 'Hat nicht geklappt.' : n ? '' : 'Für den nächsten Schultag steht nichts an – oder die Mitteilung ist abgeschaltet.');
+  };
 
   return (
     <>
@@ -113,6 +123,7 @@ export default function Mitteilungen({ ctx, onBack }) {
               <span className="row-main"><span className="row-title">{label}</span><span className="small">{sub2}</span></span>
             </button>
           ))}
+          {arbeit && <button className="btn ghost small" style={{ margin: '6px 0 12px' }} disabled={busy} onClick={dienstProbe}>Dienst-Briefing jetzt schicken</button>}
         </section>
       )}
       <div className="small">Jedes Gerät wird einzeln eingeschaltet. Catrin schaltet es auf ihrem iPhone selbst ein.</div>

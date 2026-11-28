@@ -108,6 +108,64 @@ async function zeitplan(db: any, force?: string) {
   return { slot, gesendet: out };
 }
 
+// ---------- Arbeit: Briefing um 18 Uhr für den nächsten Schultag, Untis-Änderungen ----------
+const UNTIS: Record<string, string> = { LZ: "Lernzeit", VER: "Vertretung", Coach: "Coaching", "WP Hand": "Wahlpflicht Hand" };
+const untisName = (namen: Record<string, string>, t: string) => namen[t] ?? UNTIS[t] ?? (t.startsWith("P-") ? `Aufsicht ${t.slice(2)}` : t);
+const klassenVon = (note: string) => (String(note ?? "").split(" · ")[1] ?? "").match(/\b\d{1,2}[a-zA-Z]{1,2}\b/g)?.join(", ") ?? "";
+export const kursVon = (ev: any) => `${ev.title}|${klassenVon(ev.note)}`;
+const WDL = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
+
+async function dienst(db: any, force?: boolean, nur?: string) {
+  const { day, hour } = berlin();
+  if (!force && hour !== 18) return { dienst: null };
+  const morgen = addDays(day, 1);
+  if (weekday(morgen) > 4) return { dienst: "wochenende" };
+  const { data: subs } = await db.from("calendar_subscriptions").select("id, art, arbeit_von").not("arbeit_von", "is", null);
+  const plan = new Set((subs ?? []).filter((x: any) => x.art === "stundenplan").map((x: any) => x.id));
+  const owners = [...new Set((subs ?? []).map((x: any) => x.arbeit_von))];
+  const { data: st } = await db.from("settings").select("value").eq("key", "untis_namen").maybeSingle();
+  const namen = st?.value ?? {};
+  const out: Record<string, number> = {};
+  for (const me of (owners as string[]).filter((x) => !nur || x === nur)) {
+    const { data: evs } = await db.from("work_events").select("*").eq("owner", me).or(`start_date.eq.${morgen},rep.neq.keine,end_date.gte.${morgen}`);
+    const occ = expand(evs ?? [], morgen, morgen);
+    const stunden = occ.filter((o: any) => o.ev.sub_id && plan.has(o.ev.sub_id) && !o.ev.all_day);
+    const termine = occ.filter((o: any) => !(o.ev.sub_id && plan.has(o.ev.sub_id)));
+    const { data: todos } = await db.from("work_todos").select("title, due, am").eq("owner", me).is("done_at", null).or(`due.lte.${morgen},am.eq.${morgen}`);
+    const { data: fristen } = await db.from("work_fristen").select("titel, datum").eq("owner", me).is("erledigt_at", null).gte("datum", day).lte("datum", addDays(day, 3));
+    const { data: notizen } = await db.from("work_kursnotizen").select("kurs, text").eq("owner", me).is("erledigt_at", null);
+    const { data: aend } = await db.from("work_aenderungen").select("text").eq("owner", me).eq("datum", morgen).is("gesehen_at", null);
+    const lines: string[] = [];
+    if (stunden.length) {
+      const von = String(stunden[0].ev.from_time).slice(0, 5), bis = String(stunden[stunden.length - 1].ev.to_time ?? stunden[stunden.length - 1].ev.from_time).slice(0, 5);
+      lines.push(`🕗 ${von}–${bis}: ${[...new Set(stunden.map((o: any) => untisName(namen, o.ev.title)))].join(", ")}`);
+      const kurse = new Set(stunden.map((o: any) => kursVon(o.ev)));
+      for (const n of (notizen ?? []).filter((n: any) => kurse.has(n.kurs))) lines.push(`📝 ${untisName(namen, n.kurs.split("|")[0])}${n.kurs.split("|")[1] ? " " + n.kurs.split("|")[1] : ""}: ${n.text}`);
+    }
+    for (const a of aend ?? []) lines.push(`⚠️ ${a.text}`);
+    for (const o of termine) lines.push(`📅 ${o.ev.all_day ? "ganztags" : String(o.ev.from_time).slice(0, 5)} ${o.ev.title}`);
+    for (const t of todos ?? []) lines.push(`🔔 ${t.title}`);
+    for (const f of fristen ?? []) lines.push(`⏳ Frist ${f.datum.slice(8, 10)}.${f.datum.slice(5, 7)}.: ${f.titel}`);
+    if (!lines.length) continue;
+    if (force || (await once(db, "dienst", day, me))) out[me] = await send(db, me, "dienst", { title: `Dienst ${WDL[weekday(morgen)]}`, body: lines.join("\n"), url: APP, tag: `dienst-${day}` });
+  }
+  return { dienst: out };
+}
+
+async function untisMelden(db: any) {
+  const { hour } = berlin();
+  if (hour < 6 || hour > 21) return { untis: "ruhezeit" };
+  const { data: rows } = await db.from("work_aenderungen").select("*").is("gemeldet_at", null).is("gesehen_at", null).order("datum");
+  const per: Record<string, any[]> = {};
+  for (const r of rows ?? []) (per[r.owner] ||= []).push(r);
+  const out: Record<string, number> = {};
+  for (const [me, l] of Object.entries(per)) {
+    out[me] = await send(db, me, "untis", { title: l.length === 1 ? "Untis-Änderung" : `${l.length} Untis-Änderungen`, body: l.slice(0, 8).map((x) => x.text).join("\n"), url: APP, tag: `untis-${Date.now()}` });
+    await db.from("work_aenderungen").update({ gemeldet_at: new Date().toISOString() }).in("id", l.map((x) => x.id));
+  }
+  return { untis: out };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -115,7 +173,8 @@ Deno.serve(async (req) => {
   webpush.setVapidDetails(cfg.subject, cfg.vapid_public, cfg.vapid_private);
   const body = await req.json().catch(() => ({}));
   try {
-    if (body.art === "zeitplan") return json(await zeitplan(db));
+    if (body.art === "zeitplan") return json({ ...(await zeitplan(db)), ...(await untisMelden(db)) });
+    if (body.art === "dienst") return json(await dienst(db));
 
     if (body.art === "vereinbaren" && body.id) {
       const { data: r } = await db.from("todo_inbox").select("*").eq("id", body.id).single();
@@ -142,6 +201,7 @@ Deno.serve(async (req) => {
     const user = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: auth } } });
     const { data: me } = await user.rpc("my_member");
     if (!me) return json({ error: "Nur für die Familie." }, 403);
+    if (body.art === "dienst-probe") return json(await (async () => { const r = await dienst(db, true, me); return { ok: true, ...r }; })());
     if (body.art === "test") {
       const n = await send(db, me, null, { title: "Familien-App", body: "Mitteilungen funktionieren auf diesem Gerät. 👍", url: APP, tag: "test" });
       return json({ ok: true, gesendet: n });
