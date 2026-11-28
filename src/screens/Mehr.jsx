@@ -4,6 +4,7 @@ import { Icon, ChipPick, Check } from '../ui.jsx';
 import { parseIcs, isCurrent } from '../lib/ics.js';
 import { shortLabel, hm } from '../lib/dates.js';
 import Mitteilungen from './Mitteilungen.jsx';
+import { FarbWahl, ABO_FARBEN } from './common.jsx';
 import Widget from './Widget.jsx';
 import CheckIn, { checkinSunday } from './CheckIn.jsx';
 import { shortLabel as sl } from '../lib/dates.js';
@@ -269,7 +270,7 @@ function Abos({ ctx, onBack }) {
   const add = async (e) => {
     e.preventDefault();
     if (!f.name.trim() || !/^(https?|webcal):\/\//i.test(f.url.trim())) { ctx.fail('Bitte einen Link mit https:// oder webcal:// einfügen'); return; }
-    const res = await run(supabase.from('calendar_subscriptions').insert({ name: f.name.trim(), url: f.url.trim(), who: f.who }).select('id').single(), ctx.fail);
+    const res = await run(supabase.from('calendar_subscriptions').insert({ name: f.name.trim(), url: f.url.trim(), who: f.who, farbe: ABO_FARBEN.find((c) => !ctx.data.subs.rows.some((r) => r.farbe === c)) ?? null }).select('id').single(), ctx.fail);
     if (res) { setF({ name: '', url: '', who: ['all'] }); await sync(res.id); }
   };
   const pickWho = (id) => {
@@ -278,6 +279,10 @@ function Abos({ ctx, onBack }) {
     const next = cur.includes(id) ? cur.filter((w) => w !== id) : [...cur, id];
     setF({ ...f, who: next.length ? next : ['all'] });
   };
+  const setFarbe = async (x, c) => {
+    ctx.data.subs.local((rows) => rows.map((r) => (r.id === x.id ? { ...r, farbe: c } : r)));
+    if (!await run(supabase.from('calendar_subscriptions').update({ farbe: c }).eq('id', x.id), ctx.fail)) ctx.data.subs.reload();
+  };
   const fmt = (t) => (t ? new Date(t).toLocaleString('de-DE', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'noch nie');
   return (
     <>
@@ -285,7 +290,7 @@ function Abos({ ctx, onBack }) {
       <FeedLink ctx={ctx} />
       <section className="card">
         <div className="card-title">Kalender-Abos</div>
-        <div className="sub">Termine aus Abos sind nur lesbar und werden stündlich aktualisiert. Neue Termine erscheinen im Kalender unter „Neue Termine prüfen“ – mit der Frage nach Kinderbetreuung.</div>
+        <div className="sub">Termine aus Abos sind nur lesbar und werden stündlich aktualisiert. Mit der Farbe erkennst du sie im Kalender. Neue Termine erscheinen im Kalender unter „Neue Termine prüfen“ – mit der Frage nach Kinderbetreuung.</div>
       </section>
       {subs.map((x) => (
         <section key={x.id} className="card">
@@ -294,6 +299,7 @@ function Abos({ ctx, onBack }) {
             {!x.active && <span className="tag">pausiert</span>}
           </div>
           {x.last_error && <div className="err">Fehler: {x.last_error}</div>}
+          <FarbWahl value={x.farbe} onPick={(c) => setFarbe(x, c)} />
           <div className="chips">
             <button className="btn small" disabled={busy === x.id || !x.active} onClick={() => sync(x.id)}>{busy === x.id ? 'Gleiche ab …' : 'Jetzt abgleichen'}</button>
             <button className="btn ghost small" onClick={() => run(supabase.from('calendar_subscriptions').update({ active: !x.active }).eq('id', x.id), ctx.fail)}>{x.active ? 'Pausieren' : 'Fortsetzen'}</button>

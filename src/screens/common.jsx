@@ -11,6 +11,24 @@ export const SRC = {
   scan: 'aus Elternbrief',
   station: 'vom Familien-iPad',
 };
+// Farben für Kalender-Abos
+export const ABO_FARBEN = ['#2563EB', '#0891B2', '#059669', '#65A30D', '#D97706', '#DC2626', '#DB2777', '#7C3AED', '#475569'];
+// Abo eines Termins (auch gespiegelte Dienst-Termine „arbeit:<id>“) und dessen Farbe
+export function aboVon(ctx, ev) {
+  let id = ev.sub_id;
+  if (!id && ev.ext_uid?.startsWith('arbeit:')) id = ctx.data.workEvents?.rows.find((w) => `arbeit:${w.id}` === ev.ext_uid)?.sub_id;
+  return id ? ctx.data.subs?.rows.find((x) => x.id === id) : null;
+}
+export const aboFarbe = (ctx, ev) => aboVon(ctx, ev)?.farbe || null;
+export function FarbWahl({ value, onPick }) {
+  return (
+    <div className="farbwahl" role="group" aria-label="Farbe">
+      <button type="button" className={`farbe keine${!value ? ' on' : ''}`} aria-pressed={!value} aria-label="Keine Farbe" onClick={() => onPick(null)} />
+      {ABO_FARBEN.map((c) => <button key={c} type="button" className={`farbe${value === c ? ' on' : ''}`} style={{ background: c }} aria-pressed={value === c} aria-label={`Farbe ${c}`} onClick={() => onPick(c)} />)}
+    </div>
+  );
+}
+
 export const KINDS = { termin: 'Termin', test: 'Test', frist: 'Frist', geburtstag: 'Geburtstag' };
 
 export function timeLabel(ev, date) {
@@ -24,22 +42,23 @@ export function timeLabel(ev, date) {
 export function EventRow({ ev, date, ctx, showDate, fuer }) {
   // Im Personenfilter: Termine, bei denen die Person nur fährt, bekommen einen Hinweis
   const fahrt = fuer && fuer !== 'all' ? fahrtenVon(ev, fuer) : [];
+  const abo = aboVon(ctx, ev);
   const sub = [
     !ev.all_day && ev.to_time ? `bis ${hm(ev.to_time)}` : null,
     ev.kind !== 'termin' && ev.kind !== 'test' ? KINDS[ev.kind] : null,
     ev.rep !== 'keine' ? ev.rep : null,
     ev.src === 'station' && ctx.member(ev.created_by) ? `eingetragen von ${ctx.member(ev.created_by).name}`
-      : ev.src === 'abo' ? (ctx.data.subs?.rows.find((x) => x.id === ev.sub_id)?.name ?? 'Abo') : SRC[ev.src] && ev.src !== 'fam' ? SRC[ev.src] : null,
+      : ev.src === 'abo' && !abo ? 'Abo' : !abo && SRC[ev.src] && ev.src !== 'fam' ? SRC[ev.src] : null,
   ].filter(Boolean).join(' · ');
   return (
-    <button className="row" onClick={() => ctx.openEvent(ev, { date })}>
+    <button className={`row${abo?.farbe ? ' abo-farbig' : ''}`} style={abo?.farbe ? { '--abo': abo.farbe } : undefined} onClick={() => ctx.openEvent(ev, { date })}>
       <span className="time" style={ev.all_day ? { fontSize: 12, color: '#57534E' } : undefined}>{showDate || timeLabel(ev, date)}</span>
       <span className="row-main">
         <span className="row-title">{ev.kind === 'test' ? <span className="test-tag">Test</span> : null}{date ? titelAm(ev, date) : ev.title}</span>
         <PersonChips who={ev.who} members={ctx.members} />
         {fahrt.length > 0 && <span className="fahrt-tag"><Icon name="car" size={14} />{ctx.member(fuer)?.name} {fahrt.join(' und ')}</span>}
         <BringPick ev={ev} />
-        {sub && <span className="small">{sub}</span>}
+        {(sub || abo) && <span className="small">{abo && <span className="abo-tag" style={abo.farbe ? { color: abo.farbe } : undefined}>{abo.name}</span>}{abo && sub ? ' · ' : ''}{sub}</span>}
       </span>
       <Icon name="chev" size={18} className="chev" />
     </button>

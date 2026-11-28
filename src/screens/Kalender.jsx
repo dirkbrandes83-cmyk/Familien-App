@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Icon, Seg, Check } from '../ui.jsx';
 import { addDays, expand, mondayOf, longLabel, parse, iso, MONTHS, WD, weekday, titelAm } from '../lib/dates.js';
-import { EventRow } from './common.jsx';
+import { EventRow, aboFarbe } from './common.jsx';
 import { supabase, run } from '../data.js';
 import { EintragSheet, amText } from './Eintrag.jsx';
 import { besorgenText } from '../lib/aufgaben.js';
@@ -109,9 +109,10 @@ function Monat({ ctx, who, events, todos, month, setMonth, sel, setSel }) {
   for (const o of occ) (byDay[o.date] ||= []).push(o);
   const dotColors = (list) => {
     const ids = new Set();
-    for (const o of list) for (const w of o.ev.who) ids.add(w);
-    if (ids.has('all')) return ['#0F766E'];
-    return [...ids].slice(0, 3).map((id) => ctx.member(id)?.color || '#57534E');
+    const farben = new Set();
+    for (const o of list) { const f = aboFarbe(ctx, o.ev); if (f) farben.add(f); else for (const w of o.ev.who) ids.add(w); }
+    const personen = ids.has('all') ? ['#0F766E'] : [...ids].map((id) => ctx.member(id)?.color || '#57534E');
+    return [...new Set([...personen, ...farben])].slice(0, 3);
   };
   const m = parse(first);
   const shiftMonth = (n) => { const d = new Date(m.getFullYear(), m.getMonth() + n, 1, 12); setMonth(iso(d).slice(0, 7)); };

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { supabase, run } from '../data.js';
 import { Icon, Check, Sheet, Swipe } from '../ui.jsx';
 import { UnterrichtHeute, FristenHeute } from './ArbeitOrga.jsx';
+import { FarbWahl, ABO_FARBEN } from './common.jsx';
 import { addDays, mondayOf, parse, shortLabel, longLabel, hm, expand, WD, weekday } from '../lib/dates.js';
 
 // Arbeitsbereich: private To-dos und Termine (nur ich sehe sie).
@@ -17,6 +18,8 @@ const abhakenArbeit = async (ctx, t) => {
   if (!await run(supabase.from('work_todos').update({ done_at: v }).eq('id', t.id), ctx.fail)) ctx.data.workTodos.reload();
   else if (v) ctx.say('Erledigt', () => abhakenArbeit(ctx, { ...t, done_at: v }));
 };
+
+const aboFarbeArbeit = (ctx, ev) => (ev.sub_id ? ctx.data.subs.rows.find((x) => x.id === ev.sub_id)?.farbe : null) || null;
 
 // Seiten im Arbeitsmodus
 export function ArbeitTodosSeite({ ctx }) {
@@ -36,6 +39,7 @@ export function ArbeitKalenderSeite({ ctx }) {
 // Arbeit heute: Termine, fällige To-dos – und was privat heute ansteht (damit nichts kollidiert)
 export function ArbeitHeuteSeite({ ctx }) {
   const [todo, setTodo] = useState(null);
+  const farbe = (ev) => aboFarbeArbeit(ctx, ev);
   const occ = expand(ctx.data.workEvents.rows, ctx.day, ctx.day);
   const woche = expand(ctx.data.workEvents.rows, addDays(ctx.day, 1), addDays(ctx.day, 6));
   const faellig = ctx.data.workTodos.rows.filter((t) => !t.done_at && ((t.am && t.am <= ctx.day) || (t.due && t.due <= addDays(ctx.day, 1))));
@@ -47,7 +51,7 @@ export function ArbeitHeuteSeite({ ctx }) {
         <div className="h-label" style={{ padding: '12px 0 4px' }}>Termine heute</div>
         {occ.length === 0 && <div className="empty" style={{ padding: '6px 0 12px' }}>Keine Arbeitstermine heute.</div>}
         {occ.map((o) => (
-          <div key={o.ev.id} className="row ar-ev">
+          <div key={o.ev.id} className={`row ar-ev${farbe(o.ev) ? ' abo-farbig' : ''}`} style={farbe(o.ev) ? { '--abo': farbe(o.ev) } : undefined}>
             <span className="time">{o.ev.all_day ? 'ganzt.' : hm(o.ev.from_time)}</span>
             <span className="row-main"><span className="row-title">{o.ev.title}</span>{(o.ev.to_time || o.ev.note) && <span className="small">{[o.ev.to_time && `bis ${hm(o.ev.to_time)}`, o.ev.note].filter(Boolean).join(' · ')}</span>}</span>
           </div>
@@ -67,7 +71,7 @@ export function ArbeitHeuteSeite({ ctx }) {
       {woche.length > 0 && (
         <section className="card tight">
           <div className="h-label" style={{ padding: '12px 0 4px' }}>Nächste Tage</div>
-          {woche.slice(0, 6).map((o) => <div key={o.ev.id + o.date} className="small ar-zeile"><b>{shortLabel(o.date)} {o.ev.all_day ? '' : hm(o.ev.from_time)}</b> {o.ev.title}</div>)}
+          {woche.slice(0, 6).map((o) => <div key={o.ev.id + o.date} className="small ar-zeile" style={farbe(o.ev) ? { borderLeft: `3px solid ${farbe(o.ev)}`, paddingLeft: 6 } : undefined}><b>{shortLabel(o.date)} {o.ev.all_day ? '' : hm(o.ev.from_time)}</b> {o.ev.title}</div>)}
           <div style={{ height: 8 }} />
         </section>
       )}
@@ -151,6 +155,7 @@ function ArbeitTermine({ ctx }) {
   const isThis = start === mondayOf(ctx.day);
   const s = parse(start), e = parse(addDays(start, 6));
   const familie = (ev, an) => familieSetzen(ctx, ev, an);
+  const farbe = (ev) => aboFarbeArbeit(ctx, ev);
   const abhaken = (t) => abhakenArbeit(ctx, t);
   return (
     <>
@@ -172,7 +177,7 @@ function ArbeitTermine({ ctx }) {
             <div key={d} className="ar-tag">
               <div className={`label${d === ctx.day ? ' heute' : ''}`}>{d === ctx.day ? 'Heute' : `${WD[weekday(d)]} ${parse(d).getDate()}.`}</div>
               {list.map((o) => (
-                <div key={o.ev.id + d} className="row ar-ev">
+                <div key={o.ev.id + d} className={`row ar-ev${farbe(o.ev) ? ' abo-farbig' : ''}`} style={farbe(o.ev) ? { '--abo': farbe(o.ev) } : undefined}>
                   <span className="time">{o.ev.all_day ? 'ganzt.' : hm(o.ev.from_time)}</span>
                   <button className="row-open" onClick={() => !o.ev.sub_id && setTermin(o.ev)} disabled={!!o.ev.sub_id}>
                     <span className="row-main"><span className="row-title">{o.ev.title}</span>
@@ -296,7 +301,7 @@ function ArbeitsAbo({ ctx }) {
   const add = async (e) => {
     e.preventDefault();
     if (!f.name.trim() || !/^(https?|webcal):\/\//i.test(f.url.trim())) { ctx.fail('Bitte einen Link mit https:// oder webcal:// einfügen'); return; }
-    const res = await run(supabase.from('calendar_subscriptions').insert({ name: f.name.trim(), url: f.url.trim(), who: [ctx.me.id], arbeit_von: ctx.me.id }).select('id').single(), ctx.fail);
+    const res = await run(supabase.from('calendar_subscriptions').insert({ name: f.name.trim(), url: f.url.trim(), who: [ctx.me.id], arbeit_von: ctx.me.id, farbe: ABO_FARBEN.find((c) => !ctx.data.subs.rows.some((r) => r.farbe === c)) ?? null }).select('id').single(), ctx.fail);
     if (res) { setF({ name: '', url: '' }); ctx.data.subs.reload(); await sync(res.id); }
   };
   return (
@@ -304,10 +309,13 @@ function ArbeitsAbo({ ctx }) {
       <div className="card-title">Dienstkalender</div>
       <div className="sub">Termine aus dem Abo sind nur für dich sichtbar und werden stündlich aktualisiert. Mit „Familie“ zeigst du einzelne Termine auch im Familienkalender.</div>
       {meine.map((x) => (
-        <div key={x.id} className="row" style={{ gap: 8 }}>
-          <span className="row-main"><span className="row-title">{x.name}</span>{x.last_error && <span className="small" style={{ color: '#B91C1C' }}>Fehler: {x.last_error}</span>}</span>
+        <div key={x.id} style={{ borderTop: '1px solid var(--line)', padding: '6px 0' }}>
+        <div className="row" style={{ gap: 8 }}>
+          <span className="row-main"><span className="row-title" style={x.farbe ? { color: x.farbe } : undefined}>{x.name}</span>{x.last_error && <span className="small" style={{ color: '#B91C1C' }}>Fehler: {x.last_error}</span>}</span>
           <button className="btn small" disabled={busy} onClick={() => sync(x.id)}>{busy ? '…' : 'Abgleichen'}</button>
           <button className="btn ghost small" style={{ color: '#B91C1C' }} onClick={async () => { if (window.confirm(`Abo „${x.name}“ und seine Termine entfernen?`) && await run(supabase.from('calendar_subscriptions').delete().eq('id', x.id), ctx.fail)) { ctx.data.subs.reload(); ctx.data.workEvents.reload(); } }}>Entfernen</button>
+        </div>
+        <FarbWahl value={x.farbe} onPick={async (c) => { ctx.data.subs.local((rows) => rows.map((r) => (r.id === x.id ? { ...r, farbe: c } : r))); if (!await run(supabase.from('calendar_subscriptions').update({ farbe: c }).eq('id', x.id), ctx.fail)) ctx.data.subs.reload(); }} />
         </div>
       ))}
       <form onSubmit={add} style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 8 }}>

@@ -946,3 +946,10 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .frist-bar > span { display: block; height: 100%; background: #0F766E; }
 .frist-schritt { display: grid; grid-template-columns: 1fr 64px auto auto; gap: 6px; align-items: center; margin-bottom: 6px; }
 .prot-text { font-family: inherit; line-height: 1.45; min-height: 200px; }
+/* Abo-Farben */
+.farbwahl { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.farbe { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--line); padding: 0; flex: none; }
+.farbe.on { box-shadow: 0 0 0 3px #1C1917; }
+.farbe.keine { background: repeating-linear-gradient(45deg, #fff 0 4px, #E7E1D8 4px 6px); }
+.row.abo-farbig { box-shadow: inset 4px 0 0 var(--abo); padding-left: 10px; }
+.abo-tag { font-weight: 700; }
