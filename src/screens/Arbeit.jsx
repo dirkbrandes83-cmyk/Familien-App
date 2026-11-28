@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { supabase, run } from '../data.js';
 import { Icon, Check, Sheet, Swipe } from '../ui.jsx';
+import { UnterrichtHeute, FristenHeute } from './ArbeitOrga.jsx';
 import { addDays, mondayOf, parse, shortLabel, longLabel, hm, expand, WD, weekday } from '../lib/dates.js';
 
 // Arbeitsbereich: private To-dos und Termine (nur ich sehe sie).
@@ -41,6 +42,7 @@ export function ArbeitHeuteSeite({ ctx }) {
   const privat = expand(ctx.data.events.rows.filter((e) => e.src !== 'arbeit' && ((e.who || []).includes(ctx.me.id) || (e.who || []).includes('all') || e.bring_by === ctx.me.name || e.pick_by === ctx.me.name)), ctx.day, ctx.day);
   return (
     <>
+      <UnterrichtHeute ctx={ctx} />
       <section className="card tight">
         <div className="h-label" style={{ padding: '12px 0 4px' }}>Termine heute</div>
         {occ.length === 0 && <div className="empty" style={{ padding: '6px 0 12px' }}>Keine Arbeitstermine heute.</div>}
@@ -61,6 +63,7 @@ export function ArbeitHeuteSeite({ ctx }) {
           </div>
         ))}
       </section>
+      <FristenHeute ctx={ctx} />
       {woche.length > 0 && (
         <section className="card tight">
           <div className="h-label" style={{ padding: '12px 0 4px' }}>Nächste Tage</div>

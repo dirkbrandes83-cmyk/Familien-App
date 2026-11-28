@@ -2,12 +2,13 @@ import { DauerkartenGast } from './screens/Dauerkarten.jsx';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase, useTable, useHomeTables } from './data.js';
 import { Icon, Toast } from './ui.jsx';
-import { longLabel, today } from './lib/dates.js';
+import { longLabel, today, addDays } from './lib/dates.js';
 import Login, { NewPassword } from './screens/Login.jsx';
 import Heute from './screens/Heute.jsx';
 import Kalender from './screens/Kalender.jsx';
 import Listen from './screens/Erinnerungen.jsx';
 import Planen from './screens/Planen.jsx';
+import { StundenplanSeite, OrgaSeite } from './screens/ArbeitOrga.jsx';
 import { ArbeitHeuteSeite, ArbeitKalenderSeite, ArbeitTodosSeite, TerminSheet, TodoSheet } from './screens/Arbeit.jsx';
 import Mehr from './screens/Mehr.jsx';
 import EventSheet from './screens/EventSheet.jsx';
@@ -26,6 +27,8 @@ const ARBEIT_TABS = [
   ['a-heute', 'Heute', 'home'],
   ['a-kalender', 'Kalender', 'cal'],
   ['a-todos', 'To-dos', 'todo'],
+  ['a-stunden', 'Stunden', 'clock'],
+  ['a-orga', 'Orga', 'briefcase'],
 ];
 const TAB_IDS = [...TABS, ...ARBEIT_TABS].map((t) => t[0]);
 // Alte Ziele (vor dem Umbau) auf die neue Struktur abbilden
@@ -124,6 +127,9 @@ function Shell({ me, members }) {
     workTodos: useTable('work_todos'),
     scans: useTable('scan_inbox'),
     workEvents: useTable('work_events'),
+    workStunden: useTable('work_stunden'),
+    workFristen: useTable('work_fristen'),
+    workProtokolle: useTable('work_protokolle'),
     ...useHomeTables(),
   };
 
@@ -152,7 +158,7 @@ function Shell({ me, members }) {
   const openInbox = data.inbox.rows.filter((r) => !r.done_at && (!r.owner || r.owner === me.id)).length;
   const openBuy = data.buy.rows.filter((r) => !r.done).length;
   const toReview = data.events.rows.filter((e) => e.review).length;
-  const titles = { heute: `Hallo ${me.name}`, kalender: 'Kalender', listen: 'Listen', planen: 'Planen', zuhause: 'Zuhause', 'a-heute': 'Arbeit', 'a-kalender': 'Termine', 'a-todos': 'To-dos' };
+  const titles = { heute: `Hallo ${me.name}`, kalender: 'Kalender', listen: 'Listen', planen: 'Planen', zuhause: 'Zuhause', 'a-heute': 'Arbeit', 'a-kalender': 'Termine', 'a-todos': 'To-dos', 'a-stunden': 'Stundenplan', 'a-orga': 'Orga' };
   const darfArbeit = !me.kid;
   const arbeit = darfArbeit && modus === 'arbeit';
   const tabs = arbeit ? ARBEIT_TABS : TABS;
@@ -201,6 +207,8 @@ function Shell({ me, members }) {
         {mehr ? <Mehr ctx={ctx} onClose={() => setMehr(false)} />
           : aktiv === 'a-heute' ? <ArbeitHeuteSeite ctx={ctx} />
           : aktiv === 'a-kalender' ? <ArbeitKalenderSeite ctx={ctx} />
+          : aktiv === 'a-stunden' ? <StundenplanSeite ctx={ctx} />
+          : aktiv === 'a-orga' ? <OrgaSeite ctx={ctx} />
           : aktiv === 'a-todos' ? <ArbeitTodosSeite ctx={ctx} />
           : aktiv === 'heute' ? <Heute ctx={ctx} />
           : aktiv === 'kalender' ? <Kalender ctx={ctx} seg={calSeg} setSeg={setCalSeg} />
@@ -215,7 +223,8 @@ function Shell({ me, members }) {
         <div className="tabs-inner">
           {tabs.map(([id, label, icon]) => {
             const n = id === 'listen' ? openShop + openInbox + openBuy : id === 'kalender' ? toReview
-              : id === 'a-todos' ? data.workTodos.rows.filter((t) => !t.done_at && ((t.am && t.am <= day) || (t.due && t.due <= day))).length : 0;
+              : id === 'a-todos' ? data.workTodos.rows.filter((t) => !t.done_at && ((t.am && t.am <= day) || (t.due && t.due <= day))).length
+              : id === 'a-orga' ? data.workFristen.rows.filter((x) => !x.erledigt_at && x.datum <= addDays(day, 3)).length : 0;
             return (
               <button key={id} className={`tab${aktiv === id && !mehr ? ' on' : ''}`} aria-current={aktiv === id && !mehr ? 'page' : undefined}
                 onClick={() => { setMehr(false); setPlus(false); setTab(id); }}>

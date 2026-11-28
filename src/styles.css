@@ -927,3 +927,22 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .st-evmain { min-width: 0; flex: 1; }
 .st-evtitle { overflow-wrap: anywhere; }
 .st-evtitle { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+/* Arbeit: Stundenplan, Fristen, Protokolle */
+.sp-row { width: 100%; text-align: left; background: none; border: 0; min-height: 46px; gap: 10px; padding: 6px 0; font: inherit; color: inherit; }
+.sp-row .time { flex: none; width: 48px; font-size: 13px; font-weight: 700; color: var(--muted); }
+.sp-row.vorbei { opacity: .45; }
+.sp-row.jetzt .row-title { color: #0F766E; }
+.sp-n { display: block; font-size: 11px; font-weight: 600; opacity: .7; min-height: 13px; }
+.sp-fokus { display: flex; flex-direction: column; gap: 2px; background: #ECFDF5; border-radius: 12px; padding: 10px 12px; margin: 4px 0 8px; }
+.sp-fokus b { font-size: 18px; overflow-wrap: anywhere; }
+.sp-fokus-tag { font-size: 12px; font-weight: 700; color: #0F766E; text-transform: uppercase; letter-spacing: .03em; }
+.frist-row { width: 100%; text-align: left; background: none; border: 0; font: inherit; color: inherit; gap: 10px; padding: 8px 0; min-height: 52px; }
+.frist-row:disabled { opacity: 1; cursor: default; }
+.frist-rest { flex: none; width: 72px; text-align: center; font-size: 12px; font-weight: 700; border-radius: 999px; padding: 4px 6px; }
+.frist-rest.rot { background: #FEE2E2; color: #B91C1C; }
+.frist-rest.gelb { background: #FEF3C7; color: #B45309; }
+.frist-rest.gruen { background: #DCFCE7; color: #15803D; }
+.frist-bar { display: block; height: 4px; border-radius: 2px; background: var(--line); margin-top: 4px; overflow: hidden; }
+.frist-bar > span { display: block; height: 100%; background: #0F766E; }
+.frist-schritt { display: grid; grid-template-columns: 1fr 64px auto auto; gap: 6px; align-items: center; margin-bottom: 6px; }
+.prot-text { font-family: inherit; line-height: 1.45; min-height: 200px; }
