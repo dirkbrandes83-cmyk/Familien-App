@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { supabase, run } from '../data.js';
-import { Icon, Check, Sheet, Seg } from '../ui.jsx';
+import { Icon, Check, Sheet, Seg, useBreit } from '../ui.jsx';
 import { addDays, mondayOf, shortLabel, hm, expand, WD, WDL, weekday, diffDays } from '../lib/dates.js';
 
 // Arbeitsbereich, Teil 2: Stundenplan, Fristen mit Vorlauf-To-dos, Besprechungsprotokolle.
@@ -54,6 +54,48 @@ export function UnterrichtHeute({ ctx }) {
 }
 
 export function StundenplanSeite({ ctx }) {
+  const breit = useBreit();
+  if (breit) return <StundenplanWoche ctx={ctx} />;
+  return <StundenplanTag ctx={ctx} />;
+}
+
+// iPad: ganze Woche als Raster Mo–Fr
+function StundenplanWoche({ ctx }) {
+  const [sheet, setSheet] = useState(null);
+  const rows = ctx.data.workStunden.rows;
+  const montag = weekday(ctx.day) > 4 ? addDays(mondayOf(ctx.day), 7) : mondayOf(ctx.day);
+  return (
+    <>
+      <div className="sp-woche">
+        {[0, 1, 2, 3, 4].map((i) => {
+          const datum = addDays(montag, i);
+          const list = stundenAm(rows, datum);
+          return (
+            <section key={i} className={`card tight sp-tag${datum === ctx.day ? ' heute' : ''}`}>
+              <div className="card-head" style={{ padding: '10px 0 6px' }}>
+                <div className="card-title">{WD[i]} <span className="small">{shortLabel(datum).split(' ')[1]}</span></div>
+                <button className="icon-btn" aria-label={`Neue Stunde am ${WDL[i]}`} onClick={() => setSheet({ s: { wochentag: i + 1 }, datum: null })}><Icon name="plus" size={18} /></button>
+              </div>
+              {list.length === 0 && <div className="small" style={{ padding: '4px 0 10px' }}>frei</div>}
+              {list.map((s) => (
+                <button key={s.id} className={`sp-block${faelltAus(s, datum) ? ' aus' : ''}`} onClick={() => setSheet({ s, datum })}>
+                  <span className="sp-zeit">{zeit(s)}</span>
+                  <b>{s.fach}</b>
+                  {ortVon(s) && <span className="small">{ortVon(s)}</span>}
+                  {s.notiz && <span className="small">📝 {s.notiz}</span>}
+                </button>
+              ))}
+              <div style={{ height: 8 }} />
+            </section>
+          );
+        })}
+      </div>
+      {sheet && <StundeSheet ctx={ctx} s={sheet.s} datum={sheet.datum} onClose={() => setSheet(null)} />}
+    </>
+  );
+}
+
+function StundenplanTag({ ctx }) {
   const heuteWt = Math.min(weekday(ctx.day), 4);
   const [tag, setTag] = useState(heuteWt);
   const [sheet, setSheet] = useState(null);
@@ -400,6 +442,11 @@ function ProtokollSheet({ ctx, p, onClose }) {
 
 // Seite „Orga“: Fristen und Protokolle
 export function OrgaSeite({ ctx }) {
+  const breit = useBreit(1100);
+  if (breit) return <div className="orga3"><div><FristenListe ctx={ctx} /></div><div><TeamSeite ctx={ctx} /></div><div><ProtokollListe ctx={ctx} /></div></div>;
+  return <OrgaSchmal ctx={ctx} />;
+}
+function OrgaSchmal({ ctx }) {
   const [seg, setSeg] = useState(() => { try { return sessionStorage.getItem('orga') || 'fristen'; } catch { return 'fristen'; } });
   const pick = (s) => { setSeg(s); try { sessionStorage.setItem('orga', s); } catch { /* egal */ } };
   return (

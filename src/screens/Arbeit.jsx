@@ -4,7 +4,7 @@ import { Icon, Check, Sheet, Swipe } from '../ui.jsx';
 import { UnterrichtHeute, FristenHeute, TeamThemen, istTeam, themenVon } from './ArbeitOrga.jsx';
 import { FarbWahl, ABO_FARBEN } from './common.jsx';
 import { addDays, mondayOf, parse, shortLabel, longLabel, hm, expand, WD, weekday, MONTHS } from '../lib/dates.js';
-import { Seg } from '../ui.jsx';
+import { Seg, useBreit } from '../ui.jsx';
 
 // Arbeitsbereich: private To-dos und Termine (nur ich sehe sie).
 // Termine mit „Für die Familie wichtig“ erscheinen zusätzlich im Familienkalender (die Datenbank spiegelt sie).
@@ -41,19 +41,23 @@ export function ArbeitKalenderSeite({ ctx }) {
 export function ArbeitHeuteSeite({ ctx }) {
   const [todo, setTodo] = useState(null);
   const [termin, setTermin] = useState(null);
+  const breit = useBreit();
   const farbe = (ev) => aboFarbeArbeit(ctx, ev);
   const occ = expand(ctx.data.workEvents.rows, ctx.day, ctx.day);
   const woche = expand(ctx.data.workEvents.rows, addDays(ctx.day, 1), addDays(ctx.day, 6));
   const faellig = ctx.data.workTodos.rows.filter((t) => !t.done_at && ((t.am && t.am <= ctx.day) || (t.due && t.due <= addDays(ctx.day, 1))));
   const privat = expand(ctx.data.events.rows.filter((e) => e.src !== 'arbeit' && ((e.who || []).includes(ctx.me.id) || (e.who || []).includes('all') || e.bring_by === ctx.me.name || e.pick_by === ctx.me.name)), ctx.day, ctx.day);
   return (
-    <>
+    <div className="ar-dash">
+      <div className="ar-col">
       <UnterrichtHeute ctx={ctx} />
       <section className="card tight">
         <div className="h-label" style={{ padding: '12px 0 4px' }}>Termine heute</div>
         {occ.length === 0 && <div className="empty" style={{ padding: '6px 0 12px' }}>Keine Arbeitstermine heute.</div>}
         {occ.map((o) => <TerminZeile key={o.ev.id} ctx={ctx} o={o} onOpen={setTermin} />)}
       </section>
+      </div>
+      <div className="ar-col">
       <section className="card tight">
         <div className="h-label" style={{ padding: '12px 0 4px' }}>Fällig</div>
         {faellig.length === 0 && <div className="empty" style={{ padding: '6px 0 12px' }}>Nichts fällig.</div>}
@@ -65,10 +69,12 @@ export function ArbeitHeuteSeite({ ctx }) {
         ))}
       </section>
       <FristenHeute ctx={ctx} />
+      </div>
+      <div className="ar-col">
       {woche.length > 0 && (
         <section className="card tight">
           <div className="h-label" style={{ padding: '12px 0 4px' }}>Nächste Tage</div>
-          {woche.slice(0, 6).map((o) => <div key={o.ev.id + o.date} className="small ar-zeile" style={farbe(o.ev) ? { borderLeft: `3px solid ${farbe(o.ev)}`, paddingLeft: 6 } : undefined}><b>{shortLabel(o.date)} {o.ev.all_day ? '' : hm(o.ev.from_time)}</b> {o.ev.title}</div>)}
+          {woche.slice(0, breit ? 12 : 6).map((o) => <div key={o.ev.id + o.date} className="small ar-zeile" style={farbe(o.ev) ? { borderLeft: `3px solid ${farbe(o.ev)}`, paddingLeft: 6 } : undefined}><b>{shortLabel(o.date)} {o.ev.all_day ? '' : hm(o.ev.from_time)}</b> {o.ev.title}</div>)}
           <div style={{ height: 8 }} />
         </section>
       )}
@@ -79,9 +85,10 @@ export function ArbeitHeuteSeite({ ctx }) {
           <div style={{ height: 8 }} />
         </section>
       )}
+      </div>
       {todo && <TodoSheet ctx={ctx} t={todo} onClose={() => setTodo(null)} />}
       {termin && <TerminSheet ctx={ctx} ev={termin.ev} datum={termin.date} onClose={() => setTermin(null)} />}
-    </>
+    </div>
   );
 }
 
@@ -131,12 +138,14 @@ function ArbeitTodos({ ctx }) {
           <button className="icon-btn" aria-label="Neues Arbeits-To-do" onClick={() => setTodo({ kategorie: filter !== 'alle' && filter !== 'ohne' ? filter : null })}><Icon name="plus" size={18} /></button>
         </div>
         {zeigen.length === 0 && <div className="empty" style={{ padding: '8px 0' }}>Nichts offen.</div>}
+        <div className="ar-gruppen">
         {gruppen.map(([k, l]) => (
-          <div key={k || '-'}>
+          <div key={k || '-'} className="ar-gruppe">
             {filter === 'alle' && kats.length > 0 && <div className="label ar-kat-label">{k || 'Ohne Kategorie'}</div>}
             {l.map(Zeile)}
           </div>
         ))}
+        </div>
       </section>
       {todo && <TodoSheet ctx={ctx} t={todo} onClose={() => setTodo(null)} />}
     </>
@@ -194,7 +203,7 @@ function ArbeitMonat({ ctx }) {
   const selTodos = todos.filter((t) => t.am === sel);
   const selFristen = ctx.data.workFristen.rows.filter((x) => x.datum === sel);
   return (
-    <>
+    <div className="ar-split">
       <section className="card" style={{ padding: '10px 8px' }}>
         <div className="card-head" style={{ padding: '0 4px 6px' }}>
           <button className="icon-btn" aria-label="Voriger Monat" onClick={() => shift(-1)}><Icon name="left" /></button>
@@ -237,11 +246,12 @@ function ArbeitMonat({ ctx }) {
       </section>
       {termin && <TerminSheet ctx={ctx} ev={termin.ev} datum={termin.date} onClose={() => setTermin(null)} />}
       {todo && <TodoSheet ctx={ctx} t={todo} onClose={() => setTodo(null)} />}
-    </>
+    </div>
   );
 }
 
 function ArbeitWoche({ ctx }) {
+  const breit = useBreit();
   const [start, setStart] = useState(mondayOf(ctx.day));
   const [termin, setTermin] = useState(null);
   const [todo, setTodo] = useState(null);
@@ -263,10 +273,11 @@ function ArbeitWoche({ ctx }) {
           <button className="cal-range" onClick={() => setStart(mondayOf(ctx.day))} disabled={isThis}>{isThis ? 'Diese Woche' : `${s.getDate()}.${s.getMonth() + 1}. – ${e.getDate()}.${e.getMonth() + 1}. · zu heute`}</button>
           <button className="icon-btn" aria-label="Nächste Woche" onClick={() => setStart(addDays(start, 7))}><Icon name="chev" size={18} /></button>
         </div>
+        <div className="ar-woche">
         {tage.map((d) => {
           const list = occ.filter((o) => o.date === d);
           const tt = todos.filter((t) => t.am === d);
-          if (!list.length && !tt.length) return null;
+          if (!list.length && !tt.length && !breit) return null;
           return (
             <div key={d} className="ar-tag">
               <div className={`label${d === ctx.day ? ' heute' : ''}`}>{d === ctx.day ? 'Heute' : `${WD[weekday(d)]} ${parse(d).getDate()}.`}</div>
@@ -280,6 +291,7 @@ function ArbeitWoche({ ctx }) {
             </div>
           );
         })}
+        </div>
         {occ.length === 0 && !todos.some((t) => t.am && t.am >= start && t.am <= addDays(start, 6)) && <div className="empty" style={{ padding: '8px 0' }}>Keine Arbeitstermine in dieser Woche.</div>}
       </section>
       {termin && <TerminSheet ctx={ctx} ev={termin.ev} datum={termin.date} onClose={() => setTermin(null)} />}

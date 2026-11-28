@@ -955,3 +955,58 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .abo-tag { font-weight: 700; }
 .thema-neu { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
 .thema-neu .input { flex: 1; min-width: 0; }
+/* Arbeit auf dem iPad: Seitenleiste, mehrspaltig. Handy bleibt unverändert. */
+.ar-dash, .ar-col, .ar-split, .ar-woche, .ar-gruppen { display: contents; }
+.sp-woche { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; align-items: start; }
+.sp-tag.heute { box-shadow: 0 0 0 2px #4338CA inset; }
+.sp-block { hyphens: auto; display: flex; flex-direction: column; gap: 2px; text-align: left; width: 100%; background: #EEF2FF; border: 0; border-radius: 12px; padding: 8px 10px; margin-bottom: 6px; font: inherit; color: inherit; overflow-wrap: anywhere; }
+.sp-block.aus { opacity: .5; text-decoration: line-through; }
+.sp-zeit { font-size: 12px; font-weight: 700; color: #4338CA; }
+.orga3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.orga3 > div { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+@media (min-width: 740px) {
+  .app.modus-arbeit { max-width: none; }
+  .modus-arbeit .head { max-width: none; left: 96px; padding-left: 24px; padding-right: 24px; }
+  .modus-arbeit .main { padding: calc(env(safe-area-inset-top) + 70px) 24px 32px 120px; max-width: 1500px; }
+  .modus-arbeit .tabs { top: 0; right: auto; width: 96px; flex-direction: column; justify-content: flex-start; border-top: 0; border-right: 1px solid var(--line); background: #F5F7FF; padding: calc(env(safe-area-inset-top) + 76px) 8px 20px; }
+  .modus-arbeit .tabs-inner { flex-direction: column; gap: 4px; max-width: none; }
+  .modus-arbeit .tab { flex: none; min-height: 68px; font-size: 12px; border-radius: 14px; }
+  .modus-arbeit .tab.on { background: #E0E7FF; }
+  .modus-arbeit .sheet-bg { align-items: center; }
+  .modus-arbeit .sheet { max-width: 640px; border-radius: 22px; max-height: 88dvh; }
+  .modus-arbeit .sheet-grip { display: none; }
+  .modus-arbeit .li-seg { max-width: 520px; }
+  .ar-dash { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+  .ar-dash > .ar-col:nth-child(3) { grid-column: 1 / -1; }
+  .ar-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .ar-split { display: flex; flex-direction: column; gap: 14px; }
+  .ar-woche { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px; padding-bottom: 10px; }
+  .ar-woche .ar-tag { border-top: 0; background: #F8F7FF; border-radius: 12px; padding: 6px 8px; min-height: 110px; min-width: 0; }
+  .ar-woche .ar-ev { flex-direction: column; align-items: stretch; gap: 2px; padding: 6px 0; border-top: 1px solid var(--line); }
+  .ar-woche .ar-ev .time { width: auto; }
+  .ar-woche .ar-ev .row-open { width: 100%; }
+  .ar-woche .ar-ev .row-title { overflow-wrap: break-word; word-break: normal; hyphens: auto; font-size: 15px; }
+  .ar-woche .ar-fam { align-self: flex-start; }
+  .ar-woche .ar-ev .row-check { align-self: flex-start; }
+  .ar-woche .ar-fam { font-size: 11px; }
+  .ar-gruppen { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; padding-bottom: 12px; }
+  .ar-gruppe { background: #F8F7FF; border-radius: 14px; padding: 4px 12px 8px; min-width: 0; }
+  .sp-woche { gap: 8px; }
+}
+@media (min-width: 1100px) {
+  .modus-arbeit .head { left: 210px; padding-left: 28px; padding-right: 28px; }
+  .modus-arbeit .main { padding-left: 238px; padding-right: 28px; }
+  .modus-arbeit .tabs { width: 210px; padding-left: 10px; padding-right: 10px; }
+  .modus-arbeit .tab { flex-direction: row; justify-content: flex-start; gap: 12px; min-height: 52px; padding: 0 14px; font-size: 16px; }
+  .modus-arbeit .tab .dot { position: static; margin-left: auto; }
+  .ar-dash { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ar-dash > .ar-col:nth-child(3) { grid-column: auto; }
+  .ar-split { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(300px, 1fr); gap: 16px; align-items: start; }
+  .ar-split .month.mtext .mcell { min-height: 96px; padding: 4px; }
+  .ar-split .mev { font-size: 12px; gap: 4px; }
+  .ar-split .mev i b { height: 13px; }
+  .ar-split .month.mtext .mcell .mnum { font-size: 16px; }
+  .ar-woche { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  .ar-woche .ar-tag { min-height: 160px; }
+  .sp-woche { gap: 12px; }
+}

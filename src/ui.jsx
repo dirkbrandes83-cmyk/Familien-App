@@ -183,3 +183,17 @@ export function Toast({ toast, onClose }) {
 export function CatIcon({ name, label, size = 16 }) {
   return <span className="cat-icon" title={label} role="img" aria-label={label}><Icon name={name} size={size} /></span>;
 }
+
+// Breiter Bildschirm (iPad quer/hoch): mehrspaltige Ansichten im Arbeitsbereich
+export function useBreit(px = 740) {
+  const q = `(min-width: ${px}px)`;
+  const [breit, setBreit] = useState(() => typeof window !== 'undefined' && window.matchMedia?.(q).matches);
+  useEffect(() => {
+    const m = window.matchMedia?.(q);
+    if (!m) return undefined;
+    const on = () => setBreit(m.matches);
+    m.addEventListener('change', on);
+    return () => m.removeEventListener('change', on);
+  }, [q]);
+  return breit;
+}
