@@ -8,7 +8,8 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import { sectionOf, splitNames } from "./shop.js";
 
 const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-key" };
-const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { ...cors, "Content-Type": "application/json" } });
+// Immer 200: Kurzbefehle und Siri zeigen bzw. sprechen dann die Meldung „msg“ statt eines Fehlercodes
+const json = (b: unknown, _status = 200) => new Response(JSON.stringify(b), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
 const MODEL = "claude-sonnet-5-5";
 const TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
 
@@ -51,12 +52,18 @@ Deno.serve(async (req) => {
     if (!tok || tok.scope !== "schnell") return json({ ok: false, msg: "Schlüssel ungültig – in der App unter Widget neu erstellen." }, 401);
     await db.from("widget_tokens").update({ last_used: new Date().toISOString() }).eq("token", tok.token);
     const { data: me } = await db.from("members").select("id, name").eq("id", tok.member_id).single();
-    const art = String(body.art ?? "todo");
-    const text = String(body.text ?? "").trim().slice(0, 2000);
+    // Robust gegen iOS-Autokorrektur („Esl“, „Todo “) und Siri: Art klein und ohne Leerzeichen, Synonyme erlaubt
+    const ARTEN: Record<string, string> = { todo: "todo", "to-do": "todo", aufgabe: "todo", arbeit: "arbeit", dienst: "arbeit", einkauf: "einkauf", einkaufen: "einkauf", esl: "esl", "thema esl": "esl", "esl thema": "esl", team: "team", "thema team": "team", teamsitzung: "team", thema: "thema", scan: "scan", scannen: "scan" };
+    const artRoh = String(body.art ?? "todo").trim().toLowerCase();
+    const art = ARTEN[artRoh] ?? artRoh;
+    // Text kann je nach Kurzbefehl als String, Liste oder Objekt ankommen
+    const roh = Array.isArray(body.text) ? body.text.join("\n") : typeof body.text === "object" && body.text ? String(Object.values(body.text)[0] ?? "") : String(body.text ?? "");
+    const text = roh.trim().slice(0, 2000);
+    console.log(JSON.stringify({ art: artRoh, textLaenge: text.length, felder: Object.keys(body) }));
 
     if (art === "todo" || art === "arbeit") {
       const titel = zeilen(text);
-      if (!titel.length) return json({ ok: false, msg: "Kein Text angekommen." }, 400);
+      if (!titel.length) return json({ ok: false, msg: "Kein Text angekommen – im Feld „text“ fehlt die Variable „Angefragte Eingabe“, oder Siri hat nichts verstanden." }, 400);
       const rows = titel.map((t) => art === "arbeit"
         ? { owner: me.id, title: t.slice(0, 160) }
         : { typ: "sonstiges", title: t.slice(0, 120), owner: me.id, by_who: me.id });
@@ -71,7 +78,7 @@ Deno.serve(async (req) => {
       let wohin = art === "thema" ? "team" : art;
       const m = art === "thema" && liste[0] ? liste[0].match(/^\s*(esl|team|jahrgangsteam|teamsitzung)\s*[:\-–]\s*(.*)$/i) : null;
       if (m) { wohin = m[1].toLowerCase() === "esl" ? "esl" : "team"; liste = [m[2], ...liste.slice(1)].filter(Boolean); }
-      if (!liste.length) return json({ ok: false, msg: "Kein Thema angekommen." }, 400);
+      if (!liste.length) return json({ ok: false, msg: "Kein Thema angekommen – im Feld „text“ fehlt die Variable „Angefragte Eingabe“, oder Siri hat nichts verstanden." }, 400);
       const { error } = await db.from("work_themen").insert(liste.map((t) => ({ owner: me.id, text: t.slice(0, 300), art: wohin })));
       if (error) throw error;
       return json({ ok: true, msg: `${liste.length === 1 ? `„${liste[0]}“` : `${liste.length} Themen`} für ${wohin === "esl" ? "die ESL" : "die Teamsitzung"} notiert` });
@@ -121,7 +128,7 @@ Deno.serve(async (req) => {
       const teile = [result.termine.length && `${result.termine.length} Termin(e)`, result.mitbringen.length && `${result.mitbringen.length}× Mitbringen`, result.fristen.length && `${result.fristen.length} Frist(en)`].filter(Boolean);
       return json({ ok: true, msg: `Gescannt${teile.length ? `: ${teile.join(", ")}` : ""}. In der App unter „Heute“ prüfen und übernehmen.` });
     }
-    return json({ ok: false, msg: "Unbekannte Art." }, 400);
+    return json({ ok: false, msg: `Unbekannte Art „${artRoh}“ – im Kurzbefehl bei art z. B. todo, arbeit, einkauf, esl oder team eintragen.` }, 400);
   } catch (e) {
     console.error(e);
     return json({ ok: false, msg: (e as Error).name === "TimeoutError" ? "Das Auslesen hat zu lange gedauert." : "Hat nicht geklappt." }, 500);
