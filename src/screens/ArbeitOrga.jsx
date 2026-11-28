@@ -537,22 +537,31 @@ function OrgaSchmal({ ctx }) {
   return (
     <>
       <div className="li-seg"><Seg label="Bereich" value={seg} onPick={pick}
-        options={[['fristen', <span key="f" className="seg-txt"><Icon name="clock" size={20} />Fristen</span>, 'Fristen'], ['team', <span key="t" className="seg-txt"><Icon name="users" size={20} />Team</span>, 'Teamsitzung'], ['protokolle', <span key="p" className="seg-txt"><Icon name="pencil" size={20} />Protokolle</span>, 'Protokolle']]} /></div>
+        options={[['fristen', <span key="f" className="seg-txt"><Icon name="clock" size={20} />Fristen</span>, 'Fristen'], ['team', <span key="t" className="seg-txt"><Icon name="users" size={20} />Themen</span>, 'Themen für Teamsitzung und ESL'], ['protokolle', <span key="p" className="seg-txt"><Icon name="pencil" size={20} />Protokolle</span>, 'Protokolle']]} /></div>
       {seg === 'fristen' ? <FristenListe ctx={ctx} /> : seg === 'team' ? <TeamSeite ctx={ctx} /> : <ProtokollListe ctx={ctx} />}
     </>
   );
 }
 
 
-/* ---------- Teamsitzung: Themenliste ---------- */
+/* ---------- Besprechungen (Teamsitzung, ESL): Themenlisten ---------- */
 
-// Teamsitzung: ausdrücklich markiert – oder (wenn nie gesetzt) am Titel erkannt
-export const istTeam = (ev) => (ev.teamsitzung ?? /team\s*sitzung|teamsitzung|jahrgangsteam|teambesprechung|teamtreffen/i.test(ev.title || ''));
-const offeneThemen = (ctx) => ctx.data.workThemen.rows.filter((t) => !t.termin_id && !t.besprochen_at).sort((a, b) => a.created_at.localeCompare(b.created_at));
+export const BESPRECHUNG = { team: { label: 'Teamsitzung', mehr: 'Teamsitzungen' }, esl: { label: 'ESL', mehr: 'ESL-Sitzungen' } };
+// Art der Besprechung: ausdrücklich gesetzt – oder (wenn nie gesetzt) am Titel erkannt
+export function besprechungVon(ev) {
+  if (ev.besprechung) return ev.besprechung === 'keine' ? null : ev.besprechung;
+  const t = ev.title || '';
+  if (/\bESL\b|erweiterte\s+schulleitung/i.test(t)) return 'esl';
+  if (/team\s*sitzung|jahrgangsteam|teambesprechung|teamtreffen/i.test(t)) return 'team';
+  return null;
+}
+export const istTeam = (ev) => !!besprechungVon(ev);
+const offeneThemen = (ctx, art) => ctx.data.workThemen.rows.filter((t) => (t.art || 'team') === art && !t.termin_id && !t.besprochen_at).sort((a, b) => a.created_at.localeCompare(b.created_at));
 export const themenVon = (ctx, ev, datum) => ctx.data.workThemen.rows.filter((t) => t.termin_id === ev.id && (!t.termin_am || t.termin_am === datum));
+export const offeneZahl = (ctx, art) => offeneThemen(ctx, art).length;
 
-async function themaNeu(ctx, text, termin, datum) {
-  const row = { owner: ctx.me.id, text: text.trim().slice(0, 300), termin_id: termin?.id ?? null, termin_am: termin ? datum : null };
+async function themaNeu(ctx, text, art, termin, datum) {
+  const row = { owner: ctx.me.id, text: text.trim().slice(0, 300), art, termin_id: termin?.id ?? null, termin_am: termin ? datum : null };
   if (await run(supabase.from('work_themen').insert(row), ctx.fail)) ctx.data.workThemen.reload();
 }
 async function themaSetzen(ctx, t, patch) {
@@ -565,12 +574,12 @@ async function themaWeg(ctx, t) {
   else ctx.data.workThemen.reload();
 }
 
-function ThemaEingabe({ ctx, termin, datum, placeholder }) {
+function ThemaEingabe({ ctx, art, termin, datum, placeholder }) {
   const [text, setText] = useState('');
-  const add = async (e) => { e.preventDefault(); if (!text.trim()) return; await themaNeu(ctx, text, termin, datum); setText(''); };
+  const add = async (e) => { e.preventDefault(); if (!text.trim()) return; await themaNeu(ctx, text, art, termin, datum); setText(''); };
   return (
     <form className="thema-neu" onSubmit={add}>
-      <input className="input" value={text} onChange={(e) => setText(e.target.value)} maxLength={300} placeholder={placeholder || 'Neues Thema …'} aria-label="Neues Thema" />
+      <input className="input" value={text} onChange={(e) => setText(e.target.value)} maxLength={300} placeholder={placeholder || 'Neues Thema …'} aria-label={`Neues Thema ${BESPRECHUNG[art].label}`} />
       <button className="icon-btn" aria-label="Thema hinzufügen" disabled={!text.trim()}><Icon name="plus" size={18} /></button>
     </form>
   );
@@ -591,10 +600,11 @@ function ThemaZeile({ ctx, t, termin, datum }) {
   );
 }
 
-// Im Termin einer Teamsitzung: Themen dieses Termins + alle offenen Themen
+// Im Termin einer Besprechung: Themen dieses Termins + alle offenen Themen derselben Art
 export function TeamThemen({ ctx, ev, datum }) {
+  const art = besprechungVon(ev) || 'team';
   const eigene = themenVon(ctx, ev, datum);
-  const offen = offeneThemen(ctx);
+  const offen = offeneThemen(ctx, art);
   const alle = [...eigene, ...offen];
   const protokoll = async () => {
     const text = alle.map((t) => `• ${t.text}${t.besprochen_at ? ' ✓' : ''}`).join('\n') + '\n\n';
@@ -603,48 +613,49 @@ export function TeamThemen({ ctx, ev, datum }) {
   };
   const schon = ctx.data.workProtokolle.rows.some((p) => p.datum === datum && p.titel === ev.title);
   return (
-    <div className="field"><span>Themen ({alle.filter((t) => !t.besprochen_at).length} offen)</span>
+    <div className="field"><span>Themen {BESPRECHUNG[art].label} ({alle.filter((t) => !t.besprochen_at).length} offen)</span>
       {alle.length === 0 && <div className="small" style={{ padding: '4px 0' }}>Noch keine Themen gesammelt.</div>}
       {alle.map((t) => <ThemaZeile key={t.id} ctx={ctx} t={t} termin={ev} datum={datum} />)}
-      <ThemaEingabe ctx={ctx} termin={ev} datum={datum} />
+      <ThemaEingabe ctx={ctx} art={art} termin={ev} datum={datum} />
       {alle.length > 0 && !schon && <button type="button" className="btn ghost small" style={{ marginTop: 8 }} onClick={protokoll}><Icon name="pencil" size={16} />Protokoll mit diesen Themen starten</button>}
     </div>
   );
 }
 
-// Orga → Team: offene Themen sammeln, nächste Teamsitzungen
+// Orga → Themen: pro Besprechungsart offene Themen sammeln und nächste Sitzungen
+function ThemenKarte({ ctx, art, onOpen }) {
+  const offen = offeneThemen(ctx, art);
+  const kommende = expand(ctx.data.workEvents.rows.filter((e) => besprechungVon(e) === art), ctx.day, addDays(ctx.day, 90)).slice(0, 3);
+  const B = BESPRECHUNG[art];
+  return (
+    <section className="card tight">
+      <div className="card-title" style={{ padding: '12px 0 2px' }}>Themen {B.label}</div>
+      {offen.map((t) => <ThemaZeile key={t.id} ctx={ctx} t={t} />)}
+      <ThemaEingabe ctx={ctx} art={art} placeholder={art === 'esl' ? 'z. B. Jahrgang 6: Lernzeit-Konzept' : 'z. B. Raumplan Lernzeit klären'} />
+      <div className="h-label" style={{ padding: '12px 0 2px' }}>Nächste {B.mehr}</div>
+      {kommende.length === 0 && <div className="small" style={{ padding: '4px 0 10px' }}>Keine gefunden. Markiere einen Termin im Arbeitskalender als „{B.label}“.</div>}
+      {kommende.map((o) => (
+        <button key={o.ev.id + o.date} className="row" onClick={() => onOpen(o)}>
+          <span className="time" style={{ width: 70 }}>{shortLabel(o.date)}</span>
+          <span className="row-main"><span className="row-title">{o.ev.title}</span><span className="small">{[!o.ev.all_day && hm(o.ev.from_time), `${themenVon(ctx, o.ev, o.date).length + offen.length} Themen`].filter(Boolean).join(' · ')}</span></span>
+        </button>
+      ))}
+      <div style={{ height: 6 }} />
+    </section>
+  );
+}
+
 function TeamSeite({ ctx }) {
-  const offen = offeneThemen(ctx);
   const [ausgewaehlt, setAus] = useState(null);
-  const kommende = expand(ctx.data.workEvents.rows.filter(istTeam), ctx.day, addDays(ctx.day, 60)).slice(0, 4);
   const erledigt = ctx.data.workThemen.rows.filter((t) => t.besprochen_at).sort((a, b) => b.besprochen_at.localeCompare(a.besprochen_at)).slice(0, 8);
   return (
     <>
-      <section className="card tight">
-        <div className="card-title" style={{ padding: '12px 0 2px' }}>Themen für die Teamsitzung</div>
-        <div className="small" style={{ paddingBottom: 6 }}>Sammle hier, was du ansprechen willst. In der Teamsitzung hakst du es ab.</div>
-        {offen.map((t) => <ThemaZeile key={t.id} ctx={ctx} t={t} />)}
-        <ThemaEingabe ctx={ctx} placeholder="z. B. Raumplan Lernzeit klären" />
-        <div style={{ height: 8 }} />
-      </section>
-      <section className="card tight">
-        <div className="h-label" style={{ padding: '12px 0 4px' }}>Nächste Teamsitzungen</div>
-        {kommende.length === 0 && <div className="small" style={{ padding: '4px 0 10px' }}>Keine gefunden. Markiere einen Termin im Arbeitskalender als „Teamsitzung“.</div>}
-        {kommende.map((o) => {
-          const n = themenVon(ctx, o.ev, o.date).length + offen.length;
-          return (
-            <button key={o.ev.id + o.date} className="row" onClick={() => setAus(o)}>
-              <span className="time" style={{ width: 70 }}>{shortLabel(o.date)}</span>
-              <span className="row-main"><span className="row-title">{o.ev.title}</span><span className="small">{[!o.ev.all_day && hm(o.ev.from_time), `${n} Themen`].filter(Boolean).join(' · ')}</span></span>
-            </button>
-          );
-        })}
-        <div style={{ height: 6 }} />
-      </section>
+      <ThemenKarte ctx={ctx} art="team" onOpen={setAus} />
+      <ThemenKarte ctx={ctx} art="esl" onOpen={setAus} />
       {erledigt.length > 0 && (
         <section className="card tight">
           <div className="h-label" style={{ padding: '12px 0 4px' }}>Zuletzt besprochen</div>
-          {erledigt.map((t) => <div key={t.id} className="small ar-zeile">✓ {t.text}</div>)}
+          {erledigt.map((t) => <div key={t.id} className="small ar-zeile">✓ {t.text} <span style={{ opacity: 0.6 }}>· {BESPRECHUNG[t.art || 'team'].label}</span></div>)}
           <div style={{ height: 8 }} />
         </section>
       )}

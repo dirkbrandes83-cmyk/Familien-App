@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { supabase, run } from '../data.js';
 import { Icon, Check, Sheet, Swipe } from '../ui.jsx';
-import { UnterrichtHeute, FristenHeute, TeamThemen, istTeam, themenVon, istStunde } from './ArbeitOrga.jsx';
+import { UnterrichtHeute, FristenHeute, TeamThemen, besprechungVon, themenVon, istStunde, offeneZahl, BESPRECHUNG } from './ArbeitOrga.jsx';
 import { FarbWahl, ABO_FARBEN } from './common.jsx';
 import { addDays, mondayOf, parse, shortLabel, longLabel, hm, expand, WD, weekday, MONTHS } from '../lib/dates.js';
 import { Seg, useBreit } from '../ui.jsx';
@@ -167,14 +167,14 @@ function TerminZeile({ ctx, o, onOpen }) {
   const farbe = aboFarbeArbeit(ctx, o.ev);
   const erin = ctx.data.workTodos.rows.filter((t) => t.termin_id === o.ev.id && (!t.termin_am || t.termin_am === o.date));
   const offen = erin.filter((t) => !t.done_at).length;
-  const team = istTeam(o.ev);
-  const themen = team ? themenVon(ctx, o.ev, o.date).filter((t) => !t.besprochen_at).length + (o.date >= ctx.day ? ctx.data.workThemen.rows.filter((t) => !t.termin_id && !t.besprochen_at).length : 0) : 0;
+  const art = besprechungVon(o.ev);
+  const themen = art ? themenVon(ctx, o.ev, o.date).filter((t) => !t.besprochen_at).length + (o.date >= ctx.day ? offeneZahl(ctx, art) : 0) : 0;
   return (
     <div className={`row ar-ev${farbe ? ' abo-farbig' : ''}`} style={farbe ? { '--abo': farbe } : undefined}>
       <span className="time">{o.ev.all_day ? 'ganzt.' : hm(o.ev.from_time)}</span>
       <button className="row-open" onClick={() => onOpen(o)}>
         <span className="row-main"><span className="row-title">{o.ev.title}</span>
-          {(o.ev.to_time || o.ev.note || erin.length > 0 || team) && <span className="small">{[o.ev.to_time && `bis ${hm(o.ev.to_time)}`, team && `🗣 Teamsitzung${themen ? ` · ${themen} Themen` : ''}`, erin.length > 0 && (offen ? `🔔 ${offen} offen` : '🔔 erledigt'), o.ev.note].filter(Boolean).join(' · ')}</span>}</span>
+          {(o.ev.to_time || o.ev.note || erin.length > 0 || art) && <span className="small">{[o.ev.to_time && `bis ${hm(o.ev.to_time)}`, art && `🗣 ${BESPRECHUNG[art].label}${themen ? ` · ${themen} Themen` : ''}`, erin.length > 0 && (offen ? `🔔 ${offen} offen` : '🔔 erledigt'), o.ev.note].filter(Boolean).join(' · ')}</span>}</span>
       </button>
       <button className={`ar-fam${o.ev.familie ? ' an' : ''}`} aria-pressed={o.ev.familie} aria-label={o.ev.familie ? 'Aus dem Familienkalender nehmen' : 'Auch im Familienkalender zeigen'} onClick={() => familieSetzen(ctx, o.ev, !o.ev.familie)}>
         <Icon name="users" size={15} />Familie
@@ -392,20 +392,21 @@ export function TerminSheet({ ctx, ev: ev0, datum: datum0, onClose }) {
   const ev = (ev0.id && ctx.data.workEvents.rows.find((x) => x.id === ev0.id)) || ev0;
   const datum = datum0 || ev.start_date || ctx.day;
   const abo = !!ev.sub_id;
-  const [f, setF] = useState({ title: ev.title ?? '', start_date: ev.start_date ?? ctx.day, all_day: !!ev.all_day, from_time: ev.from_time ? hm(ev.from_time) : '', to_time: ev.to_time ? hm(ev.to_time) : '', note: ev.note ?? '', familie: !!ev.familie, team: neu ? false : istTeam(ev) });
+  const [f, setF] = useState({ title: ev.title ?? '', start_date: ev.start_date ?? ctx.day, all_day: !!ev.all_day, from_time: ev.from_time ? hm(ev.from_time) : '', to_time: ev.to_time ? hm(ev.to_time) : '', note: ev.note ?? '', familie: !!ev.familie, art: neu ? null : besprechungVon(ev) });
   const [vorab, setVorab] = useState([]); // bei neuen Terminen: Erinnerungen, die beim Speichern angelegt werden
   const set = (p) => setF((x) => ({ ...x, ...p }));
   const ok = f.title.trim() && f.start_date && (f.all_day || f.from_time);
-  const teamSetzen = async (an) => {
-    set({ team: an });
+  const artSetzen = async (art) => {
+    set({ art });
     if (neu) return;
-    ctx.data.workEvents.local((rows) => rows.map((x) => (x.id === ev.id ? { ...x, teamsitzung: an } : x)));
-    if (!await run(supabase.from('work_events').update({ teamsitzung: an }).eq('id', ev.id), ctx.fail)) ctx.data.workEvents.reload();
+    const wert = art || 'keine';
+    ctx.data.workEvents.local((rows) => rows.map((x) => (x.id === ev.id ? { ...x, besprechung: wert } : x)));
+    if (!await run(supabase.from('work_events').update({ besprechung: wert }).eq('id', ev.id), ctx.fail)) ctx.data.workEvents.reload();
   };
   const speichern = async () => {
     if (abo) { onClose(); return; }
     if (!ok) return;
-    const row = { title: f.title.trim().slice(0, 200), start_date: f.start_date, all_day: f.all_day, from_time: f.all_day ? null : f.from_time, to_time: f.all_day || !f.to_time ? null : f.to_time, note: f.note.trim(), familie: f.familie, teamsitzung: f.team };
+    const row = { title: f.title.trim().slice(0, 200), start_date: f.start_date, all_day: f.all_day, from_time: f.all_day ? null : f.from_time, to_time: f.all_day || !f.to_time ? null : f.to_time, note: f.note.trim(), familie: f.familie, besprechung: f.art || (neu ? null : 'keine') };
     const res = neu ? await run(supabase.from('work_events').insert({ ...row, owner: ctx.me.id }).select('id').single(), ctx.fail) : await run(supabase.from('work_events').update(row).eq('id', ev.id), ctx.fail);
     if (!res) return;
     if (neu && vorab.length) {
@@ -446,11 +447,12 @@ export function TerminSheet({ ctx, ev: ev0, datum: datum0, onClose }) {
           </label>
         </>
       )}
-      <label className="toggle-row">
-        <span><span style={{ fontWeight: 600 }}>Teamsitzung</span><span className="small" style={{ display: 'block' }}>Zeigt die Themenliste zu diesem Termin</span></span>
-        <input type="checkbox" checked={f.team} onChange={(e) => teamSetzen(e.target.checked)} style={{ width: 24, height: 24 }} />
-      </label>
-      {f.team && !neu && <TeamThemen ctx={ctx} ev={ev} datum={datum} />}
+      <div className="field"><span>Besprechung mit Themenliste</span>
+        <div className="chips">{[[null, 'Keine'], ['team', 'Teamsitzung'], ['esl', 'ESL']].map(([k, l]) => (
+          <button key={l} type="button" className={`chip${f.art === k ? ' on' : ''}`} aria-pressed={f.art === k} onClick={() => artSetzen(k)}>{l}</button>
+        ))}</div>
+      </div>
+      {f.art && !neu && <TeamThemen ctx={ctx} ev={{ ...ev, besprechung: f.art }} datum={datum} />}
       {!neu && <TerminErinnerungen ctx={ctx} ev={ev} datum={datum} />}
       {neu && (
         <div className="field"><span>Erinnerungen dazu</span>
