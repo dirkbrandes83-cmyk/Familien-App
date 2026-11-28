@@ -1024,3 +1024,6 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .untis-aend { border: 1.5px solid #F59E0B; background: #FFFBEB; }
 .regel-kopf { width: 100%; background: none; border: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
 .regel-neu { display: flex; flex-direction: column; gap: 8px; padding: 10px 0 4px; border-top: 1px solid var(--line); }
+.sk-tabelle { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 14px; }
+.sk-tabelle th, .sk-tabelle td { text-align: left; vertical-align: top; padding: 6px 4px; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.sk-tabelle th { font-size: 12px; color: var(--muted); }
