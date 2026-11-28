@@ -953,3 +953,5 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; }
 .farbe.keine { background: repeating-linear-gradient(45deg, #fff 0 4px, #E7E1D8 4px 6px); }
 .row.abo-farbig { box-shadow: inset 4px 0 0 var(--abo); padding-left: 10px; }
 .abo-tag { font-weight: 700; }
+.thema-neu { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+.thema-neu .input { flex: 1; min-width: 0; }

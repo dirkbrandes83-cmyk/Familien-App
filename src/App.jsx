@@ -130,6 +130,7 @@ function Shell({ me, members }) {
     workStunden: useTable('work_stunden'),
     workFristen: useTable('work_fristen'),
     workProtokolle: useTable('work_protokolle'),
+    workThemen: useTable('work_themen'),
     ...useHomeTables(),
   };
 

@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { supabase, run } from '../data.js';
 import { Icon, Check, Sheet, Swipe } from '../ui.jsx';
-import { UnterrichtHeute, FristenHeute } from './ArbeitOrga.jsx';
+import { UnterrichtHeute, FristenHeute, TeamThemen, istTeam, themenVon } from './ArbeitOrga.jsx';
 import { FarbWahl, ABO_FARBEN } from './common.jsx';
-import { addDays, mondayOf, parse, shortLabel, longLabel, hm, expand, WD, weekday } from '../lib/dates.js';
+import { addDays, mondayOf, parse, shortLabel, longLabel, hm, expand, WD, weekday, MONTHS } from '../lib/dates.js';
+import { Seg } from '../ui.jsx';
 
 // Arbeitsbereich: private To-dos und Termine (nur ich sehe sie).
 // Termine mit „Für die Familie wichtig“ erscheinen zusätzlich im Familienkalender (die Datenbank spiegelt sie).
@@ -39,6 +40,7 @@ export function ArbeitKalenderSeite({ ctx }) {
 // Arbeit heute: Termine, fällige To-dos – und was privat heute ansteht (damit nichts kollidiert)
 export function ArbeitHeuteSeite({ ctx }) {
   const [todo, setTodo] = useState(null);
+  const [termin, setTermin] = useState(null);
   const farbe = (ev) => aboFarbeArbeit(ctx, ev);
   const occ = expand(ctx.data.workEvents.rows, ctx.day, ctx.day);
   const woche = expand(ctx.data.workEvents.rows, addDays(ctx.day, 1), addDays(ctx.day, 6));
@@ -50,12 +52,7 @@ export function ArbeitHeuteSeite({ ctx }) {
       <section className="card tight">
         <div className="h-label" style={{ padding: '12px 0 4px' }}>Termine heute</div>
         {occ.length === 0 && <div className="empty" style={{ padding: '6px 0 12px' }}>Keine Arbeitstermine heute.</div>}
-        {occ.map((o) => (
-          <div key={o.ev.id} className={`row ar-ev${farbe(o.ev) ? ' abo-farbig' : ''}`} style={farbe(o.ev) ? { '--abo': farbe(o.ev) } : undefined}>
-            <span className="time">{o.ev.all_day ? 'ganzt.' : hm(o.ev.from_time)}</span>
-            <span className="row-main"><span className="row-title">{o.ev.title}</span>{(o.ev.to_time || o.ev.note) && <span className="small">{[o.ev.to_time && `bis ${hm(o.ev.to_time)}`, o.ev.note].filter(Boolean).join(' · ')}</span>}</span>
-          </div>
-        ))}
+        {occ.map((o) => <TerminZeile key={o.ev.id} ctx={ctx} o={o} onOpen={setTermin} />)}
       </section>
       <section className="card tight">
         <div className="h-label" style={{ padding: '12px 0 4px' }}>Fällig</div>
@@ -83,6 +80,7 @@ export function ArbeitHeuteSeite({ ctx }) {
         </section>
       )}
       {todo && <TodoSheet ctx={ctx} t={todo} onClose={() => setTodo(null)} />}
+      {termin && <TerminSheet ctx={ctx} ev={termin.ev} datum={termin.date} onClose={() => setTermin(null)} />}
     </>
   );
 }
@@ -146,6 +144,104 @@ function ArbeitTodos({ ctx }) {
 }
 
 function ArbeitTermine({ ctx }) {
+  const [ansicht, setAnsichtRaw] = useState(() => { try { return localStorage.getItem('arbeit-ansicht') || 'woche'; } catch { return 'woche'; } });
+  const setAnsicht = (v) => { setAnsichtRaw(v); try { localStorage.setItem('arbeit-ansicht', v); } catch { /* egal */ } };
+  const umschalter = <div className="li-seg"><Seg label="Ansicht" value={ansicht} onPick={setAnsicht} options={[['woche', 'Woche', 'Woche'], ['monat', 'Monat', 'Monat']]} /></div>;
+  if (ansicht === 'monat') return <>{umschalter}<ArbeitMonat ctx={ctx} /></>;
+  return <>{umschalter}<ArbeitWoche ctx={ctx} /></>;
+}
+
+// Zeile eines Arbeitstermins (Woche, Monat): antippen öffnet Termin mit Erinnerungen
+function TerminZeile({ ctx, o, onOpen }) {
+  const farbe = aboFarbeArbeit(ctx, o.ev);
+  const erin = ctx.data.workTodos.rows.filter((t) => t.termin_id === o.ev.id && (!t.termin_am || t.termin_am === o.date));
+  const offen = erin.filter((t) => !t.done_at).length;
+  const team = istTeam(o.ev);
+  const themen = team ? themenVon(ctx, o.ev, o.date).filter((t) => !t.besprochen_at).length + (o.date >= ctx.day ? ctx.data.workThemen.rows.filter((t) => !t.termin_id && !t.besprochen_at).length : 0) : 0;
+  return (
+    <div className={`row ar-ev${farbe ? ' abo-farbig' : ''}`} style={farbe ? { '--abo': farbe } : undefined}>
+      <span className="time">{o.ev.all_day ? 'ganzt.' : hm(o.ev.from_time)}</span>
+      <button className="row-open" onClick={() => onOpen(o)}>
+        <span className="row-main"><span className="row-title">{o.ev.title}</span>
+          {(o.ev.to_time || o.ev.note || erin.length > 0 || team) && <span className="small">{[o.ev.to_time && `bis ${hm(o.ev.to_time)}`, team && `🗣 Teamsitzung${themen ? ` · ${themen} Themen` : ''}`, erin.length > 0 && (offen ? `🔔 ${offen} offen` : '🔔 erledigt'), o.ev.note].filter(Boolean).join(' · ')}</span>}</span>
+      </button>
+      <button className={`ar-fam${o.ev.familie ? ' an' : ''}`} aria-pressed={o.ev.familie} aria-label={o.ev.familie ? 'Aus dem Familienkalender nehmen' : 'Auch im Familienkalender zeigen'} onClick={() => familieSetzen(ctx, o.ev, !o.ev.familie)}>
+        <Icon name="users" size={15} />Familie
+      </button>
+    </div>
+  );
+}
+
+function ArbeitMonat({ ctx }) {
+  const [month, setMonth] = useState(ctx.day.slice(0, 7));
+  const [sel, setSel] = useState(ctx.day);
+  const [termin, setTermin] = useState(null);
+  const [todo, setTodo] = useState(null);
+  const first = `${month}-01`;
+  const gridStart = mondayOf(first);
+  const cells = Array.from({ length: 42 }, (_, i) => addDays(gridStart, i));
+  const shown = cells.slice(35).some((d) => d.slice(0, 7) === month) ? cells : cells.slice(0, 35);
+  const occ = expand(ctx.data.workEvents.rows, shown[0], shown[shown.length - 1]);
+  const byDay = {};
+  for (const o of occ) (byDay[o.date] ||= []).push(o);
+  const todos = ctx.data.workTodos.rows;
+  const todoTage = new Set(todos.filter((t) => !t.done_at && t.am).map((t) => t.am));
+  const fristTage = new Set(ctx.data.workFristen.rows.filter((x) => !x.erledigt_at).map((x) => x.datum));
+  const m = parse(first);
+  const shift = (n) => { const d = new Date(m.getFullYear(), m.getMonth() + n, 1, 12); setMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`); };
+  const sortiert = (l) => [...l].sort((a, b) => (b.ev.all_day ? 1 : 0) - (a.ev.all_day ? 1 : 0) || String(a.ev.from_time || '').localeCompare(String(b.ev.from_time || '')));
+  const selList = sortiert(byDay[sel] || []);
+  const selTodos = todos.filter((t) => t.am === sel);
+  const selFristen = ctx.data.workFristen.rows.filter((x) => x.datum === sel);
+  return (
+    <>
+      <section className="card" style={{ padding: '10px 8px' }}>
+        <div className="card-head" style={{ padding: '0 4px 6px' }}>
+          <button className="icon-btn" aria-label="Voriger Monat" onClick={() => shift(-1)}><Icon name="left" /></button>
+          <button className="cal-range" style={{ fontWeight: 700 }} onClick={() => { setMonth(ctx.day.slice(0, 7)); setSel(ctx.day); }}>{MONTHS[m.getMonth()]} {m.getFullYear()}</button>
+          <button className="icon-btn" aria-label="Nächster Monat" onClick={() => shift(1)}><Icon name="chev" /></button>
+        </div>
+        <div className="month mtext">
+          {WD.map((w) => <span key={w} className="wd">{w}</span>)}
+          {shown.map((d) => {
+            const list = sortiert(byDay[d] || []);
+            const cls = ['mcell', d.slice(0, 7) !== month && 'out', d === ctx.day && 'today', d === sel && 'sel'].filter(Boolean).join(' ');
+            return (
+              <button key={d} className={cls} onClick={() => setSel(d)} aria-label={`${longLabel(d)}, ${list.length} Termine`} aria-pressed={d === sel}>
+                <span className="mnum">{parse(d).getDate()}</span>
+                <span className="mevs">
+                  {fristTage.has(d) && <span className="mev"><i><b style={{ background: '#B91C1C' }} /></i>Frist</span>}
+                  {list.slice(0, 4).map((o) => <span key={o.ev.id} className="mev"><i><b style={{ background: aboFarbeArbeit(ctx, o.ev) || '#4338CA' }} /></i>{o.ev.title}</span>)}
+                  {list.length > 4 && <span className="mev more">+{list.length - 4}</span>}
+                  {todoTage.has(d) && <span className="mev todo"><i><b style={{ background: '#B45309' }} /></i>To-do</span>}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+      <section className="card tight">
+        <div className="card-head" style={{ padding: '10px 0 6px' }}>
+          <span className="label">{sel === ctx.day ? 'Heute · ' : ''}{longLabel(sel)}</span>
+          <button className="icon-btn" aria-label="Arbeitstermin an diesem Tag" onClick={() => setTermin({ ev: { start_date: sel }, date: sel })}><Icon name="plus" size={18} /></button>
+        </div>
+        {selFristen.map((x) => <div key={x.id} className="small ar-zeile" style={{ color: '#B91C1C' }}><b>Frist:</b> {x.titel}</div>)}
+        {selList.map((o) => <TerminZeile key={o.ev.id} ctx={ctx} o={o} onOpen={(x) => setTermin(x)} />)}
+        {selTodos.map((t) => (
+          <div key={t.id} className="row ar-ev" style={{ opacity: t.done_at ? 0.55 : 1 }}>
+            <button className="row-check" onClick={() => abhakenArbeit(ctx, t)} aria-label={`${t.title} erledigt`}><Check on={!!t.done_at} /></button>
+            <button className="row-open" onClick={() => setTodo(t)}><span className="row-main"><span className="row-title">{t.title}</span><span className="small">To-do{t.um ? ` · ${hm(t.um)}` : ''}</span></span></button>
+          </div>
+        ))}
+        {!selList.length && !selTodos.length && !selFristen.length && <div className="empty" style={{ padding: '6px 0 12px' }}>Nichts eingetragen.</div>}
+      </section>
+      {termin && <TerminSheet ctx={ctx} ev={termin.ev} datum={termin.date} onClose={() => setTermin(null)} />}
+      {todo && <TodoSheet ctx={ctx} t={todo} onClose={() => setTodo(null)} />}
+    </>
+  );
+}
+
+function ArbeitWoche({ ctx }) {
   const [start, setStart] = useState(mondayOf(ctx.day));
   const [termin, setTermin] = useState(null);
   const [todo, setTodo] = useState(null);
@@ -154,15 +250,13 @@ function ArbeitTermine({ ctx }) {
   const tage = Array.from({ length: 7 }, (_, i) => addDays(start, i));
   const isThis = start === mondayOf(ctx.day);
   const s = parse(start), e = parse(addDays(start, 6));
-  const familie = (ev, an) => familieSetzen(ctx, ev, an);
-  const farbe = (ev) => aboFarbeArbeit(ctx, ev);
   const abhaken = (t) => abhakenArbeit(ctx, t);
   return (
     <>
       <section className="card tight">
         <div className="card-head" style={{ padding: '10px 0 6px' }}>
           <div className="card-title">Termine Arbeit</div>
-          <button className="icon-btn" aria-label="Neuer Arbeitstermin" onClick={() => setTermin({ start_date: ctx.day })}><Icon name="plus" size={18} /></button>
+          <button className="icon-btn" aria-label="Neuer Arbeitstermin" onClick={() => setTermin({ ev: { start_date: ctx.day }, date: ctx.day })}><Icon name="plus" size={18} /></button>
         </div>
         <div className="cal-row cal-week" style={{ padding: '0 0 6px' }}>
           <button className="icon-btn" aria-label="Vorige Woche" onClick={() => setStart(addDays(start, -7))}><Icon name="left" size={18} /></button>
@@ -176,18 +270,7 @@ function ArbeitTermine({ ctx }) {
           return (
             <div key={d} className="ar-tag">
               <div className={`label${d === ctx.day ? ' heute' : ''}`}>{d === ctx.day ? 'Heute' : `${WD[weekday(d)]} ${parse(d).getDate()}.`}</div>
-              {list.map((o) => (
-                <div key={o.ev.id + d} className={`row ar-ev${farbe(o.ev) ? ' abo-farbig' : ''}`} style={farbe(o.ev) ? { '--abo': farbe(o.ev) } : undefined}>
-                  <span className="time">{o.ev.all_day ? 'ganzt.' : hm(o.ev.from_time)}</span>
-                  <button className="row-open" onClick={() => !o.ev.sub_id && setTermin(o.ev)} disabled={!!o.ev.sub_id}>
-                    <span className="row-main"><span className="row-title">{o.ev.title}</span>
-                      {(o.ev.to_time || o.ev.note) && <span className="small">{[o.ev.to_time && `bis ${hm(o.ev.to_time)}`, o.ev.note].filter(Boolean).join(' · ')}</span>}</span>
-                  </button>
-                  <button className={`ar-fam${o.ev.familie ? ' an' : ''}`} aria-pressed={o.ev.familie} aria-label={o.ev.familie ? 'Aus dem Familienkalender nehmen' : 'Auch im Familienkalender zeigen'} onClick={() => familie(o.ev, !o.ev.familie)}>
-                    <Icon name="users" size={15} />Familie
-                  </button>
-                </div>
-              ))}
+              {list.map((o) => <TerminZeile key={o.ev.id + d} ctx={ctx} o={o} onOpen={(x) => setTermin(x)} />)}
               {tt.map((t) => (
                 <div key={t.id} className="row ar-ev" style={{ opacity: t.done_at ? 0.55 : 1 }}>
                   <button className="row-check" onClick={() => abhaken(t)} aria-label={`${t.title} erledigt`}><Check on={!!t.done_at} /></button>
@@ -199,7 +282,7 @@ function ArbeitTermine({ ctx }) {
         })}
         {occ.length === 0 && !todos.some((t) => t.am && t.am >= start && t.am <= addDays(start, 6)) && <div className="empty" style={{ padding: '8px 0' }}>Keine Arbeitstermine in dieser Woche.</div>}
       </section>
-      {termin && <TerminSheet ctx={ctx} ev={termin} onClose={() => setTermin(null)} />}
+      {termin && <TerminSheet ctx={ctx} ev={termin.ev} datum={termin.date} onClose={() => setTermin(null)} />}
       {todo && <TodoSheet ctx={ctx} t={todo} onClose={() => setTodo(null)} />}
     </>
   );
@@ -247,40 +330,123 @@ export function TodoSheet({ ctx, t, onClose }) {
   );
 }
 
-export function TerminSheet({ ctx, ev, onClose }) {
-  const neu = !ev.id;
-  const [f, setF] = useState({ title: ev.title ?? '', start_date: ev.start_date ?? ctx.day, all_day: !!ev.all_day, from_time: ev.from_time ? hm(ev.from_time) : '', to_time: ev.to_time ? hm(ev.to_time) : '', note: ev.note ?? '', familie: !!ev.familie });
+// Typische Erinnerungen zu einem Termin: Text und wie viele Tage vorher fällig
+export const ERINNERUNGEN = [
+  ['Elternbrief schreiben', 7],
+  ['Untis-Nachricht formulieren', 2],
+  ['Antrag stellen', 14],
+  ['Material vorbereiten', 1],
+];
+const faelligAb = (ctx, datum, tage) => { const d = addDays(datum, -tage); return d < ctx.day ? ctx.day : d; };
+
+function TerminErinnerungen({ ctx, ev, datum }) {
+  const [eigen, setEigen] = useState('');
+  const [tage, setTage] = useState(1);
+  const liste = ctx.data.workTodos.rows.filter((t) => t.termin_id === ev.id && (!t.termin_am || t.termin_am === datum)).sort((a, b) => String(a.due).localeCompare(String(b.due)));
+  const hat = (text) => liste.some((t) => t.title.startsWith(text));
+  const anlegen = async (text, n) => {
+    const row = { owner: ctx.me.id, title: `${text} – ${ev.title}`.slice(0, 160), due: faelligAb(ctx, datum, n), termin_id: ev.id, termin_am: datum, note: `Zum Termin am ${shortLabel(datum)}` };
+    if (await run(supabase.from('work_todos').insert(row), ctx.fail)) { ctx.data.workTodos.reload(); ctx.say(`Erinnerung bis ${shortLabel(row.due)}`); }
+  };
+  return (
+    <div className="field"><span>Erinnerungen dazu</span>
+      {liste.map((t) => (
+        <div key={t.id} className="row" style={{ minHeight: 42 }}>
+          <button className="row-check" aria-label={`${t.title} erledigt`} onClick={() => abhakenArbeit(ctx, t)}><Check on={!!t.done_at} /></button>
+          <span className="row-main"><span className="row-title" style={{ textDecoration: t.done_at ? 'line-through' : undefined }}>{t.title.replace(` – ${ev.title}`, '')}</span><span className="small">bis {shortLabel(t.due)}</span></span>
+          <button className="icon-btn" aria-label="Erinnerung löschen" onClick={() => loeschen(ctx, t)}><Icon name="x" size={16} /></button>
+        </div>
+      ))}
+      <div className="chips" style={{ marginTop: 6 }}>
+        {ERINNERUNGEN.filter(([text]) => !hat(text)).map(([text, n]) => (
+          <button key={text} type="button" className="chip" onClick={() => anlegen(text, n)}>+ {text} <span className="small">({n === 1 ? '1 Tag' : `${n} Tage`} vorher)</span></button>
+        ))}
+      </div>
+      <form className="frist-schritt" style={{ marginTop: 8 }} onSubmit={(e) => { e.preventDefault(); if (eigen.trim()) { anlegen(eigen.trim(), Number(tage) || 0); setEigen(''); } }}>
+        <input className="input" value={eigen} onChange={(e) => setEigen(e.target.value)} placeholder="Eigene Erinnerung" maxLength={120} />
+        <input className="input" type="number" min="0" max="365" inputMode="numeric" value={tage} onChange={(e) => setTage(e.target.value)} aria-label="Tage vorher" />
+        <span className="small">T. vorher</span>
+        <button className="icon-btn" aria-label="Erinnerung anlegen" disabled={!eigen.trim()}><Icon name="plus" size={16} /></button>
+      </form>
+    </div>
+  );
+}
+
+export function TerminSheet({ ctx, ev: ev0, datum: datum0, onClose }) {
+  const neu = !ev0.id;
+  // aktuelle Fassung aus den Daten (z. B. nach Umschalten „Teamsitzung“)
+  const ev = (ev0.id && ctx.data.workEvents.rows.find((x) => x.id === ev0.id)) || ev0;
+  const datum = datum0 || ev.start_date || ctx.day;
+  const abo = !!ev.sub_id;
+  const [f, setF] = useState({ title: ev.title ?? '', start_date: ev.start_date ?? ctx.day, all_day: !!ev.all_day, from_time: ev.from_time ? hm(ev.from_time) : '', to_time: ev.to_time ? hm(ev.to_time) : '', note: ev.note ?? '', familie: !!ev.familie, team: neu ? false : istTeam(ev) });
+  const [vorab, setVorab] = useState([]); // bei neuen Terminen: Erinnerungen, die beim Speichern angelegt werden
   const set = (p) => setF((x) => ({ ...x, ...p }));
   const ok = f.title.trim() && f.start_date && (f.all_day || f.from_time);
+  const teamSetzen = async (an) => {
+    set({ team: an });
+    if (neu) return;
+    ctx.data.workEvents.local((rows) => rows.map((x) => (x.id === ev.id ? { ...x, teamsitzung: an } : x)));
+    if (!await run(supabase.from('work_events').update({ teamsitzung: an }).eq('id', ev.id), ctx.fail)) ctx.data.workEvents.reload();
+  };
   const speichern = async () => {
+    if (abo) { onClose(); return; }
     if (!ok) return;
-    const row = { title: f.title.trim().slice(0, 200), start_date: f.start_date, all_day: f.all_day, from_time: f.all_day ? null : f.from_time, to_time: f.all_day || !f.to_time ? null : f.to_time, note: f.note.trim(), familie: f.familie };
-    const res = neu ? await run(supabase.from('work_events').insert({ ...row, owner: ctx.me.id }), ctx.fail) : await run(supabase.from('work_events').update(row).eq('id', ev.id), ctx.fail);
-    if (res) { ctx.data.workEvents.reload(); ctx.data.events.reload(); onClose(); }
+    const row = { title: f.title.trim().slice(0, 200), start_date: f.start_date, all_day: f.all_day, from_time: f.all_day ? null : f.from_time, to_time: f.all_day || !f.to_time ? null : f.to_time, note: f.note.trim(), familie: f.familie, teamsitzung: f.team };
+    const res = neu ? await run(supabase.from('work_events').insert({ ...row, owner: ctx.me.id }).select('id').single(), ctx.fail) : await run(supabase.from('work_events').update(row).eq('id', ev.id), ctx.fail);
+    if (!res) return;
+    if (neu && vorab.length) {
+      await run(supabase.from('work_todos').insert(vorab.map(([text, n]) => ({ owner: ctx.me.id, title: `${text} – ${row.title}`.slice(0, 160), due: faelligAb(ctx, row.start_date, n), termin_id: res.id, termin_am: row.start_date, note: `Zum Termin am ${shortLabel(row.start_date)}` }))), ctx.fail);
+      ctx.data.workTodos.reload();
+    }
+    ctx.data.workEvents.reload(); ctx.data.events.reload(); onClose();
   };
   const loesch = async () => {
     if (await run(supabase.from('work_events').delete().eq('id', ev.id), ctx.fail)) { ctx.data.workEvents.reload(); ctx.data.events.reload(); ctx.say('Termin gelöscht'); onClose(); }
   };
   return (
-    <Sheet title={neu ? 'Arbeitstermin' : longLabel(ev.start_date)} onClose={onClose}
+    <Sheet title={neu ? 'Arbeitstermin' : abo ? ev.title : longLabel(datum)} onClose={onClose}
       actions={<>
-        <button className="btn" disabled={!ok} onClick={speichern}>{neu ? 'Eintragen' : 'Speichern'}</button>
-        {!neu && <button className="ein-del" onClick={loesch}><Icon name="trash" size={16} />Löschen</button>}
+        {abo ? <button className="btn" onClick={onClose}>Fertig</button> : <button className="btn" disabled={!ok} onClick={speichern}>{neu ? 'Eintragen' : 'Speichern'}</button>}
+        {!neu && !abo && <button className="ein-del" onClick={loesch}><Icon name="trash" size={16} />Löschen</button>}
       </>}>
-      <label className="field"><span>Was?</span><input className="input" value={f.title} onChange={(e) => set({ title: e.target.value })} autoFocus={neu} maxLength={200} placeholder="z. B. Zeugniskonferenz" /></label>
-      <label className="field"><span>Tag</span><input className="input" type="date" value={f.start_date} onChange={(e) => set({ start_date: e.target.value })} /></label>
-      <label className="gift-privat"><input type="checkbox" checked={f.all_day} onChange={(e) => set({ all_day: e.target.checked })} /> ganztägig</label>
-      {!f.all_day && (
-        <div className="two">
-          <label className="field"><span>Von</span><input className="input" type="time" value={f.from_time} onChange={(e) => set({ from_time: e.target.value })} /></label>
-          <label className="field"><span>Bis</span><input className="input" type="time" value={f.to_time} onChange={(e) => set({ to_time: e.target.value })} /></label>
+      {abo ? (
+        <div className="small" style={{ fontSize: 15 }}>
+          <b>{longLabel(datum)}</b>{ev.all_day ? ' · ganztägig' : ` · ${hm(ev.from_time)}${ev.to_time ? `–${hm(ev.to_time)}` : ''}`}
+          {ev.note && <div style={{ marginTop: 4, whiteSpace: 'pre-wrap' }}>{ev.note}</div>}
+          <div style={{ marginTop: 4 }}>Aus dem Abo „{ctx.data.subs.rows.find((x) => x.id === ev.sub_id)?.name ?? 'Dienstkalender'}“ – nur lesbar.</div>
         </div>
+      ) : (
+        <>
+          <label className="field"><span>Was?</span><input className="input" value={f.title} onChange={(e) => set({ title: e.target.value })} autoFocus={neu} maxLength={200} placeholder="z. B. Zeugniskonferenz" /></label>
+          <label className="field"><span>Tag</span><input className="input" type="date" value={f.start_date} onChange={(e) => set({ start_date: e.target.value })} /></label>
+          <label className="gift-privat"><input type="checkbox" checked={f.all_day} onChange={(e) => set({ all_day: e.target.checked })} /> ganztägig</label>
+          {!f.all_day && (
+            <div className="two">
+              <label className="field"><span>Von</span><input className="input" type="time" value={f.from_time} onChange={(e) => set({ from_time: e.target.value })} /></label>
+              <label className="field"><span>Bis</span><input className="input" type="time" value={f.to_time} onChange={(e) => set({ to_time: e.target.value })} /></label>
+            </div>
+          )}
+          <label className="toggle-row">
+            <span><span style={{ fontWeight: 600 }}>Für die Familie wichtig</span><span className="small" style={{ display: 'block' }}>Erscheint dann auch im Familienkalender (bei dir)</span></span>
+            <input type="checkbox" checked={f.familie} onChange={(e) => set({ familie: e.target.checked })} style={{ width: 24, height: 24 }} />
+          </label>
+        </>
       )}
       <label className="toggle-row">
-        <span><span style={{ fontWeight: 600 }}>Für die Familie wichtig</span><span className="small" style={{ display: 'block' }}>Erscheint dann auch im Familienkalender (bei dir)</span></span>
-        <input type="checkbox" checked={f.familie} onChange={(e) => set({ familie: e.target.checked })} style={{ width: 24, height: 24 }} />
+        <span><span style={{ fontWeight: 600 }}>Teamsitzung</span><span className="small" style={{ display: 'block' }}>Zeigt die Themenliste zu diesem Termin</span></span>
+        <input type="checkbox" checked={f.team} onChange={(e) => teamSetzen(e.target.checked)} style={{ width: 24, height: 24 }} />
       </label>
-      <label className="field"><span>Notiz / Ort</span><textarea className="input" rows={2} value={f.note} onChange={(e) => set({ note: e.target.value })} maxLength={1000} /></label>
+      {f.team && !neu && <TeamThemen ctx={ctx} ev={ev} datum={datum} />}
+      {!neu && <TerminErinnerungen ctx={ctx} ev={ev} datum={datum} />}
+      {neu && (
+        <div className="field"><span>Erinnerungen dazu</span>
+          <div className="chips">{ERINNERUNGEN.map(([text, n]) => {
+            const on = vorab.some((v) => v[0] === text);
+            return <button key={text} type="button" className={`chip${on ? ' on' : ''}`} aria-pressed={on} onClick={() => setVorab(on ? vorab.filter((v) => v[0] !== text) : [...vorab, [text, n]])}>{text}</button>;
+          })}</div>
+        </div>
+      )}
+      {!abo && <label className="field"><span>Notiz / Ort</span><textarea className="input" rows={2} value={f.note} onChange={(e) => set({ note: e.target.value })} maxLength={1000} /></label>}
     </Sheet>
   );
 }

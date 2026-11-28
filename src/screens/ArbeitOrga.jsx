@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { supabase, run } from '../data.js';
 import { Icon, Check, Sheet, Seg } from '../ui.jsx';
-import { addDays, mondayOf, shortLabel, hm, WD, WDL, weekday, diffDays } from '../lib/dates.js';
+import { addDays, mondayOf, shortLabel, hm, expand, WD, WDL, weekday, diffDays } from '../lib/dates.js';
 
 // Arbeitsbereich, Teil 2: Stundenplan, Fristen mit Vorlauf-To-dos, Besprechungsprotokolle.
 // Alles nur für die angemeldete Person sichtbar (RLS „nur_ich“).
@@ -405,9 +405,122 @@ export function OrgaSeite({ ctx }) {
   return (
     <>
       <div className="li-seg"><Seg label="Bereich" value={seg} onPick={pick}
-        options={[['fristen', <span key="f" className="seg-txt"><Icon name="clock" size={20} />Fristen</span>, 'Fristen'], ['protokolle', <span key="p" className="seg-txt"><Icon name="pencil" size={20} />Protokolle</span>, 'Protokolle']]} /></div>
-      {seg === 'fristen' ? <FristenListe ctx={ctx} /> : <ProtokollListe ctx={ctx} />}
+        options={[['fristen', <span key="f" className="seg-txt"><Icon name="clock" size={20} />Fristen</span>, 'Fristen'], ['team', <span key="t" className="seg-txt"><Icon name="users" size={20} />Team</span>, 'Teamsitzung'], ['protokolle', <span key="p" className="seg-txt"><Icon name="pencil" size={20} />Protokolle</span>, 'Protokolle']]} /></div>
+      {seg === 'fristen' ? <FristenListe ctx={ctx} /> : seg === 'team' ? <TeamSeite ctx={ctx} /> : <ProtokollListe ctx={ctx} />}
     </>
   );
 }
 
+
+/* ---------- Teamsitzung: Themenliste ---------- */
+
+// Teamsitzung: ausdrücklich markiert – oder (wenn nie gesetzt) am Titel erkannt
+export const istTeam = (ev) => (ev.teamsitzung ?? /team\s*sitzung|teamsitzung|jahrgangsteam|teambesprechung|teamtreffen/i.test(ev.title || ''));
+const offeneThemen = (ctx) => ctx.data.workThemen.rows.filter((t) => !t.termin_id && !t.besprochen_at).sort((a, b) => a.created_at.localeCompare(b.created_at));
+export const themenVon = (ctx, ev, datum) => ctx.data.workThemen.rows.filter((t) => t.termin_id === ev.id && (!t.termin_am || t.termin_am === datum));
+
+async function themaNeu(ctx, text, termin, datum) {
+  const row = { owner: ctx.me.id, text: text.trim().slice(0, 300), termin_id: termin?.id ?? null, termin_am: termin ? datum : null };
+  if (await run(supabase.from('work_themen').insert(row), ctx.fail)) ctx.data.workThemen.reload();
+}
+async function themaSetzen(ctx, t, patch) {
+  ctx.data.workThemen.local((rows) => rows.map((x) => (x.id === t.id ? { ...x, ...patch } : x)));
+  if (!await run(supabase.from('work_themen').update(patch).eq('id', t.id), ctx.fail)) ctx.data.workThemen.reload();
+}
+async function themaWeg(ctx, t) {
+  ctx.data.workThemen.local((rows) => rows.filter((x) => x.id !== t.id));
+  if (await run(supabase.from('work_themen').delete().eq('id', t.id), ctx.fail)) ctx.say('Thema gelöscht', () => run(supabase.from('work_themen').insert(t), ctx.fail).then(() => ctx.data.workThemen.reload()));
+  else ctx.data.workThemen.reload();
+}
+
+function ThemaEingabe({ ctx, termin, datum, placeholder }) {
+  const [text, setText] = useState('');
+  const add = async (e) => { e.preventDefault(); if (!text.trim()) return; await themaNeu(ctx, text, termin, datum); setText(''); };
+  return (
+    <form className="thema-neu" onSubmit={add}>
+      <input className="input" value={text} onChange={(e) => setText(e.target.value)} maxLength={300} placeholder={placeholder || 'Neues Thema …'} aria-label="Neues Thema" />
+      <button className="icon-btn" aria-label="Thema hinzufügen" disabled={!text.trim()}><Icon name="plus" size={18} /></button>
+    </form>
+  );
+}
+
+function ThemaZeile({ ctx, t, termin, datum }) {
+  const besprochen = !!t.besprochen_at;
+  const toggle = () => themaSetzen(ctx, t, besprochen
+    ? { besprochen_at: null }
+    : { besprochen_at: new Date().toISOString(), ...(termin && !t.termin_id ? { termin_id: termin.id, termin_am: datum } : {}) });
+  return (
+    <div className="row" style={{ minHeight: 44 }}>
+      <button className="row-check" aria-label={`${t.text} besprochen`} onClick={toggle}><Check on={besprochen} /></button>
+      <span className="row-main"><span className="row-title" style={{ textDecoration: besprochen ? 'line-through' : undefined, opacity: besprochen ? 0.6 : 1 }}>{t.text}</span></span>
+      {termin && t.termin_id === termin.id && !besprochen && <button className="btn ghost small" onClick={() => themaSetzen(ctx, t, { termin_id: null, termin_am: null })} title="Zurück in die offene Liste">später</button>}
+      <button className="icon-btn" aria-label="Thema löschen" onClick={() => themaWeg(ctx, t)}><Icon name="x" size={16} /></button>
+    </div>
+  );
+}
+
+// Im Termin einer Teamsitzung: Themen dieses Termins + alle offenen Themen
+export function TeamThemen({ ctx, ev, datum }) {
+  const eigene = themenVon(ctx, ev, datum);
+  const offen = offeneThemen(ctx);
+  const alle = [...eigene, ...offen];
+  const protokoll = async () => {
+    const text = alle.map((t) => `• ${t.text}${t.besprochen_at ? ' ✓' : ''}`).join('\n') + '\n\n';
+    const res = await run(supabase.from('work_protokolle').insert({ owner: ctx.me.id, titel: ev.title.slice(0, 160), datum, text }).select('id').single(), ctx.fail);
+    if (res) { ctx.data.workProtokolle.reload(); ctx.say('Protokoll angelegt – unter Orga → Protokolle'); }
+  };
+  const schon = ctx.data.workProtokolle.rows.some((p) => p.datum === datum && p.titel === ev.title);
+  return (
+    <div className="field"><span>Themen ({alle.filter((t) => !t.besprochen_at).length} offen)</span>
+      {alle.length === 0 && <div className="small" style={{ padding: '4px 0' }}>Noch keine Themen gesammelt.</div>}
+      {alle.map((t) => <ThemaZeile key={t.id} ctx={ctx} t={t} termin={ev} datum={datum} />)}
+      <ThemaEingabe ctx={ctx} termin={ev} datum={datum} />
+      {alle.length > 0 && !schon && <button type="button" className="btn ghost small" style={{ marginTop: 8 }} onClick={protokoll}><Icon name="pencil" size={16} />Protokoll mit diesen Themen starten</button>}
+    </div>
+  );
+}
+
+// Orga → Team: offene Themen sammeln, nächste Teamsitzungen
+function TeamSeite({ ctx }) {
+  const offen = offeneThemen(ctx);
+  const [ausgewaehlt, setAus] = useState(null);
+  const kommende = expand(ctx.data.workEvents.rows.filter(istTeam), ctx.day, addDays(ctx.day, 60)).slice(0, 4);
+  const erledigt = ctx.data.workThemen.rows.filter((t) => t.besprochen_at).sort((a, b) => b.besprochen_at.localeCompare(a.besprochen_at)).slice(0, 8);
+  return (
+    <>
+      <section className="card tight">
+        <div className="card-title" style={{ padding: '12px 0 2px' }}>Themen für die Teamsitzung</div>
+        <div className="small" style={{ paddingBottom: 6 }}>Sammle hier, was du ansprechen willst. In der Teamsitzung hakst du es ab.</div>
+        {offen.map((t) => <ThemaZeile key={t.id} ctx={ctx} t={t} />)}
+        <ThemaEingabe ctx={ctx} placeholder="z. B. Raumplan Lernzeit klären" />
+        <div style={{ height: 8 }} />
+      </section>
+      <section className="card tight">
+        <div className="h-label" style={{ padding: '12px 0 4px' }}>Nächste Teamsitzungen</div>
+        {kommende.length === 0 && <div className="small" style={{ padding: '4px 0 10px' }}>Keine gefunden. Markiere einen Termin im Arbeitskalender als „Teamsitzung“.</div>}
+        {kommende.map((o) => {
+          const n = themenVon(ctx, o.ev, o.date).length + offen.length;
+          return (
+            <button key={o.ev.id + o.date} className="row" onClick={() => setAus(o)}>
+              <span className="time" style={{ width: 70 }}>{shortLabel(o.date)}</span>
+              <span className="row-main"><span className="row-title">{o.ev.title}</span><span className="small">{[!o.ev.all_day && hm(o.ev.from_time), `${n} Themen`].filter(Boolean).join(' · ')}</span></span>
+            </button>
+          );
+        })}
+        <div style={{ height: 6 }} />
+      </section>
+      {erledigt.length > 0 && (
+        <section className="card tight">
+          <div className="h-label" style={{ padding: '12px 0 4px' }}>Zuletzt besprochen</div>
+          {erledigt.map((t) => <div key={t.id} className="small ar-zeile">✓ {t.text}</div>)}
+          <div style={{ height: 8 }} />
+        </section>
+      )}
+      {ausgewaehlt && (
+        <Sheet title={`${ausgewaehlt.ev.title} · ${shortLabel(ausgewaehlt.date)}`} onClose={() => setAus(null)}>
+          <TeamThemen ctx={ctx} ev={ausgewaehlt.ev} datum={ausgewaehlt.date} />
+        </Sheet>
+      )}
+    </>
+  );
+}
